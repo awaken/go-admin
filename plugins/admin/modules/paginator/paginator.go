@@ -24,7 +24,7 @@ func Get(cfg Config) types.PaginatorAttribute {
 
 	paginator := template2.Default().Paginator().(*components.PaginatorAttribute)
 
-	fmt.Println("cfg.Size", cfg.Size, "cfg.Param.PageSizeInt", cfg.Param.PageSizeInt)
+	//fmt.Println("cfg.Size", cfg.Size, "cfg.Param.PageSizeInt", cfg.Param.PageSizeInt)
 
 	totalPage := int(math.Ceil(float64(cfg.Size) / float64(cfg.Param.PageSizeInt)))
 

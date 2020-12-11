@@ -20,21 +20,7 @@ func (h *Handler) SystemInfo(ctx *context.Context) {
 	box1 := aBox().
 		WithHeadBorder().
 		SetHeader("<b>" + lg("application") + "</b>").
-		SetBody(stripedTable([]map[string]types.InfoItem{
-			{
-				"key":   types.InfoItem{Content: lg("app_name")},
-				"value": types.InfoItem{Content: "GoAdmin"},
-			}, {
-				"key":   types.InfoItem{Content: lg("go_admin_version")},
-				"value": types.InfoItem{Content: template.HTML(system.Version())},
-			}, {
-				"key":   types.InfoItem{Content: lg("theme_name")},
-				"value": types.InfoItem{Content: template.HTML(aTemplate().Name())},
-			}, {
-				"key":   types.InfoItem{Content: lg("theme_version")},
-				"value": types.InfoItem{Content: template.HTML(aTemplate().GetVersion())},
-			},
-		})).
+		SetBody(stripedTable(sysInfoItemsForApplication())).
 		GetContent()
 
 	app := system.GetAppStatus()

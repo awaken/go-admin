@@ -21,6 +21,7 @@ type PaginatorAttribute struct {
 	Url               string
 	ExtraInfo         template.HTML
 	EntriesInfo       template.HTML
+	HideEntriesInfo   bool
 	types.Attribute
 }
 
