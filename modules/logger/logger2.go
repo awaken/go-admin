@@ -44,35 +44,20 @@ func adminLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
 }
 
 func (l *Logger) getEncoder(levelKey string) zapcore.Encoder {
-
-	var (
-		//timeEncoder     = new(zapcore.TimeEncoder)
-		durationEncoder = new(zapcore.DurationEncoder)
-		callerEncoder   = new(zapcore.CallerEncoder)
-		nameEncoder     = new(zapcore.NameEncoder)
-		//levelEncoder    = new(zapcore.LevelEncoder)
-	)
-
-	//_ = timeEncoder.UnmarshalText([]byte(l.encoder.Time))
-	_ = durationEncoder.UnmarshalText([]byte(l.encoder.Duration))
-	_ = callerEncoder.UnmarshalText([]byte(l.encoder.Caller))
-	_ = nameEncoder.UnmarshalText([]byte("full"))
-	//_ = levelEncoder.UnmarshalText([]byte(l.encoder.Level))
-
 	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:        l.encoder.TimeKey,
-		LevelKey:       levelKey,
-		NameKey:        l.encoder.NameKey,
-		CallerKey:      l.encoder.CallerKey,
-		MessageKey:     l.encoder.MessageKey,
-		StacktraceKey:  l.encoder.StacktraceKey,
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    adminLevelEncoder,
-		EncodeTime:     adminTimeEncoder,
-		EncodeDuration: *durationEncoder,
-		EncodeCaller:   *callerEncoder,
-		EncodeName:     *nameEncoder,
+		TimeKey:          l.encoder.TimeKey,
+		LevelKey:         levelKey,
+		NameKey:          l.encoder.NameKey,
+		CallerKey:        l.encoder.CallerKey,
+		MessageKey:       l.encoder.MessageKey,
+		StacktraceKey:    l.encoder.StacktraceKey,
+		LineEnding:       zapcore.DefaultLineEnding,
+		EncodeLevel:      adminLevelEncoder,
+		EncodeTime:       adminTimeEncoder,
+		EncodeDuration:   nil,
+		EncodeCaller:     nil,
+		EncodeName:       nil,
+		ConsoleSeparator: " ",
 	}
-
 	return filterZapEncoder(l.encoder.Encoding, encoderConfig)
 }
