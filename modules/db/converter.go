@@ -63,7 +63,7 @@ func SetResultValue(result *map[string]interface{}, index string, colVar interfa
 	case Contains(dt, StringTypeList):
 		temp := *(colVar.(*sql.NullString))
 		if temp.Valid {
-			(*result)[index] = temp.String
+			(*result)[index] = fixIsoDateStr(temp.String)
 		} else {
 			(*result)[index] = nil
 		}

@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+var _reCommonQuery = regexp.MustCompile(`\\((.*)\\)`)
+
 // CommonQuery is a common method of query.
 func CommonQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
 
@@ -41,7 +43,7 @@ func CommonQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]in
 	// tell the drive to reduce the performance loss
 	results := make([]map[string]interface{}, 0)
 
-	r, _ := regexp.Compile(`\\((.*)\\)`)
+	r := _reCommonQuery
 	for rs.Next() {
 		var colVar = make([]interface{}, len(col))
 		for i := 0; i < len(col); i++ {
@@ -104,7 +106,7 @@ func CommonQueryWithTx(tx *sql.Tx, query string, args ...interface{}) ([]map[str
 	// tell the drive to reduce the performance loss
 	results := make([]map[string]interface{}, 0)
 
-	r, _ := regexp.Compile(`\\((.*)\\)`)
+	r := _reCommonQuery
 	for rs.Next() {
 		var colVar = make([]interface{}, len(col))
 		for i := 0; i < len(col); i++ {
