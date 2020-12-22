@@ -39,6 +39,16 @@ func (db *Mysql) GetDelimiter() string {
 	return "`"
 }
 
+// GetDelimiter2 implements the method Connection.GetDelimiter2.
+func (db *Mysql) GetDelimiter2() string {
+	return "`"
+}
+
+// GetDelimiters implements the method Connection.GetDelimiters.
+func (db *Mysql) GetDelimiters() []string {
+	return []string{"`", "`"}
+}
+
 // InitDB implements the method Connection.InitDB.
 func (db *Mysql) InitDB(cfgs map[string]config.Database) Connection {
 	db.Configs = cfgs
@@ -52,13 +62,13 @@ func (db *Mysql) InitDB(cfgs map[string]config.Database) Connection {
 					_ = sqlDB.Close()
 				}
 				panic(err)
-			} else {
-				// Largest set up the database connection reduce time wait
-				sqlDB.SetMaxIdleConns(cfg.MaxIdleCon)
-				sqlDB.SetMaxOpenConns(cfg.MaxOpenCon)
-
-				db.DbList[conn] = sqlDB
 			}
+
+			// Largest set up the database connection reduce time wait
+			sqlDB.SetMaxIdleConns(cfg.MaxIdleCon)
+			sqlDB.SetMaxOpenConns(cfg.MaxOpenCon)
+
+			db.DbList[conn] = sqlDB
 
 			if err := sqlDB.Ping(); err != nil {
 				panic(err)
