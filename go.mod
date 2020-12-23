@@ -23,7 +23,6 @@ require (
 	github.com/jawher/mow.cli v1.2.0
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
-	github.com/kataras/iris/v12 v12.1.8
 	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/lib/pq v1.3.0
