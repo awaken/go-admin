@@ -24,6 +24,7 @@ require (
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/kataras/iris/v12 v12.1.8
+	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/lib/pq v1.3.0
 	github.com/magiconair/properties v1.8.1
@@ -47,6 +48,7 @@ require (
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/text v0.3.3
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.51.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.2.8
