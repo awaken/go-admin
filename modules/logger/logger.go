@@ -331,7 +331,7 @@ func Access(ctx *context.Context) {
 func LogSQL(statement string, args []interface{}) {
 	if !logger.infoLogOff && logger.sqlLogOpen && statement != "" {
 		if logger.Level <= zapcore.InfoLevel {
-			logger.sugaredLogger.With("statement", statement, "args", args).Info("[GoAdmin]")
+			logger.sugaredLogger.With("statement", statement, "args", args)
 		}
 	}
 }
