@@ -5,59 +5,29 @@
 package logger
 
 import (
-	"strings"
-	"time"
-
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-var logLayout = "2006-01-02T15:04:05.000Z0700"
+var (
+	logCoreFactoryFunc func() zapcore.Core
+)
 
-var _logEmptyStrSlice = [...][]byte{
-	[]byte("       -"),
-	[]byte("      -"),
-	[]byte("     -"),
-	[]byte("    -"),
-	[]byte("   -"),
-	[]byte("  -"),
-	[]byte(" -"),
-	[]byte(" -"),
-	[]byte(" -"),
+func SetLogCoreFactory(f func() zapcore.Core) {
+	logCoreFactoryFunc = f
 }
 
-func SetLogLayout(layout string) {
-	logLayout = layout
-}
-
-func adminTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	encodeTimeLayout(t, logLayout, enc)
-}
-
-func adminLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
-	var sb strings.Builder
-	sb.Grow(10)
-	sb.Write([]byte("- "))
-	s := l.CapitalString()
-	sb.WriteString(s)
-	sb.Write(_logEmptyStrSlice[len(s)])
-	enc.AppendString(sb.String())
-}
-
-func (l *Logger) getEncoder(levelKey string) zapcore.Encoder {
-	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:          l.encoder.TimeKey,
-		LevelKey:         levelKey,
-		NameKey:          l.encoder.NameKey,
-		CallerKey:        l.encoder.CallerKey,
-		MessageKey:       l.encoder.MessageKey,
-		StacktraceKey:    l.encoder.StacktraceKey,
-		LineEnding:       zapcore.DefaultLineEnding,
-		EncodeLevel:      adminLevelEncoder,
-		EncodeTime:       adminTimeEncoder,
-		EncodeDuration:   nil,
-		EncodeCaller:     nil,
-		EncodeName:       nil,
-		ConsoleSeparator: " ",
+func (l *Logger) Init() {
+	var zapLogger *zap.Logger
+	if logCoreFactoryFunc != nil {
+		zapLogger = zap.New(logCoreFactoryFunc())
+	} else {
+		zapLogger = zap.New(zapcore.NewTee(
+			zapcore.NewCore(l.getEncoder(l.encoder.LevelKey), l.getLogWriter(l.infoLogPath), infoLevelEnabler),
+			zapcore.NewCore(l.getEncoder(l.encoder.LevelKey), l.getLogWriter(l.errorLogPath), errorLevelEnabler),
+			zapcore.NewCore(l.getEncoder(""), l.getLogWriter(l.accessLogPath), accessLevelEnabler),
+		), zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(errorLevelEnabler))
 	}
-	return filterZapEncoder(l.encoder.Encoding, encoderConfig)
+	l.sugaredLogger = zapLogger.Sugar()
+	l.logger        = zapLogger
 }

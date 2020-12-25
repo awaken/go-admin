@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
@@ -107,27 +106,38 @@ type RotateCfg struct {
 	Compress   bool
 }
 
-func encodeTimeLayout(t time.Time, layout string, enc zapcore.PrimitiveArrayEncoder) {
-	type appendTimeEncoder interface {
-		AppendTimeLayout(time.Time, string)
+func (l *Logger) getEncoder(levelKey string) zapcore.Encoder {
+
+	var (
+		timeEncoder     = new(zapcore.TimeEncoder)
+		durationEncoder = new(zapcore.DurationEncoder)
+		callerEncoder   = new(zapcore.CallerEncoder)
+		nameEncoder     = new(zapcore.NameEncoder)
+		levelEncoder    = new(zapcore.LevelEncoder)
+	)
+
+	_ = timeEncoder.UnmarshalText([]byte(l.encoder.Time))
+	_ = durationEncoder.UnmarshalText([]byte(l.encoder.Duration))
+	_ = callerEncoder.UnmarshalText([]byte(l.encoder.Caller))
+	_ = nameEncoder.UnmarshalText([]byte("full"))
+	_ = levelEncoder.UnmarshalText([]byte(l.encoder.Level))
+
+	encoderConfig := zapcore.EncoderConfig{
+		TimeKey:        l.encoder.TimeKey,
+		LevelKey:       levelKey,
+		NameKey:        l.encoder.NameKey,
+		CallerKey:      l.encoder.CallerKey,
+		MessageKey:     l.encoder.MessageKey,
+		StacktraceKey:  l.encoder.StacktraceKey,
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    *levelEncoder,
+		EncodeTime:     *timeEncoder,
+		EncodeDuration: *durationEncoder,
+		EncodeCaller:   *callerEncoder,
+		EncodeName:     *nameEncoder,
 	}
 
-	if enc, ok := enc.(appendTimeEncoder); ok {
-		enc.AppendTimeLayout(t, layout)
-		return
-	}
-
-	enc.AppendString(t.Format(layout))
-}
-
-func (l *Logger) Init() {
-	zapLogger := zap.New(zapcore.NewTee(
-		zapcore.NewCore(l.getEncoder(l.encoder.LevelKey), l.getLogWriter(l.infoLogPath), infoLevelEnabler),
-		zapcore.NewCore(l.getEncoder(l.encoder.LevelKey), l.getLogWriter(l.errorLogPath), errorLevelEnabler),
-		zapcore.NewCore(l.getEncoder(""), l.getLogWriter(l.accessLogPath), accessLevelEnabler),
-	), zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(errorLevelEnabler))
-	l.sugaredLogger = zapLogger.Sugar()
-	l.logger = zapLogger
+	return filterZapEncoder(l.encoder.Encoding, encoderConfig)
 }
 
 func (l *Logger) getLogWriter(path string) zapcore.WriteSyncer {
@@ -300,7 +310,7 @@ func Panicf(template string, args ...interface{}) {
 // Access print the access message.
 func Access(ctx *context.Context) {
 	if !logger.accessLogOff && logger.Level <= zapcore.InfoLevel {
-		temp := "[admin] %s %s %s"
+		temp := "[GoAdmin] %s %s %s"
 		if logger.accessAssetsLogOff {
 			if filepath.Ext(ctx.Path()) == "" {
 				logger.sugaredLogger.Warnf(temp,
@@ -321,7 +331,7 @@ func Access(ctx *context.Context) {
 func LogSQL(statement string, args []interface{}) {
 	if !logger.infoLogOff && logger.sqlLogOpen && statement != "" {
 		if logger.Level <= zapcore.InfoLevel {
-			logger.sugaredLogger.With("statement", statement, "args", args).Info("[admin]")
+			logger.sugaredLogger.With("statement", statement, "args", args).Info("[GoAdmin]")
 		}
 	}
 }
