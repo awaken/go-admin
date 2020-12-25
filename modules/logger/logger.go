@@ -11,7 +11,6 @@ import (
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"github.com/mgutz/ansi"
 	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -314,14 +313,14 @@ func Access(ctx *context.Context) {
 		if logger.accessAssetsLogOff {
 			if filepath.Ext(ctx.Path()) == "" {
 				logger.sugaredLogger.Warnf(temp,
-					ansi.Color(" "+strconv.Itoa(ctx.Response.StatusCode)+" ", "white:blue"),
-					ansi.Color(" "+string(ctx.Method())+"   ", "white:blue+h"),
+					strconv.Itoa(ctx.Response.StatusCode),
+					ctx.Method(),
 					ctx.Path())
 			}
 		} else {
 			logger.sugaredLogger.Warnf(temp,
-				ansi.Color(" "+strconv.Itoa(ctx.Response.StatusCode)+" ", "white:blue"),
-				ansi.Color(" "+string(ctx.Method())+"   ", "white:blue+h"),
+				strconv.Itoa(ctx.Response.StatusCode),
+				ctx.Method(),
 				ctx.Path())
 		}
 	}
