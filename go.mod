@@ -12,12 +12,12 @@ require (
 	github.com/buaazp/fasthttprouter v0.1.1
 	github.com/denisenkom/go-mssqldb v0.0.0-20200206145737-bbfc9a55622e
 	github.com/fasthttp-contrib/websocket v0.0.0-20160511215533-1f3b11f56072 // indirect
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gavv/httpexpect v2.0.0+incompatible
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-chi/chi v1.5.1
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gobuffalo/buffalo v0.16.17
-	github.com/gogf/gf v1.14.5
 	github.com/gorilla/mux v1.7.4
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/jawher/mow.cli v1.2.0
