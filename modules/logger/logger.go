@@ -310,7 +310,7 @@ func Panicf(template string, args ...interface{}) {
 // Access print the access message.
 func Access(ctx *context.Context) {
 	if !logger.accessLogOff && logger.Level <= zapcore.InfoLevel {
-		temp := "[GoAdmin] %s %s %s"
+		temp := "%s %s %s"
 		if logger.accessAssetsLogOff {
 			if filepath.Ext(ctx.Path()) == "" {
 				logger.sugaredLogger.Warnf(temp,
