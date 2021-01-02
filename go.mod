@@ -39,6 +39,7 @@ require (
 	github.com/hinshun/vt10x v0.0.0-20180809195222-d55458df857c // indirect
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/jackc/pgmock v0.0.0-20201204152224-4fe30f7445fd // indirect
+	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
 	github.com/jackc/pgx/v4 v4.10.1 // indirect
 	github.com/jawher/mow.cli v1.2.0
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
@@ -90,7 +91,7 @@ require (
 	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014 // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.4
-	golang.org/x/tools v0.0.0-20201230224404-63754364767c // indirect
+	golang.org/x/tools v0.0.0-20210102185154-773b96fafca2 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0
