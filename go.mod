@@ -74,7 +74,7 @@ require (
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
 	github.com/tdewolff/test v1.0.6 // indirect
 	github.com/ugorji/go v1.2.2 // indirect
-	github.com/valyala/fasthttp v1.18.0
+	github.com/valyala/fasthttp v1.19.0
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0 // indirect
@@ -88,10 +88,10 @@ require (
 	golang.org/x/mod v0.4.0 // indirect
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
-	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014 // indirect
+	golang.org/x/sys v0.0.0-20210104204734-6f8348627aad // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.4
-	golang.org/x/tools v0.0.0-20210102185154-773b96fafca2 // indirect
+	golang.org/x/tools v0.0.0-20210104081019-d8d6ddbec6ee // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0
