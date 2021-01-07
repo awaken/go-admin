@@ -44,7 +44,7 @@ require (
 	github.com/jawher/mow.cli v1.2.0
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
-	github.com/klauspost/compress v1.11.4 // indirect
+	github.com/klauspost/compress v1.11.6 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -88,16 +88,16 @@ require (
 	golang.org/x/mod v0.4.0 // indirect
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
-	golang.org/x/sys v0.0.0-20210104204734-6f8348627aad // indirect
+	golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.4
-	golang.org/x/tools v0.0.0-20210104081019-d8d6ddbec6ee // indirect
+	golang.org/x/tools v0.0.0-20210106214847-113979e3529a // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210106172901-c476de37821d // indirect
 	honnef.co/go/tools v0.1.0 // indirect
-	xorm.io/xorm v1.0.5
+	xorm.io/xorm v1.0.6
 )
