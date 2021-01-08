@@ -23,7 +23,7 @@ require (
 	github.com/go-chi/chi v1.5.1
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/gobuffalo/buffalo v0.16.18
+	github.com/gobuffalo/buffalo v0.16.19
 	github.com/gobuffalo/fizz v1.13.0 // indirect
 	github.com/gobuffalo/nulls v0.4.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.1 // indirect
@@ -91,13 +91,13 @@ require (
 	golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.4
-	golang.org/x/tools v0.0.0-20210106214847-113979e3529a // indirect
+	golang.org/x/tools v0.0.0-20210107193943-4ed967dd8eff // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210106172901-c476de37821d // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	honnef.co/go/tools v0.1.0 // indirect
 	xorm.io/xorm v1.0.6
 )
