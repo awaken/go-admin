@@ -23,7 +23,7 @@ require (
 	github.com/go-chi/chi v1.5.1
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/gobuffalo/buffalo v0.16.19
+	github.com/gobuffalo/buffalo v0.16.20
 	github.com/gobuffalo/fizz v1.13.0 // indirect
 	github.com/gobuffalo/nulls v0.4.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.1 // indirect
@@ -60,6 +60,7 @@ require (
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.4 // indirect
 	github.com/prometheus/client_golang v1.9.0 // indirect
+	github.com/prometheus/procfs v0.3.0 // indirect
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/schollz/progressbar v1.0.0
@@ -69,11 +70,11 @@ require (
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1 // indirect
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/tdewolff/minify v2.3.6+incompatible
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
 	github.com/tdewolff/test v1.0.6 // indirect
-	github.com/ugorji/go v1.2.2 // indirect
+	github.com/ugorji/go v1.2.3 // indirect
 	github.com/valyala/fasthttp v1.19.0
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -88,10 +89,10 @@ require (
 	golang.org/x/mod v0.4.0 // indirect
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
-	golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 // indirect
+	golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78 // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
-	golang.org/x/text v0.3.4
-	golang.org/x/tools v0.0.0-20210107193943-4ed967dd8eff // indirect
+	golang.org/x/text v0.3.5
+	golang.org/x/tools v0.0.0-20210113180300-f96436850f18 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0
