@@ -6,7 +6,7 @@ require (
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/GoAdminGroup/html v0.0.1
-	github.com/GoAdminGroup/themes v0.0.41
+	github.com/GoAdminGroup/themes v0.0.42
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/NebulousLabs/fastrand v0.0.0-20181203155948-6fb6489aac4e
 	github.com/Netflix/go-expect v0.0.0-20201125194554-85d881c3777e // indirect
@@ -23,10 +23,11 @@ require (
 	github.com/go-chi/chi v1.5.1
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/gobuffalo/buffalo v0.16.20
+	github.com/gobuffalo/buffalo v0.16.21
 	github.com/gobuffalo/fizz v1.13.0 // indirect
 	github.com/gobuffalo/nulls v0.4.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.1 // indirect
+	github.com/gobuffalo/plush/v4 v4.1.0 // indirect
 	github.com/gobuffalo/pop/v5 v5.3.1 // indirect
 	github.com/gobuffalo/validate/v3 v3.3.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
@@ -42,6 +43,7 @@ require (
 	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
 	github.com/jackc/pgx/v4 v4.10.1 // indirect
 	github.com/jawher/mow.cli v1.2.0
+	github.com/jmoiron/sqlx v1.3.0 // indirect
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
@@ -61,7 +63,7 @@ require (
 	github.com/onsi/gomega v1.10.4 // indirect
 	github.com/prometheus/client_golang v1.9.0 // indirect
 	github.com/prometheus/procfs v0.3.0 // indirect
-	github.com/rogpeppe/go-internal v1.6.2 // indirect
+	github.com/rogpeppe/go-internal v1.7.0 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/schollz/progressbar v1.0.0
 	github.com/sclevine/agouti v3.0.0+incompatible
@@ -87,18 +89,17 @@ require (
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.1 // indirect
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
-	golang.org/x/sys v0.0.0-20210113181707-4bcb84eeeb78 // indirect
+	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.5
-	golang.org/x/tools v0.0.0-20210115202250-e0d201561e39 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	honnef.co/go/tools v0.1.0 // indirect
-	xorm.io/xorm v1.0.6
+	honnef.co/go/tools v0.1.1 // indirect
+	xorm.io/xorm v1.0.7
 )
