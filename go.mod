@@ -28,7 +28,7 @@ require (
 	github.com/gobuffalo/nulls v0.4.0 // indirect
 	github.com/gobuffalo/packr/v2 v2.8.1 // indirect
 	github.com/gobuffalo/plush/v4 v4.1.0 // indirect
-	github.com/gobuffalo/pop/v5 v5.3.1 // indirect
+	github.com/gobuffalo/pop/v5 v5.3.3 // indirect
 	github.com/gobuffalo/validate/v3 v3.3.0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/snappy v0.0.2 // indirect
@@ -41,9 +41,8 @@ require (
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/jackc/pgmock v0.0.0-20201204152224-4fe30f7445fd // indirect
 	github.com/jackc/pgproto3/v2 v2.0.7 // indirect
-	github.com/jackc/pgx/v4 v4.10.1 // indirect
 	github.com/jawher/mow.cli v1.2.0
-	github.com/jmoiron/sqlx v1.3.0 // indirect
+	github.com/jmoiron/sqlx v1.3.1 // indirect
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
@@ -101,5 +100,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	honnef.co/go/tools v0.1.1 // indirect
+	xorm.io/builder v0.3.8 // indirect
 	xorm.io/xorm v1.0.7
 )
