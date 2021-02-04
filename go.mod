@@ -33,7 +33,7 @@ require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
-	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/sessions v1.2.1 // indirect
@@ -54,12 +54,12 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/microcosm-cc/bluemonday v1.0.4 // indirect
-	github.com/monoculum/formam v0.0.0-20200923020755-6f187e4ffe27 // indirect
+	github.com/monoculum/formam v0.0.0-20210131081218-41b48e2a724b // indirect
 	github.com/moul/http2curl v1.0.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/nxadm/tail v1.4.6 // indirect
-	github.com/onsi/ginkgo v1.14.2 // indirect
-	github.com/onsi/gomega v1.10.4 // indirect
+	github.com/onsi/ginkgo v1.15.0 // indirect
+	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/prometheus/client_golang v1.9.0 // indirect
 	github.com/prometheus/procfs v0.3.0 // indirect
 	github.com/rogpeppe/go-internal v1.7.0 // indirect
@@ -75,7 +75,7 @@ require (
 	github.com/tdewolff/minify v2.3.6+incompatible
 	github.com/tdewolff/parse v2.3.4+incompatible // indirect
 	github.com/tdewolff/test v1.0.6 // indirect
-	github.com/ugorji/go v1.2.3 // indirect
+	github.com/ugorji/go v1.2.4 // indirect
 	github.com/valyala/fasthttp v1.19.0
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
@@ -100,6 +100,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	honnef.co/go/tools v0.1.1 // indirect
-	xorm.io/builder v0.3.8 // indirect
+	xorm.io/builder v0.3.9 // indirect
 	xorm.io/xorm v1.0.7
 )
