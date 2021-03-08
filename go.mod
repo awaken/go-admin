@@ -46,9 +46,9 @@ require (
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/klauspost/compress v1.11.12 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/labstack/echo/v4 v4.2.0
+	github.com/labstack/echo/v4 v4.2.1
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.10.0
 	github.com/magefile/mage v1.11.0 // indirect
 	github.com/magiconair/properties v1.8.4
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -57,9 +57,8 @@ require (
 	github.com/monoculum/formam v0.0.0-20210131081218-41b48e2a724b // indirect
 	github.com/moul/http2curl v1.0.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/onsi/ginkgo v1.15.0 // indirect
-	github.com/onsi/gomega v1.10.5 // indirect
+	github.com/onsi/ginkgo v1.15.1 // indirect
+	github.com/onsi/gomega v1.11.0 // indirect
 	github.com/prometheus/client_golang v1.9.0 // indirect
 	github.com/prometheus/common v0.18.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
