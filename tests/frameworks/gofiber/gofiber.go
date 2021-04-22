@@ -1,13 +1,8 @@
-package echo
+package gofiber
 
 import (
-	// add echo adapter
-	_ "github.com/GoAdminGroup/go-admin/adapter/echo"
-	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
-	"github.com/GoAdminGroup/themes/adminlte"
-
+	// add fasthttp adapter
+	ada "github.com/GoAdminGroup/go-admin/adapter/gofiber"
 	// add mysql driver
 	_ "github.com/GoAdminGroup/go-admin/modules/db/drivers/mysql"
 	// add postgresql driver
@@ -19,45 +14,50 @@ import (
 	// add adminlte ui theme
 	_ "github.com/GoAdminGroup/themes/adminlte"
 
-	"net/http"
 	"os"
 
 	"github.com/GoAdminGroup/go-admin/engine"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/plugins/admin"
-	"github.com/GoAdminGroup/go-admin/plugins/example"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/chartjs"
 	"github.com/GoAdminGroup/go-admin/tests/tables"
-	"github.com/labstack/echo/v4"
+	"github.com/GoAdminGroup/themes/adminlte"
+	"github.com/gofiber/fiber/v2"
+	"github.com/valyala/fasthttp"
 )
 
-func newHandler() http.Handler {
-	e := echo.New()
+func newHandler() fasthttp.RequestHandler {
+	app := fiber.New(fiber.Config{
+		ServerHeader: "Fiber",
+	})
 
 	eng := engine.Default()
 
-	adminPlugin := admin.NewAdmin(tables.Generators)
+	adminPlugin := admin.NewAdmin(tables.Generators).AddDisplayFilterXssJsFilter()
 	adminPlugin.AddGenerator("user", tables.GetUserTable)
+
 	template.AddComp(chartjs.NewChart())
 
-	examplePlugin := example.NewExample()
-
 	if err := eng.AddConfigFromJSON(os.Args[len(os.Args)-1]).
-		AddPlugins(adminPlugin, examplePlugin).Use(e); err != nil {
+		AddPlugins(adminPlugin).
+		Use(app); err != nil {
 		panic(err)
 	}
 
 	eng.HTML("GET", "/admin", tables.GetContent)
 
-	return e
+	return app.Handler()
 }
 
-func NewHandler(dbs config.DatabaseList, gens table.GeneratorList) http.Handler {
-	e := echo.New()
+func NewHandler(dbs config.DatabaseList, gens table.GeneratorList) fasthttp.RequestHandler {
+	app := fiber.New(fiber.Config{
+		ServerHeader: "Fiber",
+	})
 
 	eng := engine.Default()
-
-	adminPlugin := admin.NewAdmin(gens)
 
 	template.AddComp(chartjs.NewChart())
 
@@ -73,11 +73,13 @@ func NewHandler(dbs config.DatabaseList, gens table.GeneratorList) http.Handler 
 		Debug:       true,
 		ColorScheme: adminlte.ColorschemeSkinBlack,
 	}).
-		AddPlugins(adminPlugin).Use(e); err != nil {
+		AddAdapter(new(ada.Gofiber)).
+		AddGenerators(gens).
+		Use(app); err != nil {
 		panic(err)
 	}
 
 	eng.HTML("GET", "/admin", tables.GetContent)
 
-	return e
+	return app.Handler()
 }
