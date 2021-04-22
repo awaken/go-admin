@@ -29,6 +29,7 @@ require (
 	github.com/gobuffalo/plush/v4 v4.1.0 // indirect
 	github.com/gobuffalo/pop/v5 v5.3.3 // indirect
 	github.com/gobuffalo/validate/v3 v3.3.0 // indirect
+	github.com/gofiber/fiber/v2 v2.8.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
@@ -44,7 +45,6 @@ require (
 	github.com/jmoiron/sqlx v1.3.1 // indirect
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
-	github.com/klauspost/compress v1.11.12 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/labstack/echo/v4 v4.2.1
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -75,7 +75,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.9.13
 	github.com/tdewolff/parse/v2 v2.5.12 // indirect
 	github.com/ugorji/go v1.2.4 // indirect
-	github.com/valyala/fasthttp v1.22.0
+	github.com/valyala/fasthttp v1.23.0
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0 // indirect
