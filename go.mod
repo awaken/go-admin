@@ -104,3 +104,5 @@ require (
 	xorm.io/builder v0.3.9 // indirect
 	xorm.io/xorm v1.1.0
 )
+
+replace github.com/go-check/check => gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
