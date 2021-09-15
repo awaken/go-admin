@@ -1,13 +1,15 @@
 package db
 
+import (
+	"regexp"
+)
+
+var _rexIsoDate = regexp.MustCompile("^([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])T([0-9][0-9]:[0-9][0-9]:[0-9][0-9])(?:\\.[0-9]*)?(?:Z|[-+][0-9][0-9]:?[0-9][0-9])$")
+
 func fixIsoDateStr(s string) string {
-	const isoLen = len("2006-01-02T15:04:05Z")
-
-	if len(s) == isoLen && s[4] == '-' && s[7] == '-' && s[10] == 'T' && s[isoLen-1] == 'Z' {
-		b := []byte(s[:isoLen-1])
-		b[10] = ' '
-		return string(b)
+	m := _rexIsoDate.FindStringSubmatch(s)
+	if len(m) >= 3 {
+		return m[1] + " " + m[2]
 	}
-
 	return s
 }
