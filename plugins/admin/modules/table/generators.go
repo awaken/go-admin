@@ -43,15 +43,20 @@ func NewSystemTable(conn db.Connection, c *config.Config) *SystemTable {
 	return &SystemTable{conn: conn, c: c}
 }
 
+func (s *SystemTable) link(url, content string) tmpl.HTML {
+	return link(s.c.Url(url), content)
+}
+
 func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table) {
 	managerTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 
 	info := managerTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
-	info.AddField(lg("Name"), "username", db.Varchar).FieldFilterable()
+	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable()
-	info.AddField(lg("role"), "name", db.Varchar).
+	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable()
+	info.AddField(lg("Roles"), "name", db.Varchar).
 		FieldJoin(types.Join{
 			Table:     "goadmin_role_users",
 			JoinField: "user_id",
@@ -82,12 +87,12 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 
 			return labels
 		}).FieldFilterable()
-	info.AddField(lg("createdAt"), "created_at", db.Timestamp)
-	info.AddField(lg("updatedAt"), "updated_at", db.Timestamp)
+	info.AddField(lg("Created At"), "created_at", db.Timestamp)
+	info.AddField(lg("Updated At"), "updated_at", db.Timestamp)
 
 	info.SetTable("goadmin_users").
-		SetTitle(lg("Managers")).
-		SetDescription(lg("Managers")).
+		SetTitle(lg("Users")).
+		//SetDescription(lg("Users")).
 		SetDeleteFn(func(idArr []string) error {
 
 			var ids = interfaces(idArr)
@@ -130,12 +135,13 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 	formList := managerTable.GetForm().AddXssJsFilter()
 
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
-	formList.AddField(lg("Name"), "username", db.Varchar, form.Text).
+	formList.AddField(lg("Username"), "username", db.Varchar, form.Text).
 		FieldHelpMsg(template.HTML(lg("use for login"))).FieldMust()
 	formList.AddField(lg("Nickname"), "name", db.Varchar, form.Text).
 		FieldHelpMsg(template.HTML(lg("use to display"))).FieldMust()
+	formList.AddField(lg("Email"), "email", db.Varchar, form.Email)
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
-	formList.AddField(lg("role"), "role_id", db.Varchar, form.Select).
+	formList.AddField(lg("Roles"), "role_id", db.Varchar, form.Select).
 		FieldOptionsFromTable("goadmin_roles", "slug", "id").
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			var roles []string
@@ -149,10 +155,10 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 				roles = append(roles, strconv.FormatInt(v["role_id"].(int64), 10))
 			}
 			return roles
-		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) +
-		link("/admin/info/roles/new", "Create here."))
+		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) + " " +
+		s.link("/info/roles/new", "Create here"))
 
-	formList.AddField(lg("permission"), "permission_id", db.Varchar, form.Select).
+	formList.AddField(lg("Permissions"), "permission_id", db.Varchar, form.Select).
 		FieldOptionsFromTable("goadmin_permissions", "slug", "id").
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			var permissions []string
@@ -166,23 +172,23 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 				permissions = append(permissions, strconv.FormatInt(v["permission_id"].(int64), 10))
 			}
 			return permissions
-		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) +
-		link("/admin/info/permission/new", "Create here."))
+		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) + " " +
+		s.link("/info/permission/new", "Create here"))
 
-	formList.AddField(lg("password"), "password", db.Varchar, form.Password).
+	formList.AddField(lg("Password"), "password", db.Varchar, form.Password).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return ""
 		})
-	formList.AddField(lg("confirm password"), "password_again", db.Varchar, form.Password).
+	formList.AddField(lg("Confirm password"), "password_again", db.Varchar, form.Password).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return ""
 		})
 
-	formList.SetTable("goadmin_users").SetTitle(lg("Managers")).SetDescription(lg("Managers"))
+	formList.SetTable("goadmin_users").SetTitle(lg("Users"))//.SetDescription(lg("Users"))
 	formList.SetUpdateFn(func(values form2.Values) error {
 
 		if values.IsEmpty("name", "username") {
-			return errors.New("username and password can not be empty")
+			return errors.New("username and password cannot be empty")
 		}
 
 		user := models.UserWithId(values.Get("id")).SetConn(s.conn)
@@ -207,7 +213,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 			}
 
 			_, updateUserErr := user.WithTx(tx).Update(values.Get("username"),
-				password, values.Get("name"), avatar, values.Get("avatar__change_flag") == "1")
+				password, values.Get("name"), values.Get("email"), avatar, values.Get("avatar__change_flag") == "1")
 
 			if db.CheckError(updateUserErr, db.UPDATE) {
 				return updateUserErr, nil
@@ -260,6 +266,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 			user, createUserErr := models.User().WithTx(tx).SetConn(s.conn).New(values.Get("username"),
 				encodePassword([]byte(values.Get("password"))),
 				values.Get("name"),
+				values.Get("email"),
 				values.Get("avatar"))
 
 			if db.CheckError(createUserErr, db.INSERT) {
@@ -287,7 +294,9 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 
 	detail := managerTable.GetDetail()
 	detail.AddField("ID", "id", db.Int)
-	detail.AddField(lg("Name"), "username", db.Varchar)
+	detail.AddField(lg("Username"), "username", db.Varchar)
+	detail.AddField(lg("Nickname"), "name", db.Varchar)
+	detail.AddField(lg("Email"), "email", db.Varchar)
 	detail.AddField(lg("Avatar"), "avatar", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			if model.Value == "" || config.GetStore().Prefix == "" {
@@ -299,8 +308,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 				SetSrc(template.HTML(model.Value)).
 				SetHeight("120").SetWidth("120").WithModal().GetContent()
 		})
-	detail.AddField(lg("Nickname"), "name", db.Varchar)
-	detail.AddField(lg("role"), "roles", db.Varchar).
+	detail.AddField(lg("Roles"), "roles", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			labelModels, _ := s.table("goadmin_role_users").
 				Select("goadmin_roles.name").
@@ -325,7 +333,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 
 			return labels
 		})
-	detail.AddField(lg("permission"), "roles", db.Varchar).
+	detail.AddField(lg("Permissions"), "roles", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			permissionModel, _ := s.table("goadmin_user_permissions").
 				Select("goadmin_permissions.name").
@@ -346,8 +354,8 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 
 			return permissions
 		})
-	detail.AddField(lg("createdAt"), "created_at", db.Timestamp)
-	detail.AddField(lg("updatedAt"), "updated_at", db.Timestamp)
+	detail.AddField(lg("Created At"), "created_at", db.Timestamp)
+	detail.AddField(lg("Updated At"), "updated_at", db.Timestamp)
 
 	return
 }
@@ -358,8 +366,9 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 	info := managerTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
-	info.AddField(lg("Name"), "username", db.Varchar).FieldFilterable()
+	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable()
+	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable()
 	info.AddField(lg("role"), "name", db.Varchar).
 		FieldJoin(types.Join{
 			Table:     "goadmin_role_users",
@@ -391,12 +400,12 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 
 			return labels
 		})
-	info.AddField(lg("createdAt"), "created_at", db.Timestamp)
-	info.AddField(lg("updatedAt"), "updated_at", db.Timestamp)
+	info.AddField(lg("Created At"), "created_at", db.Timestamp)
+	info.AddField(lg("Updated At"), "updated_at", db.Timestamp)
 
 	info.SetTable("goadmin_users").
-		SetTitle(lg("Managers")).
-		SetDescription(lg("Managers")).
+		SetTitle(lg("Users")).
+		//SetDescription(lg("Users")).
 		SetDeleteFn(func(idArr []string) error {
 
 			var ids = interfaces(idArr)
@@ -441,21 +450,22 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
 	formList.AddField(lg("Name"), "username", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("use for login"))).FieldMust()
 	formList.AddField(lg("Nickname"), "name", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("use to display"))).FieldMust()
+	formList.AddField(lg("Email"), "email", db.Varchar, form.Text)
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
-	formList.AddField(lg("password"), "password", db.Varchar, form.Password).
+	formList.AddField(lg("Password"), "password", db.Varchar, form.Password).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return ""
 		})
-	formList.AddField(lg("confirm password"), "password_again", db.Varchar, form.Password).
+	formList.AddField(lg("Confirm password"), "password_again", db.Varchar, form.Password).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return ""
 		})
 
-	formList.SetTable("goadmin_users").SetTitle(lg("Managers")).SetDescription(lg("Managers"))
+	formList.SetTable("goadmin_users").SetTitle(lg("Users"))//.SetDescription(lg("Users"))
 	formList.SetUpdateFn(func(values form2.Values) error {
 
 		if values.IsEmpty("name", "username") {
-			return errors.New("username and password can not be empty")
+			return errors.New("username and password cannot be empty")
 		}
 
 		user := models.UserWithId(values.Get("id")).SetConn(s.conn)
@@ -482,7 +492,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 		}
 
 		_, updateUserErr := user.Update(values.Get("username"),
-			password, values.Get("name"), avatar, values.Get("avatar__change_flag") == "1")
+			password, values.Get("name"), values.Get("email"), avatar, values.Get("avatar__change_flag") == "1")
 
 		if db.CheckError(updateUserErr, db.UPDATE) {
 			return updateUserErr
@@ -492,7 +502,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 	})
 	formList.SetInsertFn(func(values form2.Values) error {
 		if values.IsEmpty("name", "username", "password") {
-			return errors.New("username and password can not be empty")
+			return errors.New("username, nickname and password cannot be empty")
 		}
 
 		password := values.Get("password")
@@ -508,6 +518,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 		_, createUserErr := models.User().SetConn(s.conn).New(values.Get("username"),
 			encodePassword([]byte(values.Get("password"))),
 			values.Get("name"),
+			values.Get("email"),
 			values.Get("avatar"))
 
 		if db.CheckError(createUserErr, db.INSERT) {
@@ -526,15 +537,15 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 	info := permissionTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
-	info.AddField(lg("permission"), "name", db.Varchar).FieldFilterable()
-	info.AddField(lg("slug"), "slug", db.Varchar).FieldFilterable()
-	info.AddField(lg("method"), "http_method", db.Varchar).FieldDisplay(func(value types.FieldModel) interface{} {
+	info.AddField(lg("Permission"), "name", db.Varchar).FieldFilterable()
+	info.AddField(lg("Slug"), "slug", db.Varchar).FieldFilterable()
+	info.AddField(lg("Method"), "http_method", db.Varchar).FieldDisplay(func(value types.FieldModel) interface{} {
 		if value.Value == "" {
 			return "All methods"
 		}
 		return value.Value
 	})
-	info.AddField(lg("path"), "http_path", db.Varchar).
+	info.AddField(lg("Path"), "http_path", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			pathArr := strings.Split(model.Value, "\n")
 			res := ""
@@ -547,12 +558,12 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 			}
 			return res
 		})
-	info.AddField(lg("createdAt"), "created_at", db.Timestamp)
-	info.AddField(lg("updatedAt"), "updated_at", db.Timestamp)
+	info.AddField(lg("Created At"), "created_at", db.Timestamp)
+	info.AddField(lg("Updated At"), "updated_at", db.Timestamp)
 
 	info.SetTable("goadmin_permissions").
-		SetTitle(lg("Permission Manage")).
-		SetDescription(lg("Permission Manage")).
+		SetTitle(lg("Permissions")).
+		//SetDescription(lg("Permissions")).
 		SetDeleteFn(func(idArr []string) error {
 
 			var ids = interfaces(idArr)
@@ -595,9 +606,9 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 	formList := permissionTable.GetForm().AddXssJsFilter()
 
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
-	formList.AddField(lg("permission"), "name", db.Varchar, form.Text).FieldMust()
-	formList.AddField(lg("slug"), "slug", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique"))).FieldMust()
-	formList.AddField(lg("method"), "http_method", db.Varchar, form.Select).
+	formList.AddField(lg("Permission"), "name", db.Varchar, form.Text).FieldMust()
+	formList.AddField(lg("Slug"), "slug", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique"))).FieldMust()
+	formList.AddField(lg("Method"), "http_method", db.Varchar, form.Select).
 		FieldOptions(types.FieldOptions{
 			{Value: "GET", Text: "GET"},
 			{Value: "PUT", Text: "PUT"},
@@ -615,17 +626,17 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 		}).
 		FieldHelpMsg(template.HTML(lg("all method if empty")))
 
-	formList.AddField(lg("path"), "http_path", db.Varchar, form.TextArea).
+	formList.AddField(lg("Path"), "http_path", db.Varchar, form.TextArea).
 		FieldPostFilterFn(func(model types.PostFieldModel) interface{} {
 			return strings.TrimSpace(model.Value.Value())
 		}).
 		FieldHelpMsg(template.HTML(lg("a path a line, without global prefix")))
-	formList.AddField(lg("updatedAt"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
-	formList.AddField(lg("createdAt"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Updated At"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Created At"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 
 	formList.SetTable("goadmin_permissions").
-		SetTitle(lg("Permission Manage")).
-		SetDescription(lg("Permission Manage")).
+		SetTitle(lg("Permissions")).
+		//SetDescription(lg("Permissions")).
 		SetPostValidator(func(values form2.Values) error {
 
 			if values.IsEmpty("slug", "http_path", "name") {
@@ -664,14 +675,14 @@ func (s *SystemTable) GetRolesTable(ctx *context.Context) (roleTable Table) {
 	info := roleTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
-	info.AddField(lg("role"), "name", db.Varchar).FieldFilterable()
-	info.AddField(lg("slug"), "slug", db.Varchar).FieldFilterable()
-	info.AddField(lg("createdAt"), "created_at", db.Timestamp)
-	info.AddField(lg("updatedAt"), "updated_at", db.Timestamp)
+	info.AddField(lg("Role"), "name", db.Varchar).FieldFilterable()
+	info.AddField(lg("Slug"), "slug", db.Varchar).FieldFilterable()
+	info.AddField(lg("Created At"), "created_at", db.Timestamp)
+	info.AddField(lg("Updated At"), "updated_at", db.Timestamp)
 
 	info.SetTable("goadmin_roles").
-		SetTitle(lg("Roles Manage")).
-		SetDescription(lg("Roles Manage")).
+		SetTitle(lg("Roles")).
+		//SetDescription(lg("Roles")).
 		SetDeleteFn(func(idArr []string) error {
 
 			var ids = interfaces(idArr)
@@ -723,9 +734,9 @@ func (s *SystemTable) GetRolesTable(ctx *context.Context) (roleTable Table) {
 	formList := roleTable.GetForm().AddXssJsFilter()
 
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
-	formList.AddField(lg("role"), "name", db.Varchar, form.Text).FieldMust()
-	formList.AddField(lg("slug"), "slug", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique"))).FieldMust()
-	formList.AddField(lg("permission"), "permission_id", db.Varchar, form.SelectBox).
+	formList.AddField(lg("Role"), "name", db.Varchar, form.Text).FieldMust()
+	formList.AddField(lg("Slug"), "slug", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique"))).FieldMust()
+	formList.AddField(lg("Permissions"), "permission_id", db.Varchar, form.SelectBox).
 		FieldOptionsFromTable("goadmin_permissions", "name", "id").
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			var permissions = make([]string, 0)
@@ -741,15 +752,14 @@ func (s *SystemTable) GetRolesTable(ctx *context.Context) (roleTable Table) {
 				permissions = append(permissions, strconv.FormatInt(v["permission_id"].(int64), 10))
 			}
 			return permissions
-		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) +
-		link("/admin/info/permission/new", "Create here."))
+		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) + " " +
+		s.link("/info/permission/new", "Create here"))
 
-	formList.AddField(lg("updatedAt"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
-	formList.AddField(lg("createdAt"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Updated At"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Created At"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 
 	formList.SetTable("goadmin_roles").
-		SetTitle(lg("Roles Manage")).
-		SetDescription(lg("Roles Manage"))
+		SetTitle(lg("Roles"))//.SetDescription(lg("Roles"))
 
 	formList.SetUpdateFn(func(values form2.Values) error {
 
@@ -837,8 +847,8 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 	}
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
-	info.AddField("userID", "user_id", db.Int).FieldHide()
-	info.AddField(lg("user"), "name", db.Varchar).FieldJoin(types.Join{
+	info.AddField("UserID", "user_id", db.Int).FieldHide()
+	info.AddField(lg("Name"), "name", db.Varchar).FieldJoin(types.Join{
 		Table:     config.GetAuthUserTable(),
 		JoinField: "id",
 		Field:     "user_id",
@@ -851,11 +861,11 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 			SetTabTitle("Manager Detail").
 			GetContent()
 	}).FieldFilterable()
-	info.AddField(lg("path"), "path", db.Varchar).FieldFilterable()
-	info.AddField(lg("method"), "method", db.Varchar).FieldFilterable()
-	info.AddField(lg("ip"), "ip", db.Varchar).FieldFilterable()
-	info.AddField(lg("content"), "input", db.Text).FieldWidth(230)
-	info.AddField(lg("createdAt"), "created_at", db.Timestamp)
+	info.AddField(lg("Path"), "path", db.Varchar).FieldFilterable()
+	info.AddField(lg("Method"), "method", db.Varchar).FieldFilterable()
+	info.AddField(lg("IP"), "ip", db.Varchar).FieldFilterable()
+	info.AddField(lg("Content"), "input", db.Text).FieldWidth(230)
+	info.AddField(lg("Created At"), "created_at", db.Timestamp)
 
 	users, _ := s.table(config.GetAuthUserTable()).Select("id", "name").All()
 	options := make(types.FieldOptions, len(users))
@@ -863,8 +873,8 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 		options[k].Value = fmt.Sprintf("%v", user["id"])
 		options[k].Text = fmt.Sprintf("%v", user["name"])
 	}
-	info.AddSelectBox(language.Get("user"), options, action.FieldFilter("user_id"))
-	info.AddSelectBox(language.Get("method"), types.FieldOptions{
+	info.AddSelectBox(language.Get("User"), options, action.FieldFilter("user_id"))
+	info.AddSelectBox(language.Get("Method"), types.FieldOptions{
 		{Value: "GET", Text: "GET"},
 		{Value: "POST", Text: "POST"},
 		{Value: "OPTIONS", Text: "OPTIONS"},
@@ -874,23 +884,21 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 	}, action.FieldFilter("method"))
 
 	info.SetTable("goadmin_operation_log").
-		SetTitle(lg("operation log")).
-		SetDescription(lg("operation log"))
+		SetTitle(lg("Access log"))//.SetDescription(lg("operation log"))
 
 	formList := opTable.GetForm().AddXssJsFilter()
 
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
-	formList.AddField(lg("userID"), "user_id", db.Int, form.Text)
-	formList.AddField(lg("path"), "path", db.Varchar, form.Text)
-	formList.AddField(lg("method"), "method", db.Varchar, form.Text)
-	formList.AddField(lg("ip"), "ip", db.Varchar, form.Text)
-	formList.AddField(lg("content"), "input", db.Varchar, form.Text)
-	formList.AddField(lg("updatedAt"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
-	formList.AddField(lg("createdAt"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("UserID"), "user_id", db.Int, form.Text)
+	formList.AddField(lg("Path"), "path", db.Varchar, form.Text)
+	formList.AddField(lg("Method"), "method", db.Varchar, form.Text)
+	formList.AddField(lg("IP"), "ip", db.Varchar, form.Text)
+	formList.AddField(lg("Content"), "input", db.Varchar, form.Text)
+	formList.AddField(lg("Updated At"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Created At"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 
 	formList.SetTable("goadmin_operation_log").
-		SetTitle(lg("operation log")).
-		SetDescription(lg("operation log"))
+		SetTitle(lg("Access log"))//.SetDescription(lg("operation log"))
 
 	return
 }
@@ -903,18 +911,18 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 	info := menuTable.GetInfo().AddXssJsFilter().HideFilterArea().Where("plugin_name", "=", name)
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
-	info.AddField(lg("parent"), "parent_id", db.Int)
-	info.AddField(lg("menu name"), "title", db.Varchar)
-	info.AddField(lg("icon"), "icon", db.Varchar)
-	info.AddField(lg("uri"), "uri", db.Varchar)
-	info.AddField(lg("role"), "roles", db.Varchar)
-	info.AddField(lg("header"), "header", db.Varchar)
-	info.AddField(lg("createdAt"), "created_at", db.Timestamp)
-	info.AddField(lg("updatedAt"), "updated_at", db.Timestamp)
+	info.AddField(lg("Parent"), "parent_id", db.Int)
+	info.AddField(lg("Title"), "title", db.Varchar)
+	info.AddField(lg("Icon"), "icon", db.Varchar)
+	info.AddField(lg("URI"), "uri", db.Varchar)
+	info.AddField(lg("Role"), "roles", db.Varchar)
+	info.AddField(lg("Header"), "header", db.Varchar)
+	info.AddField(lg("Created At"), "created_at", db.Timestamp)
+	info.AddField(lg("Updated At"), "updated_at", db.Timestamp)
 
 	info.SetTable("goadmin_menu").
-		SetTitle(lg("Menus Manage")).
-		SetDescription(lg("Menus Manage")).
+		SetTitle(lg("Menus")).
+		//SetDescription(lg("Menus")).
 		SetDeleteFn(func(idArr []string) error {
 
 			var ids = interfaces(idArr)
@@ -991,7 +999,7 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 
 	formList := menuTable.GetForm().AddXssJsFilter()
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
-	formList.AddField(lg("parent"), "parent_id", db.Int, form.SelectSingle).
+	formList.AddField(lg("Parent"), "parent_id", db.Int, form.SelectSingle).
 		FieldOptions(parentIDOptions).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			var menuItem []string
@@ -1004,12 +1012,12 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 			menuItem = append(menuItem, strconv.FormatInt(menuModel["parent_id"].(int64), 10))
 			return menuItem
 		})
-	formList.AddField(lg("menu name"), "title", db.Varchar, form.Text).FieldMust()
-	formList.AddField(lg("header"), "header", db.Varchar, form.Text)
-	formList.AddField(lg("icon"), "icon", db.Varchar, form.IconPicker)
-	formList.AddField(lg("uri"), "uri", db.Varchar, form.Text)
+	formList.AddField(lg("Title"), "title", db.Varchar, form.Text).FieldMust()
+	formList.AddField(lg("Header"), "header", db.Varchar, form.Text)
+	formList.AddField(lg("Icon"), "icon", db.Varchar, form.IconPicker)
+	formList.AddField(lg("URI"), "uri", db.Varchar, form.Text)
 	formList.AddField("PluginName", "plugin_name", db.Varchar, form.Text).FieldDefault(name).FieldHide()
-	formList.AddField(lg("role"), "roles", db.Int, form.Select).
+	formList.AddField(lg("Role"), "roles", db.Int, form.Select).
 		FieldOptionsFromTable("goadmin_roles", "slug", "id").
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			var roles []string
@@ -1029,12 +1037,11 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 			return roles
 		})
 
-	formList.AddField(lg("updatedAt"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
-	formList.AddField(lg("createdAt"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Updated At"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
+	formList.AddField(lg("Created At"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 
 	formList.SetTable("goadmin_menu").
-		SetTitle(lg("Menus Manage")).
-		SetDescription(lg("Menus Manage"))
+		SetTitle(lg("Menus"))//.SetDescription(lg("Menus"))
 
 	return
 }
@@ -1051,17 +1058,17 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 
 	formList := siteTable.GetForm().AddXssJsFilter()
 	formList.AddField("ID", "id", db.Varchar, form.Default).FieldDefault("1").FieldHide()
-	formList.AddField(lgWithConfigScore("site off"), "site_off", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Site off"), "site_off", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("debug"), "debug", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Debug"), "debug", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("env"), "env", db.Varchar, form.Default).
+	formList.AddField(lgWithConfigScore("Env"), "env", db.Varchar, form.Default).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return s.c.Env
 		})
@@ -1070,7 +1077,7 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	for k, t := range language.Langs {
 		langOps[k] = types.FieldOption{Text: lgWithConfigScore(t, "language"), Value: t}
 	}
-	formList.AddField(lgWithConfigScore("language"), "language", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithConfigScore("Language"), "language", db.Varchar, form.SelectSingle).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return language.FixedLanguageKey(value.Value)
 		}).
@@ -1081,12 +1088,12 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 		themesOps[k] = types.FieldOption{Text: t, Value: t}
 	}
 
-	formList.AddField(lgWithConfigScore("theme"), "theme", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithConfigScore("Theme"), "theme", db.Varchar, form.SelectSingle).
 		FieldOptions(themesOps).
 		FieldOnChooseShow("adminlte",
 			"color_scheme")
-	formList.AddField(lgWithConfigScore("title"), "title", db.Varchar, form.Text).FieldMust()
-	formList.AddField(lgWithConfigScore("color scheme"), "color_scheme", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithConfigScore("Title"), "title", db.Varchar, form.Text).FieldMust()
+	formList.AddField(lgWithConfigScore("Color scheme"), "color_scheme", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: "skin-black", Value: "skin-black"},
 			{Text: "skin-black-light", Value: "skin-black-light"},
@@ -1101,60 +1108,60 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 			{Text: "skin-yellow", Value: "skin-yellow"},
 			{Text: "skin-yellow-light", Value: "skin-yellow-light"},
 		}).FieldHelpMsg(template.HTML(lgWithConfigScore("It will work when theme is adminlte")))
-	formList.AddField(lgWithConfigScore("login title"), "login_title", db.Varchar, form.Text).FieldMust()
-	formList.AddField(lgWithConfigScore("extra"), "extra", db.Varchar, form.TextArea)
-	formList.AddField(lgWithConfigScore("logo"), "logo", db.Varchar, form.Code).FieldMust()
-	formList.AddField(lgWithConfigScore("mini logo"), "mini_logo", db.Varchar, form.Code).FieldMust()
+	formList.AddField(lgWithConfigScore("Login title"), "login_title", db.Varchar, form.Text).FieldMust()
+	formList.AddField(lgWithConfigScore("Extra"), "extra", db.Varchar, form.TextArea)
+	formList.AddField(lgWithConfigScore("Logo"), "logo", db.Varchar, form.Code).FieldMust()
+	formList.AddField(lgWithConfigScore("Mini logo"), "mini_logo", db.Varchar, form.Code).FieldMust()
 	if s.c.IsNotProductionEnvironment() {
 		formList.AddField(lgWithConfigScore("bootstrap file path"), "bootstrap_file_path", db.Varchar, form.Text)
 		formList.AddField(lgWithConfigScore("go mod file path"), "go_mod_file_path", db.Varchar, form.Text)
 	}
-	formList.AddField(lgWithConfigScore("session life time"), "session_life_time", db.Varchar, form.Number).
+	formList.AddField(lgWithConfigScore("Session life time"), "session_life_time", db.Varchar, form.Number).
 		FieldMust().
 		FieldHelpMsg(template.HTML(lgWithConfigScore("must bigger than 900 seconds")))
-	formList.AddField(lgWithConfigScore("custom head html"), "custom_head_html", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("custom foot Html"), "custom_foot_html", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("custom 404 html"), "custom_404_html", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("custom 403 html"), "custom_403_html", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("custom 500 Html"), "custom_500_html", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("footer info"), "footer_info", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("login logo"), "login_logo", db.Varchar, form.Code)
-	formList.AddField(lgWithConfigScore("no limit login ip"), "no_limit_login_ip", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Custom head html"), "custom_head_html", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("Custom foot Html"), "custom_foot_html", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("Custom 404 html"), "custom_404_html", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("Custom 403 html"), "custom_403_html", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("Custom 500 Html"), "custom_500_html", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("Footer info"), "footer_info", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("Login logo"), "login_logo", db.Varchar, form.Code)
+	formList.AddField(lgWithConfigScore("No limit login IP"), "no_limit_login_ip", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("operation log off"), "operation_log_off", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Access log off"), "operation_log_off", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("allow delete operation log"), "allow_del_operation_log", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Allow delete operation log"), "allow_del_operation_log", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("hide config center entrance"), "hide_config_center_entrance", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Hide config center entrance"), "hide_config_center_entrance", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("hide app info entrance"), "hide_app_info_entrance", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Hide app info entrance"), "hide_app_info_entrance", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("hide tool entrance"), "hide_tool_entrance", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Hide tool entrance"), "hide_tool_entrance", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("hide plugin entrance"), "hide_plugin_entrance", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Hide plugin entrance"), "hide_plugin_entrance", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("animation type"), "animation_type", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithConfigScore("Animation type"), "animation_type", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: "", Value: ""},
 			{Text: "bounce", Value: "bounce"}, {Text: "flash", Value: "flash"}, {Text: "pulse", Value: "pulse"},
@@ -1176,43 +1183,43 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 		FieldOptionExt(map[string]interface{}{"allowClear": true}).
 		FieldHelpMsg(`see more: <a href="https://daneden.github.io/animate.css/">https://daneden.github.io/animate.css/</a>`)
 
-	formList.AddField(lgWithConfigScore("animation duration"), "animation_duration", db.Varchar, form.Number)
-	formList.AddField(lgWithConfigScore("animation delay"), "animation_delay", db.Varchar, form.Number)
+	formList.AddField(lgWithConfigScore("Animation duration"), "animation_duration", db.Varchar, form.Number)
+	formList.AddField(lgWithConfigScore("Animation delay"), "animation_delay", db.Varchar, form.Number)
 
-	formList.AddField(lgWithConfigScore("file upload engine"), "file_upload_engine", db.Varchar, form.Text)
+	formList.AddField(lgWithConfigScore("File upload engine"), "file_upload_engine", db.Varchar, form.Text)
 
-	formList.AddField(lgWithConfigScore("cdn url"), "asset_url", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Cdn URL"), "asset_url", db.Varchar, form.Text).
 		FieldHelpMsg(template.HTML(lgWithConfigScore("Do not modify when you have not set up all assets")))
 
-	formList.AddField(lgWithConfigScore("info log path"), "info_log_path", db.Varchar, form.Text)
-	formList.AddField(lgWithConfigScore("error log path"), "error_log_path", db.Varchar, form.Text)
-	formList.AddField(lgWithConfigScore("access log path"), "access_log_path", db.Varchar, form.Text)
-	formList.AddField(lgWithConfigScore("info log off"), "info_log_off", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Info log path"), "info_log_path", db.Varchar, form.Text)
+	formList.AddField(lgWithConfigScore("Error log path"), "error_log_path", db.Varchar, form.Text)
+	formList.AddField(lgWithConfigScore("Access log path"), "access_log_path", db.Varchar, form.Text)
+	formList.AddField(lgWithConfigScore("Info log off"), "info_log_off", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("error log off"), "error_log_off", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Error log off"), "error_log_off", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("access log off"), "access_log_off", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Access log off"), "access_log_off", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("access assets log off"), "access_assets_log_off", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Access assets log off"), "access_assets_log_off", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("sql log on"), "sql_log", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("SQL log on"), "sql_log", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		})
-	formList.AddField(lgWithConfigScore("log level"), "logger_level", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithConfigScore("Log level"), "logger_level", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: "Debug", Value: "-1"},
 			{Text: "Info", Value: "0"},
@@ -1220,21 +1227,21 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 			{Text: "Error", Value: "2"},
 		}).FieldDisplay(defaultFilterFn("0"))
 
-	formList.AddField(lgWithConfigScore("logger rotate max size"), "logger_rotate_max_size", db.Varchar, form.Number).
-		FieldDivider(lgWithConfigScore("logger rotate")).FieldDisplay(defaultFilterFn("10", "0"))
-	formList.AddField(lgWithConfigScore("logger rotate max backups"), "logger_rotate_max_backups", db.Varchar, form.Number).
+	formList.AddField(lgWithConfigScore("Logger rotate max size"), "logger_rotate_max_size", db.Varchar, form.Number).
+		FieldDivider(lgWithConfigScore("Logger rotate")).FieldDisplay(defaultFilterFn("10", "0"))
+	formList.AddField(lgWithConfigScore("Logger rotate max backups"), "logger_rotate_max_backups", db.Varchar, form.Number).
 		FieldDisplay(defaultFilterFn("5", "0"))
-	formList.AddField(lgWithConfigScore("logger rotate max age"), "logger_rotate_max_age", db.Varchar, form.Number).
+	formList.AddField(lgWithConfigScore("Logger rotate max age"), "logger_rotate_max_age", db.Varchar, form.Number).
 		FieldDisplay(defaultFilterFn("30", "0"))
-	formList.AddField(lgWithConfigScore("logger rotate compress"), "logger_rotate_compress", db.Varchar, form.Switch).
+	formList.AddField(lgWithConfigScore("Logger rotate compress"), "logger_rotate_compress", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: trueStr, Value: "true"},
 			{Text: falseStr, Value: "false"},
 		}).FieldDisplay(defaultFilterFn("false"))
 
-	formList.AddField(lgWithConfigScore("logger rotate encoder encoding"), "logger_encoder_encoding", db.Varchar,
+	formList.AddField(lgWithConfigScore("Logger rotate encoder encoding"), "logger_encoder_encoding", db.Varchar,
 		form.SelectSingle).
-		FieldDivider(lgWithConfigScore("logger rotate encoder")).
+		FieldDivider(lgWithConfigScore("Logger rotate encoder")).
 		FieldOptions(types.FieldOptions{
 			{Text: "JSON", Value: "json"},
 			{Text: "Console", Value: "console"},
@@ -1243,28 +1250,28 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 			"logger_encoder_time_key", "logger_encoder_level_key", "logger_encoder_caller_key",
 			"logger_encoder_message_key", "logger_encoder_stacktrace_key", "logger_encoder_name_key")
 
-	formList.AddField(lgWithConfigScore("logger rotate encoder time key"), "logger_encoder_time_key", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Logger rotate encoder time key"), "logger_encoder_time_key", db.Varchar, form.Text).
 		FieldDisplay(defaultFilterFn("ts"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder level key"), "logger_encoder_level_key", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Logger rotate encoder level key"), "logger_encoder_level_key", db.Varchar, form.Text).
 		FieldDisplay(defaultFilterFn("level"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder name key"), "logger_encoder_name_key", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Logger rotate encoder name key"), "logger_encoder_name_key", db.Varchar, form.Text).
 		FieldDisplay(defaultFilterFn("logger"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder caller key"), "logger_encoder_caller_key", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Logger rotate encoder caller key"), "logger_encoder_caller_key", db.Varchar, form.Text).
 		FieldDisplay(defaultFilterFn("caller"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder message key"), "logger_encoder_message_key", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Logger rotate encoder message key"), "logger_encoder_message_key", db.Varchar, form.Text).
 		FieldDisplay(defaultFilterFn("msg"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder stacktrace key"), "logger_encoder_stacktrace_key", db.Varchar, form.Text).
+	formList.AddField(lgWithConfigScore("Logger rotate encoder stacktrace key"), "logger_encoder_stacktrace_key", db.Varchar, form.Text).
 		FieldDisplay(defaultFilterFn("stacktrace"))
 
-	formList.AddField(lgWithConfigScore("logger rotate encoder level"), "logger_encoder_level", db.Varchar,
+	formList.AddField(lgWithConfigScore("Logger rotate encoder level"), "logger_encoder_level", db.Varchar,
 		form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: lgWithConfigScore("capital"), Value: "capital"},
-			{Text: lgWithConfigScore("capitalcolor"), Value: "capitalColor"},
-			{Text: lgWithConfigScore("lowercase"), Value: "lowercase"},
-			{Text: lgWithConfigScore("lowercasecolor"), Value: "color"},
+			{Text: lgWithConfigScore("capital color"), Value: "capitalColor"},
+			{Text: lgWithConfigScore("lower-case"), Value: "lowercase"},
+			{Text: lgWithConfigScore("lower-case color"), Value: "color"},
 		}).FieldDisplay(defaultFilterFn("capitalColor"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder time"), "logger_encoder_time", db.Varchar,
+	formList.AddField(lgWithConfigScore("Logger rotate encoder time"), "logger_encoder_time", db.Varchar,
 		form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: "ISO8601(2006-01-02T15:04:05.000Z0700)", Value: "iso8601"},
@@ -1273,14 +1280,14 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 			{Text: "RFC3339(2006-01-02T15:04:05Z07:00)", Value: "rfc3339"},
 			{Text: "RFC3339 Nano(2006-01-02T15:04:05.999999999Z07:00)", Value: "rfc3339nano"},
 		}).FieldDisplay(defaultFilterFn("iso8601"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder duration"), "logger_encoder_duration", db.Varchar,
+	formList.AddField(lgWithConfigScore("Logger rotate encoder duration"), "logger_encoder_duration", db.Varchar,
 		form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: lgWithConfigScore("seconds"), Value: "string"},
 			{Text: lgWithConfigScore("nanosecond"), Value: "nanos"},
 			{Text: lgWithConfigScore("microsecond"), Value: "ms"},
 		}).FieldDisplay(defaultFilterFn("string"))
-	formList.AddField(lgWithConfigScore("logger rotate encoder caller"), "logger_encoder_caller", db.Varchar,
+	formList.AddField(lgWithConfigScore("Logger rotate encoder caller"), "logger_encoder_caller", db.Varchar,
 		form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: lgWithConfigScore("full path"), Value: "full"},
@@ -1302,11 +1309,10 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 			"logger_encoder_time", "logger_encoder_duration", "logger_encoder_caller").
 		AddGroup("logo", "mini_logo", "custom_head_html", "custom_foot_html", "footer_info", "login_logo",
 			"custom_404_html", "custom_403_html", "custom_500_html")).
-		SetTabHeaders(lgWithConfigScore("general"), lgWithConfigScore("log"), lgWithConfigScore("custom"))
+		SetTabHeaders(lgWithConfigScore("General"), lgWithConfigScore("Log"), lgWithConfigScore("Custom"))
 
 	formList.SetTable("goadmin_site").
-		SetTitle(lgWithConfigScore("site setting")).
-		SetDescription(lgWithConfigScore("site setting"))
+		SetTitle(lgWithConfigScore("Site setting"))//.SetDescription(lgWithConfigScore("Site setting"))
 
 	formList.SetUpdateFn(func(values form2.Values) error {
 
@@ -1350,7 +1356,7 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 		return s.c.Update(values.ToMap())
 	})
 
-	formList.EnableAjax(lgWithConfigScore("modify site config"),
+	formList.EnableAjax(lgWithConfigScore("Modify site config"),
 		lgWithConfigScore("modify site config"),
 		"",
 		lgWithConfigScore("modify site config success"),
@@ -1380,7 +1386,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 	// General options
 	// ================================
 
-	formList.AddField(lgWithScore("connection", "tool"), "conn", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithScore("Connection", "tool"), "conn", db.Varchar, form.SelectSingle).
 		FieldOptions(ops).
 		FieldOnChooseAjax("table", "/tool/choose/conn",
 			func(ctx *context.Context) (success bool, msg string, data interface{}) {
@@ -1400,7 +1406,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 				}
 				return true, "ok", ops
 			})
-	formList.AddField(lgWithScore("table", "tool"), "table", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithScore("Table", "tool"), "table", db.Varchar, form.SelectSingle).
 		FieldOnChooseAjax("xxxx", "/tool/choose/table",
 			func(ctx *context.Context) (success bool, msg string, data interface{}) {
 
@@ -1446,16 +1452,16 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 				return true, "ok", [][]string{headName, fieldName, dbTypeList, formTypeList}
 			}, template.HTML(utils.ParseText("choose_table_ajax", tmpls["choose_table_ajax"], nil)),
 			`"conn":$('.conn').val(),`)
-	formList.AddField(lgWithScore("package", "tool"), "package", db.Varchar, form.Text).FieldDefault("tables")
-	formList.AddField(lgWithScore("primarykey", "tool"), "pk", db.Varchar, form.Text).FieldDefault("id")
+	formList.AddField(lgWithScore("Package", "tool"), "package", db.Varchar, form.Text).FieldDefault("tables")
+	formList.AddField(lgWithScore("Primary Key", "tool"), "pk", db.Varchar, form.Text).FieldDefault("id")
 
-	formList.AddField(lgWithScore("table permission", "tool"), "permission", db.Varchar, form.Switch).
+	formList.AddField(lgWithScore("Table Permission", "tool"), "permission", db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
 			{Text: lgWithScore("yes", "tool"), Value: "y"},
 			{Text: lgWithScore("no", "tool"), Value: "n"},
 		}).FieldDefault("n")
 
-	formList.AddField(lgWithScore("extra import package", "tool"), "extra_import_package", db.Varchar, form.Select).
+	formList.AddField(lgWithScore("Extra import package", "tool"), "extra_import_package", db.Varchar, form.Select).
 		FieldOptions(types.FieldOptions{
 			{Text: "time", Value: "time"},
 			{Text: "log", Value: "log"},
@@ -1470,21 +1476,21 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			"tags": true,
 		})
 
-	formList.AddField(lgWithScore("output", "tool"), "path", db.Varchar, form.Text).
+	formList.AddField(lgWithScore("Output", "tool"), "path", db.Varchar, form.Text).
 		FieldDefault("").FieldMust().FieldHelpMsg(template.HTML(lgWithScore("use absolute path", "tool")))
 
-	formList.AddField(lgWithScore("extra code", "tool"), "extra_code", db.Varchar, form.Code).
+	formList.AddField(lgWithScore("Extra code", "tool"), "extra_code", db.Varchar, form.Code).
 		FieldDefault("").FieldInputWidth(11)
 
 	// Info table generate options
 	// ================================
 
-	formList.AddField(lgWithScore("title", "tool"), "table_title", db.Varchar, form.Text)
-	formList.AddField(lgWithScore("description", "tool"), "table_description", db.Varchar, form.Text)
+	formList.AddField(lgWithScore("Title", "tool"), "table_title", db.Varchar, form.Text)
+	formList.AddField(lgWithScore("Description", "tool"), "table_description", db.Varchar, form.Text)
 
 	formList.AddRow(func(panel *types.FormPanel) {
 		addSwitchForTool(panel, "filter area", "hide_filter_area", "n", 2)
-		panel.AddField(lgWithScore("filter form layout", "tool"), "filter_form_layout", db.Varchar, form.SelectSingle).
+		panel.AddField(lgWithScore("Filter form layout", "tool"), "filter_form_layout", db.Varchar, form.SelectSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: form.LayoutDefault.String(), Value: form.LayoutDefault.String()},
 				{Text: form.LayoutTwoCol.String(), Value: form.LayoutTwoCol.String()},
@@ -1513,16 +1519,16 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 		addSwitchForTool(panel, "query info", "hide_query_info", "n", 4, 2)
 	})
 
-	formList.AddTable(lgWithScore("field", "tool"), "fields", func(pa *types.FormPanel) {
-		pa.AddField(lgWithScore("title", "tool"), "field_head", db.Varchar, form.Text).FieldHideLabel().
+	formList.AddTable(lgWithScore("Field", "tool"), "fields", func(pa *types.FormPanel) {
+		pa.AddField(lgWithScore("Title", "tool"), "field_head", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("field name", "tool"), "field_name", db.Varchar, form.Text).FieldHideLabel().
+		pa.AddField(lgWithScore("Field name", "tool"), "field_name", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("field filterable", "tool"), "field_filterable", db.Varchar, form.CheckboxSingle).
+		pa.AddField(lgWithScore("Field filterable", "tool"), "field_filterable", db.Varchar, form.CheckboxSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: "", Value: "y"},
 				{Text: "", Value: "n"},
@@ -1531,7 +1537,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"n"}
 			})
-		pa.AddField(lgWithScore("field sortable", "tool"), "field_sortable", db.Varchar, form.CheckboxSingle).
+		pa.AddField(lgWithScore("Field sortable", "tool"), "field_sortable", db.Varchar, form.CheckboxSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: "", Value: "y"},
 				{Text: "", Value: "n"},
@@ -1540,7 +1546,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"n"}
 			})
-		pa.AddField(lgWithScore("field hide", "tool"), "field_hide", db.Varchar, form.CheckboxSingle).
+		pa.AddField(lgWithScore("Field hide", "tool"), "field_hide", db.Varchar, form.CheckboxSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: "", Value: "y"},
 				{Text: "", Value: "n"},
@@ -1549,7 +1555,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"n"}
 			})
-		pa.AddField(lgWithScore("info field editable", "tool"), "info_field_editable", db.Varchar, form.CheckboxSingle).
+		pa.AddField(lgWithScore("Info field editable", "tool"), "info_field_editable", db.Varchar, form.CheckboxSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: "", Value: "y"},
 				{Text: "", Value: "n"},
@@ -1558,12 +1564,12 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"n"}
 			})
-		//pa.AddField(lgWithScore("db display type", "tool"), "field_display_type", db.Varchar, form.SelectSingle).
+		//pa.AddField(lgWithScore("DB display type", "tool"), "field_display_type", db.Varchar, form.SelectSingle).
 		//	FieldOptions(infoFieldDisplayTypeOptions()).
 		//	FieldDisplay(func(value types.FieldModel) interface{} {
 		//		return []string{""}
 		//	})
-		pa.AddField(lgWithScore("db type", "tool"), "field_db_type", db.Varchar, form.SelectSingle).
+		pa.AddField(lgWithScore("DB type", "tool"), "field_db_type", db.Varchar, form.SelectSingle).
 			FieldOptions(databaseTypeOptions()).
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"Int"}
@@ -1573,29 +1579,29 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 	// Form generate options
 	// ================================
 
-	formList.AddField(lgWithScore("title", "tool"), "form_title", db.Varchar, form.Text)
-	formList.AddField(lgWithScore("description", "tool"), "form_description", db.Varchar, form.Text)
+	formList.AddField(lgWithScore("Title", "tool"), "form_title", db.Varchar, form.Text)
+	formList.AddField(lgWithScore("Description", "tool"), "form_description", db.Varchar, form.Text)
 
 	formList.AddRow(func(panel *types.FormPanel) {
-		addSwitchForTool(panel, "continue edit checkbox", "hide_continue_edit_check_box", "n", 2)
-		addSwitchForTool(panel, "reset button", "hide_reset_button", "n", 5, 3)
+		addSwitchForTool(panel, "Continue edit checkbox", "hide_continue_edit_check_box", "n", 2)
+		addSwitchForTool(panel, "Reset button", "hide_reset_button", "n", 5, 3)
 	})
 
 	formList.AddRow(func(panel *types.FormPanel) {
-		addSwitchForTool(panel, "continue new checkbox", "hide_continue_new_check_box", "n", 2)
-		addSwitchForTool(panel, "back button", "hide_back_button", "n", 5, 3)
+		addSwitchForTool(panel, "Continue new checkbox", "hide_continue_new_check_box", "n", 2)
+		addSwitchForTool(panel, "Back button", "hide_back_button", "n", 5, 3)
 	})
 
-	formList.AddTable(lgWithScore("field", "tool"), "fields_form", func(pa *types.FormPanel) {
-		pa.AddField(lgWithScore("title", "tool"), "field_head_form", db.Varchar, form.Text).FieldHideLabel().
+	formList.AddTable(lgWithScore("Field", "tool"), "fields_form", func(pa *types.FormPanel) {
+		pa.AddField(lgWithScore("Title", "tool"), "field_head_form", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("field name", "tool"), "field_name_form", db.Varchar, form.Text).FieldHideLabel().
+		pa.AddField(lgWithScore("Field name", "tool"), "field_name_form", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("field editable", "tool"), "field_canedit", db.Varchar, form.CheckboxSingle).
+		pa.AddField(lgWithScore("Field editable", "tool"), "field_canedit", db.Varchar, form.CheckboxSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: "", Value: "y"},
 				{Text: "", Value: "n"},
@@ -1604,7 +1610,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"y"}
 			})
-		pa.AddField(lgWithScore("field can add", "tool"), "field_canadd", db.Varchar, form.CheckboxSingle).
+		pa.AddField(lgWithScore("Field can add", "tool"), "field_canadd", db.Varchar, form.CheckboxSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: "", Value: "y"},
 				{Text: "", Value: "n"},
@@ -1613,11 +1619,11 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"y"}
 			})
-		pa.AddField(lgWithScore("field default", "tool"), "field_default", db.Varchar, form.Text).FieldHideLabel().
+		pa.AddField(lgWithScore("Field default", "tool"), "field_default", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("field display", "tool"), "field_display", db.Varchar, form.SelectSingle).
+		pa.AddField(lgWithScore("Field display", "tool"), "field_display", db.Varchar, form.SelectSingle).
 			FieldOptions(types.FieldOptions{
 				{Text: lgWithScore("field display normal", "tool"), Value: "0"},
 				{Text: lgWithScore("field diplay hide", "tool"), Value: "1"},
@@ -1627,12 +1633,12 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"0"}
 			})
-		pa.AddField(lgWithScore("db type", "tool"), "field_db_type_form", db.Varchar, form.SelectSingle).
+		pa.AddField(lgWithScore("DB type", "tool"), "field_db_type_form", db.Varchar, form.SelectSingle).
 			FieldOptions(databaseTypeOptions()).
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"Int"}
 			})
-		pa.AddField(lgWithScore("form type", "tool"), "field_form_type_form", db.Varchar, form.SelectSingle).
+		pa.AddField(lgWithScore("Form type", "tool"), "field_form_type_form", db.Varchar, form.SelectSingle).
 			FieldOptions(formTypeOptions()).FieldDisplay(func(value types.FieldModel) interface{} {
 			return []string{"Text"}
 		})
@@ -1641,10 +1647,10 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 	// Detail page generate options
 	// ================================
 
-	formList.AddField(lgWithScore("title", "tool"), "detail_title", db.Varchar, form.Text)
-	formList.AddField(lgWithScore("description", "tool"), "detail_description", db.Varchar, form.Text)
+	formList.AddField(lgWithScore("Title", "tool"), "detail_title", db.Varchar, form.Text)
+	formList.AddField(lgWithScore("Description", "tool"), "detail_description", db.Varchar, form.Text)
 
-	formList.AddField(lgWithScore("detail display", "tool"), "detail_display", db.Varchar, form.SelectSingle).
+	formList.AddField(lgWithScore("Detail display", "tool"), "detail_display", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: lgWithScore("follow list page", "tool"), Value: "0"},
 			{Text: lgWithScore("inherit from list page", "tool"), Value: "1"},
@@ -1653,16 +1659,16 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 		FieldDefault("0").
 		FieldOnChooseHide("0", "detail_title", "detail_description", "fields_detail")
 
-	formList.AddTable(lgWithScore("field", "tool"), "fields_detail", func(pa *types.FormPanel) {
-		pa.AddField(lgWithScore("title", "tool"), "detail_field_head", db.Varchar, form.Text).FieldHideLabel().
+	formList.AddTable(lgWithScore("Field", "tool"), "fields_detail", func(pa *types.FormPanel) {
+		pa.AddField(lgWithScore("Title", "tool"), "detail_field_head", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("field name", "tool"), "detail_field_name", db.Varchar, form.Text).FieldHideLabel().
+		pa.AddField(lgWithScore("Field name", "tool"), "detail_field_name", db.Varchar, form.Text).FieldHideLabel().
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{""}
 			})
-		pa.AddField(lgWithScore("db type", "tool"), "detail_field_db_type", db.Varchar, form.SelectSingle).
+		pa.AddField(lgWithScore("DB type", "tool"), "detail_field_db_type", db.Varchar, form.SelectSingle).
 			FieldOptions(databaseTypeOptions()).
 			FieldDisplay(func(value types.FieldModel) interface{} {
 				return []string{"Int"}
@@ -1683,11 +1689,11 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 		SetTabHeaders(lgWithScore("basic info", "tool"), lgWithScore("table info", "tool"),
 			lgWithScore("form info", "tool"), lgWithScore("detail info", "tool"))
 
-	formList.SetTable("tool").
-		SetTitle(lgWithScore("tool", "tool")).
-		SetDescription(lgWithScore("tool", "tool")).
+	formList.SetTable("goadmin_tools").
+		SetTitle(lgWithScore("Tool", "tool")).
+		//SetDescription(lgWithScore("Tool", "tool")).
 		SetHeader(template.HTML(`<h3 class="box-title">` +
-			lgWithScore("generate table model", "tool") + `</h3>`))
+			lgWithScore("Generate table model", "tool") + `</h3>`))
 
 	formList.SetInsertFn(func(values form2.Values) error {
 
@@ -1811,10 +1817,10 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 	})
 
 	formList.EnableAjaxData(types.AjaxData{
-		SuccessTitle: lgWithScore("generate table model", "tool"),
-		ErrorTitle:   lgWithScore("generate table model", "tool"),
-		SuccessText:  lgWithScore("generate table model success", "tool"),
-		ErrorText:    lgWithScore("generate table model fail", "tool"),
+		SuccessTitle: lgWithScore("Generate table model", "tool"),
+		ErrorTitle:   lgWithScore("Generate table model", "tool"),
+		SuccessText:  lgWithScore("Generate table model success", "tool"),
+		ErrorText:    lgWithScore("Generate table model fail", "tool"),
 		DisableJump:  true,
 	})
 
@@ -1822,10 +1828,10 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 		"prefix": "go_admin_" + config.GetAppID() + "_generator_",
 	}))
 
-	formList.SetFormNewBtnWord(template.HTML(lgWithScore("generate", "tool")))
+	formList.SetFormNewBtnWord(template.HTML(lgWithScore("Generate", "tool")))
 	formList.SetWrapper(func(content tmpl.HTML) tmpl.HTML {
 		headli := html.LiEl().SetClass("list-group-item", "list-head").
-			SetContent(template.HTML(lgWithScore("generated tables", "tool"))).Get()
+			SetContent(template.HTML(lgWithScore("Generated tables", "tool"))).Get()
 		return html.UlEl().SetClass("save_table_list", "list-group").SetContent(
 			headli).Get() + content
 	})

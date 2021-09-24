@@ -30,7 +30,7 @@ func sysInfoItemsForApplication() []map[string]types.InfoItem {
 			"key":   types.InfoItem{Content: lg("app_name")},
 			"value": types.InfoItem{Content: template.HTML(sysInfo.AppName)},
 		}, {
-			"key":   types.InfoItem{Content: lg("go_admin_version")},
+			"key":   types.InfoItem{Content: lg("app_version")},
 			"value": types.InfoItem{Content: template.HTML(sysInfo.AppVersion)},
 		}, {
 			"key":   types.InfoItem{Content: lg("app_mode")},

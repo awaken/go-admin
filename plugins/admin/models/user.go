@@ -24,6 +24,7 @@ type UserModel struct {
 	Name          string            `json:"name"`
 	UserName      string            `json:"user_name"`
 	Password      string            `json:"password"`
+	Email         string            `json:"email"`
 	Avatar        string            `json:"avatar"`
 	RememberToken string            `json:"remember_token"`
 	Permissions   []PermissionModel `json:"permissions"`
@@ -114,6 +115,15 @@ func (t UserModel) Template(str string) string {
 	return t.cacheReplacer.Replace(str)
 }
 
+var _logoutCheck *regexp.Regexp
+
+func logoutCheck() *regexp.Regexp {
+	if _logoutCheck == nil {
+		_logoutCheck = regexp.MustCompile(config.Url("/logout") + "(.*?)")
+	}
+	return _logoutCheck
+}
+
 func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams url.Values) bool {
 
 	// path, _ = url.PathUnescape(path)
@@ -126,9 +136,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 		return false
 	}
 
-	logoutCheck, _ := regexp.Compile(config.Url("/logout") + "(.*?)")
-
-	if logoutCheck.MatchString(path) {
+	if logoutCheck().MatchString(path) {
 		return true
 	}
 
@@ -358,18 +366,20 @@ func (t UserModel) WithMenus() UserModel {
 }
 
 // New create a user model.
-func (t UserModel) New(username, password, name, avatar string) (UserModel, error) {
+func (t UserModel) New(username, password, name, email, avatar string) (UserModel, error) {
 
 	id, err := t.WithTx(t.Tx).Table(t.TableName).Insert(dialect.H{
 		"username": username,
 		"password": password,
 		"name":     name,
+		"email":    email,
 		"avatar":   avatar,
 	})
 
 	t.Id = id
 	t.UserName = username
 	t.Password = password
+	t.Email = email
 	t.Avatar = avatar
 	t.Name = name
 
@@ -377,12 +387,16 @@ func (t UserModel) New(username, password, name, avatar string) (UserModel, erro
 }
 
 // Update update the user model.
-func (t UserModel) Update(username, password, name, avatar string, isUpdateAvatar bool) (int64, error) {
+func (t UserModel) Update(username, password, name, email, avatar string, isUpdateAvatar bool) (int64, error) {
 
 	fieldValues := dialect.H{
 		"username":   username,
 		"name":       name,
 		"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	if email != "" {
+		fieldValues["email"] = email
 	}
 
 	if avatar == "" || isUpdateAvatar {
@@ -499,6 +513,7 @@ func (t UserModel) MapToModel(m map[string]interface{}) UserModel {
 	t.Name, _ = m["name"].(string)
 	t.UserName, _ = m["username"].(string)
 	t.Password, _ = m["password"].(string)
+	t.Email, _ = m["email"].(string)
 	t.Avatar, _ = m["avatar"].(string)
 	t.RememberToken, _ = m["remember_token"].(string)
 	t.CreatedAt, _ = m["created_at"].(string)

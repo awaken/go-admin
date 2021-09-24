@@ -14,16 +14,16 @@ import (
 
 var (
 	EN = language.English.String()
-	CN = language.Chinese.String()
-	JP = language.Japanese.String()
-	TC = language.TraditionalChinese.String()
+	//CN = language.Chinese.String()
+	//JP = language.Japanese.String()
+	//TC = language.TraditionalChinese.String()
 )
 
 func FixedLanguageKey(key string) string {
 	if key == "en" {
 		return EN
 	}
-	if key == "cn" {
+	/*if key == "cn" {
 		return CN
 	}
 	if key == "jp" {
@@ -31,11 +31,12 @@ func FixedLanguageKey(key string) string {
 	}
 	if key == "tc" {
 		return TC
-	}
+	}*/
 	return key
 }
 
-var Langs = [...]string{EN, CN, JP, TC}
+var Langs = [...]string{EN}
+//var Langs = [...]string{EN, CN, JP, TC}
 
 // Get return the value of default scope.
 func Get(value string) string {
@@ -104,15 +105,15 @@ type LangMap map[string]LangSet
 
 // Lang is the global LangMap.
 var Lang = LangMap{
-	language.Chinese.String():            cn,
+	//language.Chinese.String():            cn,
 	language.English.String():            en,
-	language.Japanese.String():           jp,
-	language.TraditionalChinese.String(): tc,
+	//language.Japanese.String():           jp,
+	//language.TraditionalChinese.String(): tc,
 
-	"cn": cn,
+	//"cn": cn,
 	"en": en,
-	"jp": jp,
-	"tc": tc,
+	//"jp": jp,
+	//"tc": tc,
 }
 
 // Get get the value from LangMap.

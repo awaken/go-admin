@@ -122,7 +122,7 @@ func GetDownloadURL(uuid, token string) (string, string, error) {
 	return resData.Data.Url, resData.Data.ExtraUrl, nil
 }
 
-const TokenKey = "GOADMIN_OFFICIAL_SESS"
+const TokenKey = "OFFICIAL_SESS"
 
 type GetOnlineReq struct {
 	Page       string `json:"page"`

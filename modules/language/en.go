@@ -4,16 +4,14 @@
 
 package language
 
-import "strings"
-
 var en = LangSet{
 	"managers":         "Managers",
 	"name":             "Name",
 	"nickname":         "Nickname",
 	"role":             "Role",
-	"createdat":        "createdAt",
-	"updatedat":        "updatedAt",
-	"path":             "path",
+	"createdat":        "Created At",
+	"updatedat":        "Updated At",
+	"path":             "Path",
 	"new":              "New",
 	"filter":           "Filter",
 	"action":           "Action",
@@ -218,10 +216,10 @@ var en = LangSet{
 	"config.do not modify when you have not set up all assets": "Do not modify when you have not set up all assets",
 	"config.it will work when theme is adminlte":               "It will work when theme is adminlte",
 
-	"config.language." + CN:                  "Chinese",
+	//"config.language." + CN:                  "Chinese",
 	"config.language." + EN:                  "English",
-	"config.language." + JP:                  "Japanese",
-	"config.language." + strings.ToLower(TC): "Traditional Chinese",
+	//"config.language." + JP:                  "Japanese",
+	//"config.language." + strings.ToLower(TC): "Traditional Chinese",
 
 	"config.modify site config":         "Site Configuration Modification",
 	"config.modify site config success": "modified success",

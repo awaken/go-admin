@@ -41,8 +41,8 @@ function pluginInstall(name){
 }
 
 var downloadLock = false;
-const apiTokenKey = "GOADMIN_SERVER_API_TOKEN";
-const apiTokenExpireKey = "GOADMIN_SERVER_API_TOKEN_EXPIRE";
+const apiTokenKey = "SERVER_API_TOKEN";
+const apiTokenExpireKey = "SERVER_API_TOKEN_EXPIRE";
 const serverHost = "` + remote_server.ServerHost + `"
 
 function login() {
@@ -83,13 +83,13 @@ function login() {
 				html: true,
 				confirmButtonColor: "#3c8dbc",
 				confirmButtonText: '{{lang "got it"}}',
-			})	
+			})
 		}
-	});	
+	});
 }
 
 function pluginBuy(name, uuid) {
-	window.open(serverHost + "/plugins/detail/" + uuid); 
+	window.open(serverHost + "/plugins/detail/" + uuid);
 }
 
 function pluginDetail(name, uuid) {
@@ -162,7 +162,7 @@ function pluginDetail(name, uuid) {
 				html: true,
 				confirmButtonColor: "#3c8dbc",
 				confirmButtonText: '{{lang "got it"}}',
-			})	
+			})
 		}
 	});
 }
@@ -211,7 +211,7 @@ function pluginDownload(name, ele) {
 		error: function (data) {
 			downloadLock = false;
 			$(ele).html('{{plugWord "download"}}')
-			alert('download fail');	
+			alert('download fail');
 		}
 	});
 }

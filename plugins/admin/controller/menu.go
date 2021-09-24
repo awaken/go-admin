@@ -291,7 +291,9 @@ func (h *Handler) getMenuInfoPanel(ctx *context.Context, plugName string, alert 
 
 	h.HTMLPlug(ctx, user, types.Panel{
 		Content:     alert + row,
-		Description: "Menus Manage",
-		Title:       "Menus Manage",
+		Description: "",
+		Title:       "Menu",
+		//Description: "Menus Manage",
+		//Title:       "Menus Manage",
 	}, plugName)
 }

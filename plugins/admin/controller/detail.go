@@ -123,14 +123,18 @@ $('.delete-btn').on('click', function (event) {
 		title = detail.Title
 
 		if title == "" {
-			title = info.Title + language.Get("Detail")
+			title = info.Title
+			if title == "" { title = language.Get("Detail") }
 		}
 
 		desc = detail.Description
 
 		if desc == "" {
-			desc = info.Description + language.Get("Detail")
+			desc = info.Description
+			if desc == "" { desc = language.Get("Detail") }
 		}
+
+		if title == desc { desc = "" }
 	}
 
 	formInfo, err := newPanel.GetDataWithId(param.WithPKs(id))

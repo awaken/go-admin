@@ -2,7 +2,7 @@ package language
 
 func init() {
 	en.Add("system.app_name"        , "App Name")
-	en.Add("system.go_admin_version", "App Version")
+	en.Add("system.app_version"     , "App Version")
 	en.Add("system.app_mode"        , "App Mode")
 	en.Add("system.app_env"         , "App Environment")
 	en.Add("system.app_roles"       , "App Roles")

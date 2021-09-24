@@ -18,7 +18,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 )
 
-const DefaultCookieKey = "go_admin_session"
+const DefaultCookieKey = "flower_session"
 
 // NewDBDriver return the default PersistenceDriver.
 func newDBDriver(conn db.Connection) *DBDriver {

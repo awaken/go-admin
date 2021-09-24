@@ -3,7 +3,6 @@ package form
 import (
 	"html/template"
 
-	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 )
@@ -444,9 +443,9 @@ func getDateTimeOptions(f Type) map[string]interface{} {
 		"locale":           "en",
 		"allowInputToggle": true,
 	}
-	if config.GetLanguage() == language.CN || config.GetLanguage() == "cn" {
-		m["locale"] = "zh-CN"
-	}
+	//if config.GetLanguage() == language.CN || config.GetLanguage() == "cn" {
+	//	m["locale"] = "zh-CN"
+	//}
 	return m
 }
 
@@ -464,10 +463,10 @@ func getDateTimeRangeOptions(f Type) (map[string]interface{}, map[string]interfa
 		"locale":     "en",
 		"useCurrent": false,
 	}
-	if config.GetLanguage() == language.CN || config.GetLanguage() == "cn" {
-		m["locale"] = "zh-CN"
-		m1["locale"] = "zh-CN"
-	}
+	//if config.GetLanguage() == language.CN || config.GetLanguage() == "cn" {
+	//	m["locale"] = "zh-CN"
+	//	m1["locale"] = "zh-CN"
+	//}
 	return m, m1
 }
 

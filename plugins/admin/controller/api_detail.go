@@ -107,7 +107,7 @@ $('.delete-btn').on('click', function (event) {
 	desc := panel.GetDetail().Description
 
 	if desc == "" {
-		desc = panel.GetInfo().Description + language.Get("Detail")
+		desc = language.Get("Detail")
 	}
 
 	formInfo, err := newPanel.GetDataWithId(param.WithPKs(id))
