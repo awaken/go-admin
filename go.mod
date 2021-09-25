@@ -19,6 +19,7 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210530221158-9a6984c0bd90 // indirect
+	github.com/hashicorp/golang-lru v0.5.1
 	github.com/hinshun/vt10x v0.0.0-20180809195222-d55458df857c // indirect
 	github.com/jawher/mow.cli v1.2.0
 	github.com/json-iterator/go v1.1.11 // indirect
@@ -44,6 +45,8 @@ require (
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tdewolff/minify/v2 v2.9.17
+	github.com/tidwall/rhh v1.1.1 // indirect
+	github.com/tidwall/shardmap v0.0.0-20190927132224-c190691bd211
 	github.com/ugorji/go v1.2.6 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.17.0

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	tmpl "html/template"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1440,7 +1439,7 @@ func (s *SystemTable) GetGenerateForm(ctx *context.Context) (generateTool Table)
 				formTypeList := make([]string, len(columnsModel))
 
 				for i, model := range columnsModel {
-					typeName := getType(model[typeField].(string))
+					typeName := utils.GetTypeName(model[typeField].(string))
 
 					headName[i] = strings.Title(model[fieldField].(string))
 					fieldName[i] = model[fieldField].(string)
@@ -1993,11 +1992,4 @@ func databaseTypeOptions() types.FieldOptions {
 		z++
 	}
 	return opts
-}
-
-func getType(typeName string) string {
-	r, _ := regexp.Compile(`\(.*?\)`)
-	typeName = r.ReplaceAllString(typeName, "")
-	r2, _ := regexp.Compile(`unsigned(.*)`)
-	return strings.TrimSpace(strings.Title(strings.ToLower(r2.ReplaceAllString(typeName, ""))))
 }

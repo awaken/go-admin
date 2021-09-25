@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 // OperationLogModel is operation log model structure.
@@ -43,7 +44,7 @@ func (t OperationLogModel) New(userId int64, path, method, ip, input string) Ope
 		"path":    path,
 		"method":  method,
 		"ip":      ip,
-		"input":   input,
+		"input":   utils.CleanContentToLog(input),
 	})
 
 	t.Id = id

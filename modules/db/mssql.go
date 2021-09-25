@@ -7,7 +7,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"regexp"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"strconv"
 	"strings"
 
@@ -52,7 +52,7 @@ func (db *Mssql) Name() string {
 
 func replaceStringFunc(pattern, src string, rpl func(s string) string) (string, error) {
 
-	r, err := regexp.Compile(pattern)
+	r, err := utils.CachedRex(pattern)
 	if err != nil {
 		return "", err
 	}
@@ -66,7 +66,7 @@ func replaceStringFunc(pattern, src string, rpl func(s string) string) (string, 
 
 func replace(pattern string, replace, src []byte) ([]byte, error) {
 
-	r, err := regexp.Compile(pattern)
+	r, err := utils.CachedRex(pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func replaceString(pattern, rep, src string) (string, error) {
 }
 
 func matchAllString(pattern string, src string) ([][]string, error) {
-	r, err := regexp.Compile(pattern)
+	r, err := utils.CachedRex(pattern)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func matchAllString(pattern string, src string) ([][]string, error) {
 }
 
 func isMatch(pattern string, src []byte) bool {
-	r, err := regexp.Compile(pattern)
+	r, err := utils.CachedRex(pattern)
 	if err != nil {
 		return false
 	}
@@ -100,7 +100,7 @@ func isMatchString(pattern string, src string) bool {
 }
 
 func matchString(pattern string, src string) ([]string, error) {
-	r, err := regexp.Compile(pattern)
+	r, err := utils.CachedRex(pattern)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"html/template"
 	"mime/multipart"
 	"strings"
@@ -96,7 +97,7 @@ func (g *Guard) NewForm(ctx *context.Context) {
 		return
 	}
 
-	fromList := isInfoUrl(previous)
+	fromList := utils.IsInfoUrl(previous)
 	param := parameter.GetParamFromURL(previous, panel.GetInfo().DefaultPageSize,
 		panel.GetInfo().GetSort(), panel.GetPrimaryKey().Name)
 

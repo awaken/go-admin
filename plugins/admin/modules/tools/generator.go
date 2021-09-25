@@ -6,7 +6,6 @@ import (
 	"go/format"
 	"io/ioutil"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -413,13 +412,6 @@ func camelcase(s string) string {
 	return res
 }
 
-func getType(typeName string) string {
-	r, _ := regexp.Compile(`\(.*?\)`)
-	typeName = r.ReplaceAllString(typeName, "")
-	r2, _ := regexp.Compile(`unsigned(.*)`)
-	return strings.TrimSpace(strings.Title(strings.ToLower(r2.ReplaceAllString(typeName, ""))))
-}
-
 func getFieldsFromConn(conn db.Connection, table, driver string) Fields {
 	columnsModel, _ := db.WithDriver(conn).Table(table).ShowColumns()
 
@@ -441,7 +433,7 @@ func getFieldsFromConn(conn db.Connection, table, driver string) Fields {
 	}
 
 	for i, model := range columnsModel {
-		typeName := getType(model[typeField].(string))
+		typeName := utils.GetTypeName(model[typeField].(string))
 		fields[i] = Field{
 			Head:     strings.Title(model[fieldField].(string)),
 			Name:     model[fieldField].(string),

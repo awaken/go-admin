@@ -3,7 +3,6 @@ package action
 import (
 	"fmt"
 	"html/template"
-	"regexp"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -108,9 +107,9 @@ func PopUpWithIframe(id, title string, data IframeData, width, height string) *P
 		if data.AddParameterFn != nil {
 			param = data.AddParameterFn(ctx)
 		}
-		return true, "ok", fmt.Sprintf(`<iframe style="width:%s;height:%s;" 
-			scrolling="auto" 
-			allowtransparency="true" 
+		return true, "ok", fmt.Sprintf(`<iframe style="width:%s;height:%s;"
+			scrolling="auto"
+			allowtransparency="true"
 			frameborder="0"
 			src="%s__goadmin_iframe=true&__go_admin_no_animation_=true&__goadmin_iframe_id=%s`+param+`"><iframe>`,
 			data.Width, data.Height, data.Src, modalID)
@@ -122,7 +121,7 @@ func PopUpWithIframe(id, title string, data IframeData, width, height string) *P
 		BtnTitle:   "",
 		Height:     height,
 		HasIframe:  true,
-		HideFooter: isFormURL(data.Src),
+		HideFooter: utils.IsFormUrl(data.Src),
 		Width:      width,
 		Draggable:  true,
 		Data:       NewAjaxData(),
@@ -251,7 +250,7 @@ func (pop *PopUpAction) Js() template.JS {
                             },
 							error: function (data) {
 								if (data.responseText !== "") {
-									swal(data.responseJSON.msg, '', 'error');								
+									swal(data.responseJSON.msg, '', 'error');
 								} else {
 									swal('error', '', 'error');
 								}
@@ -284,9 +283,4 @@ func (pop *PopUpAction) FooterContent() template.HTML {
 	}
 
 	return up.GetContent()
-}
-
-func isFormURL(s string) bool {
-	reg, _ := regexp.Compile("(.*)info/(.*)/(new|edit)(.*?)")
-	return reg.MatchString(s)
 }

@@ -4,8 +4,6 @@ import (
 	"bytes"
 	template2 "html/template"
 	"net/http"
-	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/GoAdminGroup/go-admin/template/types/action"
@@ -229,22 +227,6 @@ func (h *Handler) Execute(ctx *context.Context, user models.UserModel, panel typ
 	})
 }
 
-func isInfoUrl(s string) bool {
-	reg, _ := regexp.Compile("(.*?)info/(.*?)$")
-	sub := reg.FindStringSubmatch(s)
-	return len(sub) > 2 && !strings.Contains(sub[2], "/")
-}
-
-func isNewUrl(s string, p string) bool {
-	reg, _ := regexp.Compile("(.*?)info/" + p + "/new")
-	return reg.MatchString(s)
-}
-
-func isEditUrl(s string, p string) bool {
-	reg, _ := regexp.Compile("(.*?)info/" + p + "/edit")
-	return reg.MatchString(s)
-}
-
 func (h *Handler) authSrv() *auth.TokenService {
 	return auth.GetTokenService(h.services.Get(auth.TokenServiceKey))
 }
@@ -346,7 +328,7 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 			editWithNewCheckBoxJs = ""
 		}
 		checkBoxs = editCheckBox + newCheckBox
-		checkBoxJS = `<script>	
+		checkBoxJS = `<script>
 	let previous_url_goadmin = $('input[name="` + form.PreviousKey + `"]').attr("value")
 	` + editWithNewCheckBoxJs + newWithEditCheckBoxJs + `
 </script>

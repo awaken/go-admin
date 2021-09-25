@@ -207,14 +207,15 @@ func ParseText(name, tmpl string, param interface{}) string {
 	return buf.String()
 }
 
+var rexCompareVersion = regexp.MustCompile(`-(.*)`)
+
 func CompareVersion(src, toCompare string) bool {
 	if toCompare == "" {
 		return false
 	}
 
-	exp, _ := regexp.Compile(`-(.*)`)
-	src = exp.ReplaceAllString(src, "")
-	toCompare = exp.ReplaceAllString(toCompare, "")
+	src = rexCompareVersion.ReplaceAllString(src, "")
+	toCompare = rexCompareVersion.ReplaceAllString(toCompare, "")
 
 	srcs := strings.Split(src, "v")
 	srcArr := strings.Split(srcs[1], ".")

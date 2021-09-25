@@ -1,9 +1,9 @@
 package guard
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	tmpl "html/template"
 	"mime/multipart"
-	"regexp"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/template/types"
@@ -113,7 +113,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 
 	var (
 		previous = ctx.FormValue(form.PreviousKey)
-		fromList = isInfoUrl(previous)
+		fromList = utils.IsInfoUrl(previous)
 		param    = parameter.GetParamFromURL(previous, panel.GetInfo().DefaultPageSize,
 			panel.GetInfo().GetSort(), panel.GetPrimaryKey().Name)
 	)
@@ -141,12 +141,6 @@ func (g *Guard) EditForm(ctx *context.Context) {
 		FromList:     fromList,
 	})
 	ctx.Next()
-}
-
-func isInfoUrl(s string) bool {
-	reg, _ := regexp.Compile("(.*?)info/(.*?)$")
-	sub := reg.FindStringSubmatch(s)
-	return len(sub) > 2 && !strings.Contains(sub[2], "/")
 }
 
 func GetEditFormParam(ctx *context.Context) *EditFormParam {

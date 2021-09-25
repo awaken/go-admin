@@ -65,11 +65,11 @@ func (menu *Menu) AddMaxOrder() {
 	menu.MaxOrder++
 }
 
+var rexMenuActiveClass = regexp.MustCompile(`\?(.*)`)
+
 // SetActiveClass set the active class of menu.
 func (menu *Menu) SetActiveClass(path string) *Menu {
-
-	reg, _ := regexp.Compile(`\?(.*)`)
-	path = reg.ReplaceAllString(path, "")
+	path = rexMenuActiveClass.ReplaceAllString(path, "")
 
 	for i := 0; i < len(menu.List); i++ {
 		menu.List[i].Active = ""

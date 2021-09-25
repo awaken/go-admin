@@ -18,6 +18,11 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
+var (
+	rexPathEdit = regexp.MustCompile("/edit")
+	rexPathNew  = regexp.MustCompile("/new")
+)
+
 // GlobalDeferHandler is a global error handler of admin plugin.
 func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 
@@ -51,11 +56,11 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 			return
 		}
 
-		if ok, _ = regexp.MatchString("/edit(.*)", ctx.Path()); ok {
+		if rexPathEdit.MatchString(ctx.Path()) {
 			h.setFormWithReturnErrMessage(ctx, errMsg, "edit")
 			return
 		}
-		if ok, _ = regexp.MatchString("/new(.*)", ctx.Path()); ok {
+		if rexPathNew.MatchString(ctx.Path()); ok {
 			h.setFormWithReturnErrMessage(ctx, errMsg, "new")
 			return
 		}

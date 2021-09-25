@@ -172,7 +172,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 					}
 				}
 
-				reg, err := regexp.Compile(matchPath)
+				reg, err := utils.CachedRex(strings.ReplaceAll(matchPath, "/*", "/.*"))
 
 				if err != nil {
 					logger.Error("CheckPermissions error: ", err)

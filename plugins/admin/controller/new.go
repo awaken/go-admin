@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"net/http"
 
@@ -42,7 +43,7 @@ func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix
 		isNotIframe = ctx.Query(constant.IframeKey) != "true"
 	)
 
-	if referer != "" && !isInfoUrl(referer) && !isNewUrl(referer, ctx.Query(constant.PrefixKey)) {
+	if referer != "" && !utils.IsInfoUrl(referer) && !utils.IsNewUrl(referer, ctx.Query(constant.PrefixKey)) {
 		infoUrl = referer
 	}
 
@@ -143,7 +144,7 @@ func (h *Handler) NewForm(ctx *context.Context) {
 
 	if !param.FromList {
 
-		if isNewUrl(param.PreviousPath, param.Prefix) {
+		if utils.IsNewUrl(param.PreviousPath, param.Prefix) {
 			h.showNewForm(ctx, param.Alert, param.Prefix, param.Param.GetRouteParamStr(), true)
 			return
 		}

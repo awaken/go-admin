@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"net/http"
 	"net/url"
@@ -78,7 +79,7 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 	editUrl := h.routePathWithPrefix("edit", prefix)
 	referer := ctx.Referer()
 
-	if referer != "" && !isInfoUrl(referer) && !isEditUrl(referer, ctx.Query(constant.PrefixKey)) {
+	if referer != "" && !utils.IsInfoUrl(referer) && !utils.IsEditUrl(referer, ctx.Query(constant.PrefixKey)) {
 		infoUrl = referer
 	}
 
@@ -197,12 +198,12 @@ func (h *Handler) EditForm(ctx *context.Context) {
 
 	if !param.FromList {
 
-		if isNewUrl(param.PreviousPath, param.Prefix) {
+		if utils.IsNewUrl(param.PreviousPath, param.Prefix) {
 			h.showNewForm(ctx, param.Alert, param.Prefix, param.Param.DeleteEditPk().GetRouteParamStr(), true)
 			return
 		}
 
-		if isEditUrl(param.PreviousPath, param.Prefix) {
+		if utils.IsEditUrl(param.PreviousPath, param.Prefix) {
 			h.showForm(ctx, param.Alert, param.Prefix, param.Param, true, false)
 			return
 		}
