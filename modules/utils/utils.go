@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	textTmpl "text/template"
@@ -206,8 +205,6 @@ func ParseText(name, tmpl string, param interface{}) string {
 	}
 	return buf.String()
 }
-
-var rexCompareVersion = regexp.MustCompile(`-(.*)`)
 
 func CompareVersion(src, toCompare string) bool {
 	if toCompare == "" {

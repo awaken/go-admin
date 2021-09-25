@@ -3,7 +3,6 @@ package models
 import (
 	"database/sql"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -115,15 +114,6 @@ func (t UserModel) Template(str string) string {
 	return t.cacheReplacer.Replace(str)
 }
 
-var _logoutCheck *regexp.Regexp
-
-func logoutCheck() *regexp.Regexp {
-	if _logoutCheck == nil {
-		_logoutCheck = regexp.MustCompile(config.Url("/logout") + "(.*?)")
-	}
-	return _logoutCheck
-}
-
 func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams url.Values) bool {
 
 	// path, _ = url.PathUnescape(path)
@@ -136,7 +126,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 		return false
 	}
 
-	if logoutCheck().MatchString(path) {
+	if utils.RexPathLogout.MatchString(path) {
 		return true
 	}
 

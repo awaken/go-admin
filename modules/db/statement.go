@@ -7,7 +7,7 @@ package db
 import (
 	dbsql "database/sql"
 	"errors"
-	"regexp"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"strconv"
 	"strings"
 	"sync"
@@ -111,14 +111,13 @@ func (sql *SQL) Table(table string) *SQL {
 	return sql
 }
 
-var regSqlSelect = regexp.MustCompile(`(.*?)\((.*?)\)`)
-
 // Select set select fields.
 func (sql *SQL) Select(fields ...string) *SQL {
 	sql.Fields = fields
 	sql.Functions = make([]string, len(fields))
+	r := utils.RegSqlSelect
 	for k, field := range fields {
-		res := regSqlSelect.FindAllStringSubmatch(field, -1)
+		res := r.FindAllStringSubmatch(field, -1)
 		if len(res) > 0 && len(res[0]) > 2 {
 			sql.Functions[k] = res[0][1]
 			sql.Fields[k] = res[0][2]

@@ -6,70 +6,79 @@ package db
 
 import (
 	"database/sql"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 // SetColVarType set the column type.
-func SetColVarType(colVar *[]interface{}, i int, typeName string) {
+func SetColVarType(colVar []interface{}, i int, typeName string) {
 	dt := DT(typeName)
 	switch {
 	case Contains(dt, BoolTypeList):
 		var s sql.NullBool
-		(*colVar)[i] = &s
+		colVar[i] = &s
 	case Contains(dt, IntTypeList):
 		var s sql.NullInt64
-		(*colVar)[i] = &s
+		colVar[i] = &s
 	case Contains(dt, FloatTypeList):
 		var s sql.NullFloat64
-		(*colVar)[i] = &s
+		colVar[i] = &s
 	case Contains(dt, UintTypeList):
 		var s []uint8
-		(*colVar)[i] = &s
+		colVar[i] = &s
 	case Contains(dt, StringTypeList):
 		var s sql.NullString
-		(*colVar)[i] = &s
+		colVar[i] = &s
 	default:
 		var s interface{}
-		(*colVar)[i] = &s
+		colVar[i] = &s
 	}
 }
 
 // SetResultValue set the result value.
-func SetResultValue(result *map[string]interface{}, index string, colVar interface{}, typeName string) {
+func SetResultValue(result map[string]interface{}, index string, colVar interface{}, typeName string) {
 	dt := DT(typeName)
 	switch {
 	case Contains(dt, BoolTypeList):
-		temp := *(colVar.(*sql.NullBool))
+		temp := colVar.(*sql.NullBool)
 		if temp.Valid {
-			(*result)[index] = temp.Bool
+			result[index] = temp.Bool
 		} else {
-			(*result)[index] = nil
+			result[index] = nil
 		}
 	case Contains(dt, IntTypeList):
-		temp := *(colVar.(*sql.NullInt64))
+		temp := colVar.(*sql.NullInt64)
 		if temp.Valid {
-			(*result)[index] = temp.Int64
+			result[index] = temp.Int64
 		} else {
-			(*result)[index] = nil
+			result[index] = nil
 		}
 	case Contains(dt, FloatTypeList):
-		temp := *(colVar.(*sql.NullFloat64))
+		temp := colVar.(*sql.NullFloat64)
 		if temp.Valid {
-			(*result)[index] = temp.Float64
+			result[index] = temp.Float64
 		} else {
-			(*result)[index] = nil
+			result[index] = nil
 		}
 	case Contains(dt, UintTypeList):
-		(*result)[index] = *(colVar.(*[]uint8))
+		result[index] = *(colVar.(*[]uint8))
 	case Contains(dt, StringTypeList):
-		temp := *(colVar.(*sql.NullString))
+		temp := colVar.(*sql.NullString)
 		if temp.Valid {
-			(*result)[index] = fixIsoDateStr(temp.String)
+			result[index] = utils.StrIsoDateToDateTime(temp.String)
 		} else {
-			(*result)[index] = nil
+			result[index] = nil
 		}
 	default:
 		if colVar2, ok := colVar.(*interface{}); ok {
-			if colVar, ok = (*colVar2).(int64); ok {
+			switch colVar := (*colVar2).(type) {
+			case int64  : result[index] = colVar
+			case string : result[index] = colVar
+			case float64: result[index] = colVar
+			case []uint8: result[index] = colVar
+			case bool   : result[index] = colVar
+			default     : result[index] = nil
+			}
+			/*if colVar, ok = (*colVar2).(int64); ok {
 				(*result)[index] = colVar
 			} else if colVar, ok = (*colVar2).(string); ok {
 				(*result)[index] = colVar
@@ -79,7 +88,7 @@ func SetResultValue(result *map[string]interface{}, index string, colVar interfa
 				(*result)[index] = colVar
 			} else {
 				(*result)[index] = colVar
-			}
+			}*/
 		}
 	}
 }

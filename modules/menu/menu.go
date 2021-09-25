@@ -5,8 +5,8 @@
 package menu
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"html/template"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -65,11 +65,9 @@ func (menu *Menu) AddMaxOrder() {
 	menu.MaxOrder++
 }
 
-var rexMenuActiveClass = regexp.MustCompile(`\?(.*)`)
-
 // SetActiveClass set the active class of menu.
 func (menu *Menu) SetActiveClass(path string) *Menu {
-	path = rexMenuActiveClass.ReplaceAllString(path, "")
+	path = utils.RexMenuActiveClass.ReplaceAllString(path, "")
 
 	for i := 0; i < len(menu.List); i++ {
 		menu.List[i].Active = ""
