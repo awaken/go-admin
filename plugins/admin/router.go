@@ -20,8 +20,8 @@ func (admin *Admin) initRouter() *Admin {
 	route.POST("/signin", admin.handler.Auth)
 
 	// auto install
-	route.GET("/install", admin.handler.ShowInstall)
-	route.POST("/install/database/check", admin.handler.CheckDatabase)
+	//route.GET("/install", admin.handler.ShowInstall)
+	//route.POST("/install/database/check", admin.handler.CheckDatabase)
 
 	checkRepeatedPath := make([]string, 0)
 	for _, themeName := range template.Themes() {
@@ -55,11 +55,11 @@ func (admin *Admin) initRouter() *Admin {
 
 	authRoute.GET("/plugins", admin.handler.Plugins).Name("plugins")
 
-	if config.IsNotProductionEnvironment() {
-		authRoute.GET("/plugins/store", admin.handler.PluginStore).Name("plugins_store")
-		authRoute.POST("/plugin/download", admin.handler.PluginDownload).Name("plugin_download")
-		authRoute.POST("/plugin/detail", admin.handler.PluginDetail).Name("plugin_detail")
-	}
+	//if config.IsNotProductionEnvironment() {
+	//	authRoute.GET("/plugins/store", admin.handler.PluginStore).Name("plugins_store")
+	//	authRoute.POST("/plugin/download", admin.handler.PluginDownload).Name("plugin_download")
+	//	authRoute.POST("/plugin/detail", admin.handler.PluginDetail).Name("plugin_detail")
+	//}
 
 	authRoute.POST("/server/login", admin.guardian.ServerLogin, admin.handler.ServerLogin).Name("server_login")
 

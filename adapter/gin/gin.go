@@ -77,6 +77,7 @@ func (gins *Gin) SetApp(app interface{}) error {
 
 // AddHandler implements the method Adapter.AddHandler.
 func (gins *Gin) AddHandler(method, path string, handlers context.Handlers) {
+	//println("add ui '" + method + "' handler of path: " + path)
 	gins.app.Handle(strings.ToUpper(method), path, func(c *gin.Context) {
 		ctx := context.NewContext(c.Request)
 
