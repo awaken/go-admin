@@ -53,7 +53,7 @@ func (admin *Admin) initRouter() *Admin {
 	authRoute.GET("/menu/edit/show", admin.handler.ShowEditMenu).Name("menu_edit_show")
 	authRoute.GET("/menu/new", admin.handler.ShowNewMenu).Name("menu_new_show")
 
-	authRoute.GET("/plugins", admin.handler.Plugins).Name("plugins")
+	//authRoute.GET("/plugins", admin.handler.Plugins).Name("plugins")
 
 	//if config.IsNotProductionEnvironment() {
 	//	authRoute.GET("/plugins/store", admin.handler.PluginStore).Name("plugins_store")
@@ -104,4 +104,8 @@ func (admin *Admin) globalErrorHandler(ctx *context.Context) {
 	defer admin.handler.GlobalDeferHandler(ctx)
 	response.OffLineHandler(ctx)
 	ctx.Next()
+}
+
+func (admin *Admin) GlobalErrorHandler() context.Handler {
+	return admin.globalErrorHandler
 }

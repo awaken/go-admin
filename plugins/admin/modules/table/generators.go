@@ -449,7 +449,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 	formList.AddField("ID", "id", db.Int, form.Default).FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
 	formList.AddField(lg("Name"), "username", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("use for login"))).FieldMust()
 	formList.AddField(lg("Nickname"), "name", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("use to display"))).FieldMust()
-	formList.AddField(lg("Email"), "email", db.Varchar, form.Text)
+	formList.AddField(lg("Email"), "email", db.Varchar, form.Email)
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
 	formList.AddField(lg("Password"), "password", db.Varchar, form.Password).
 		FieldDisplay(func(value types.FieldModel) interface{} {
@@ -883,7 +883,7 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 	}, action.FieldFilter("method"))
 
 	info.SetTable("goadmin_operation_log").
-		SetTitle(lg("Access log"))//.SetDescription(lg("operation log"))
+		SetTitle(lg("Audit Log"))//.SetDescription(lg("operation log"))
 
 	formList := opTable.GetForm().AddXssJsFilter()
 
@@ -897,7 +897,7 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 	formList.AddField(lg("Created At"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 
 	formList.SetTable("goadmin_operation_log").
-		SetTitle(lg("Access log"))//.SetDescription(lg("operation log"))
+		SetTitle(lg("Audit Log"))//.SetDescription(lg("operation log"))
 
 	return
 }

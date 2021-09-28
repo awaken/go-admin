@@ -17,6 +17,10 @@ func SetLogCoreFactory(f func() zapcore.Core) {
 	logCoreFactoryFunc = f
 }
 
+func SetLevel(level zapcore.Level) {
+	logger.Level = level
+}
+
 func (l *Logger) Init() {
 	var zapLogger *zap.Logger
 	if logCoreFactoryFunc != nil {

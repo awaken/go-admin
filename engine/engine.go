@@ -176,7 +176,7 @@ func (eng *Engine) AddConfigFromINI(path string) *Engine {
 
 // InitDatabase initialize all database connection.
 func (eng *Engine) initDatabase() *Engine {
-	printInitMsg(language.Get("initialize database connections"))
+	//printInitMsg(language.Get("initialize database connections"))
 	for driver, databaseCfg := range eng.config.Databases.GroupByDriver() {
 		eng.Services.Add(driver, db.GetConnectionByDriver(driver).InitDB(databaseCfg))
 	}
@@ -403,7 +403,7 @@ func printInitMsg(msg string) {
 }
 
 func (eng *Engine) initJumpNavButtons() {
-	printInitMsg(language.Get("initialize navigation buttons"))
+	//printInitMsg(language.Get("initialize navigation buttons"))
 	for _, param := range eng.initNavJumpButtonParams() {
 		eng.addJumpNavButton(param)
 	}
@@ -413,7 +413,7 @@ func (eng *Engine) initJumpNavButtons() {
 
 func (eng *Engine) initPlugins() {
 
-	printInitMsg(language.Get("initialize plugins"))
+	//printInitMsg(language.Get("initialize plugins"))
 
 	eng.AddPlugins(admin.NewAdmin()).AddPluginList(plugins.Get())
 
@@ -470,15 +470,15 @@ func (eng *Engine) initNavJumpButtonParams() []navJumpButtonParam {
 
 func (eng *Engine) initSiteSetting() {
 
-	printInitMsg(language.Get("initialize configuration"))
+	//printInitMsg(language.Get("initialize configuration"))
 
-	err := eng.config.Update(models.Site().
+	/*err := eng.config.Update(models.Site().
 		SetConn(eng.DefaultConnection()).
 		Init(eng.config.ToMap()).
 		AllToMap())
 	if err != nil {
 		logger.Panic(err)
-	}
+	}*/
 	eng.Services.Add("config", config.SrvWithConfig(eng.config))
 
 	errors.Init()

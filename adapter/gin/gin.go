@@ -15,6 +15,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/engine"
 	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/plugins"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
@@ -77,8 +78,10 @@ func (gins *Gin) SetApp(app interface{}) error {
 
 // AddHandler implements the method Adapter.AddHandler.
 func (gins *Gin) AddHandler(method, path string, handlers context.Handlers) {
-	//println("add ui '" + method + "' handler of path: " + path)
-	gins.app.Handle(strings.ToUpper(method), path, func(c *gin.Context) {
+	method = strings.ToUpper(method)
+	logger.Debugf("web route: %s %s", method, path)
+
+	gins.app.Handle(method, path, func(c *gin.Context) {
 		ctx := context.NewContext(c.Request)
 
 		for _, param := range c.Params {

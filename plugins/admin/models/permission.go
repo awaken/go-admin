@@ -86,7 +86,10 @@ func (t PermissionModel) MapToModel(m map[string]interface{}) PermissionModel {
 	}
 
 	path, _ := m["http_path"].(string)
-	t.HttpPath = strings.Split(path, "\n")
+	t.HttpPath = strings.Split(strings.TrimSpace(path), "\n")
+	for i, p := range t.HttpPath {
+		t.HttpPath[i] = strings.TrimSpace(p)
+	}
 	t.CreatedAt, _ = m["created_at"].(string)
 	t.UpdatedAt, _ = m["updated_at"].(string)
 	return t

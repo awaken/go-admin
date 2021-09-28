@@ -143,6 +143,10 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 		}
 	}
 
+	//if t.isMyRequest(method, path, params) {
+	//	return true
+	//}
+
 	for _, v := range t.Permissions {
 
 		if v.HttpMethod[0] == "" || inMethodArr(v.HttpMethod, method) {
@@ -153,7 +157,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 
 			for i := 0; i < len(v.HttpPath); i++ {
 
-				matchPath := config.Url(t.Template(strings.TrimSpace(v.HttpPath[i])))
+				matchPath := config.Url(t.Template(t.patchPathParams(v.HttpPath[i])))
 				matchPath, matchParam := getParam(matchPath)
 
 				if matchPath == path {
@@ -162,7 +166,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 					}
 				}
 
-				reg, err := utils.CachedRex(strings.ReplaceAll(matchPath, "/*", "/.*"))
+				reg, err := utils.CachedRex(normMatchPath(matchPath))
 
 				if err != nil {
 					logger.Error("CheckPermissions error: ", err)
@@ -183,11 +187,19 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 
 func getParam(u string) (string, url.Values) {
 	m := make(url.Values)
+	if p := strings.IndexByte(u, '?'); p >= 0 {
+		if p < len(u) - 1 {
+			m, _ = url.ParseQuery(u[p+1:])
+		}
+		return u[:p], m
+	}
+	return u, m
+	/*m := make(url.Values)
 	urr := strings.Split(u, "?")
 	if len(urr) > 1 {
 		m, _ = url.ParseQuery(urr[1])
 	}
-	return urr[0], m
+	return urr[0], m*/
 }
 
 func (t UserModel) checkParam(src, comp url.Values) bool {
