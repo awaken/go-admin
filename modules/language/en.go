@@ -225,7 +225,7 @@ var en = LangSet{
 	"config.modify site config success": "modified success",
 	"config.modify site config fail":    "modified failed",
 
-	"system.system info":     "System And Application Info",
+	"system.system info":     "System Info",
 	"system.application":     "Application Info",
 	"system.application run": "Applications Running Info",
 	"system.system":          "System Info",
