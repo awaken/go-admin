@@ -47,7 +47,7 @@ func RemoveBlankFromArray(s []string) []string {
 }
 
 func Uuid() string {
-	u := uuid.NewV4()
+	u, _ := uuid.NewV4()
 	return u.String()
 }
 
