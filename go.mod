@@ -1,6 +1,6 @@
 module github.com/GoAdminGroup/go-admin
 
-go 1.13
+go 1.17
 
 require (
 	github.com/360EntSecGroup-Skylar/excelize v1.4.1
