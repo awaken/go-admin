@@ -28,7 +28,7 @@ func Check(password string, username string, conn db.Connection) (user models.Us
 
 	user = models.User().SetConn(conn).FindByUserName(username)
 
-	if user.IsEmpty() || user.IsSuspended() {
+	if user.IsEmpty() || user.IsDisabled() {
 		ok = false
 	} else {
 		if comparePassword(password, user.Password) {

@@ -3,7 +3,6 @@ package controller
 import (
 	"html/template"
 
-	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
@@ -18,6 +17,7 @@ type SystemInfoData struct {
 	AppIp      string
 	AppBuildAt string
 	AppCommit  string
+	AppEnv     string
 }
 
 func SetSystemInfoData(sid SystemInfoData) {
@@ -43,7 +43,7 @@ func sysInfoItemsForApplication() []map[string]types.InfoItem {
 			"value": types.InfoItem{Content: template.HTML(sysInfo.AppCommit)},
 		}, {
 			"key":   types.InfoItem{Content: lg("app_env")},
-			"value": types.InfoItem{Content: lg(template.HTML("env_" + config.GetEnv()))},
+			"value": types.InfoItem{Content: lg(template.HTML("env_" + sysInfo.AppEnv))},
 		}, {
 			"key":   types.InfoItem{Content: lg("app_roles")},
 			"value": types.InfoItem{Content: template.HTML(sysInfo.AppRoles)},

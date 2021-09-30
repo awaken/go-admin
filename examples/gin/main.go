@@ -51,7 +51,7 @@ func main() {
 			Path:   "./uploads",
 			Prefix: "uploads",
 		},
-		Language:           language.CN,
+		Language:           language.EN,
 		IndexUrl:           "/",
 		Debug:              true,
 		AccessAssetsLogOff: true,

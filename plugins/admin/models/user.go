@@ -26,7 +26,7 @@ type UserModel struct {
 	Email         string            `json:"email"`
 	Avatar        string            `json:"avatar"`
 	RememberToken string            `json:"remember_token"`
-	Suspended     string            `json:"suspended"`
+	Disabled      string            `json:"disabled"`
 	Permissions   []PermissionModel `json:"permissions"`
 	MenuIds       []int64           `json:"menu_ids"`
 	Roles         []RoleModel       `json:"role"`
@@ -369,37 +369,43 @@ func (t UserModel) WithMenus() UserModel {
 }
 
 // New create a user model.
-func (t UserModel) New(username, password, name, email, avatar string) (UserModel, error) {
+func (t UserModel) New(username, password, name, email, disabled, avatar string) (UserModel, error) {
+	disabled = normUserDisabled(disabled)
 
 	id, err := t.WithTx(t.Tx).Table(t.TableName).Insert(dialect.H{
-		"username": username,
-		"password": password,
-		"name":     name,
-		"email":    email,
-		"avatar":   avatar,
+		"username" : username,
+		"password" : password,
+		"name"     : name,
+		"email"    : email,
+		"disabled" : disabled,
+		"avatar"   : avatar,
 	})
 
 	t.Id = id
 	t.UserName = username
 	t.Password = password
-	t.Email = email
-	t.Avatar = avatar
 	t.Name = name
+	t.Email = email
+	t.Disabled = disabled
+	t.Avatar = avatar
 
 	return t, err
 }
 
 // Update update the user model.
-func (t UserModel) Update(username, password, name, email, suspended, avatar string, isUpdateAvatar bool) (int64, error) {
+func (t UserModel) Update(username, password, name, email, disabled, avatar string, isUpdateAvatar bool) (int64, error) {
 	fieldValues := dialect.H{
 		"username":   username,
 		"name":       name,
-		"suspended":  normUserSuspended(suspended),
-		"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+		"updated_at": time.Now().UTC().Format("2006-01-02 15:04:05"),
 	}
 
 	if email != "" {
 		fieldValues["email"] = email
+	}
+
+	if disabled != "" {
+		fieldValues["disabled"] = normUserDisabled(disabled)
 	}
 
 	if avatar == "" || isUpdateAvatar {
@@ -517,6 +523,7 @@ func (t UserModel) MapToModel(m map[string]interface{}) UserModel {
 	t.UserName, _ = m["username"].(string)
 	t.Password, _ = m["password"].(string)
 	t.Email, _ = m["email"].(string)
+	t.Disabled, _ = m["disabled"].(string)
 	t.Avatar, _ = m["avatar"].(string)
 	t.RememberToken, _ = m["remember_token"].(string)
 	t.CreatedAt, _ = m["created_at"].(string)

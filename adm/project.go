@@ -94,19 +94,19 @@ func buildProject(cfgFile string) {
 		p.Theme = singleSelect(getWord("choose a theme"), template2.DefaultThemeNames, "sword")
 	}
 	if p.Language == "" {
-		p.Language = singleSelect(getWord("choose language"),
-			[]string{getWord("cn"), getWord("en"), getWord("jp"), getWord("tc")},
-			getWord("cn"))
-		switch p.Language {
-		case getWord("cn"):
-			p.Language = language.CN
-		case getWord("en"):
+		//p.Language = singleSelect(getWord("choose language"),
+		//	[]string{getWord("cn"), getWord("en"), getWord("jp"), getWord("tc")},
+		//	getWord("cn"))
+		//switch p.Language {
+		//case getWord("cn"):
+		//	p.Language = language.CN
+		//case getWord("en"):
 			p.Language = language.EN
-		case getWord("jp"):
-			p.Language = language.JP
-		case getWord("tc"):
-			p.Language = language.TC
-		}
+		//case getWord("jp"):
+		//	p.Language = language.JP
+		//case getWord("tc"):
+		//	p.Language = language.TC
+		//}
 	}
 	if p.Port == "" {
 		p.Port = promptWithDefault(getWord("port"), "80")
@@ -171,35 +171,35 @@ func buildProject(cfgFile string) {
 	fmt.Println()
 	fmt.Println(getWord("1 Import and initialize database:"))
 	fmt.Println()
-	if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
-		fmt.Println("- sqlite: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.db", "blue"))
-		fmt.Println("- mssql: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.mssql", "blue"))
-		fmt.Println("- postgresql: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.pgsql", "blue"))
-		fmt.Println("- mysql: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.sql", "blue"))
-	} else {
+	//if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
+	//	fmt.Println("- sqlite: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.db", "blue"))
+	//	fmt.Println("- mssql: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.mssql", "blue"))
+	//	fmt.Println("- postgresql: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.pgsql", "blue"))
+	//	fmt.Println("- mysql: " + ansi.Color("https://gitee.com/go-admin/go-admin/raw/master/data/admin.sql", "blue"))
+	//} else {
 		fmt.Println("- sqlite: " + ansi.Color("https://github.com/GoAdminGroup/go-admin/raw/master/data/admin.db", "blue"))
 		fmt.Println("- mssql: " + ansi.Color("https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.mssql", "blue"))
 		fmt.Println("- postgresql: " + ansi.Color("https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.pgsql", "blue"))
 		fmt.Println("- mysql: " + ansi.Color("https://raw.githubusercontent.com/GoAdminGroup/go-admin/master/data/admin.sql", "blue"))
-	}
+	//}
 	fmt.Println()
 	fmt.Println(getWord("2 Execute the following command to run:"))
 	fmt.Println()
 	if runtime.GOOS == "windows" {
 		fmt.Println("> GO111MODULE=on go mod init " + p.Module)
-		if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
-			fmt.Println("> GORPOXY=https://goproxy.io GO111MODULE=on go mod tidy")
-		} else {
+		//if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
+		//	fmt.Println("> GORPOXY=https://goproxy.io GO111MODULE=on go mod tidy")
+		//} else {
 			fmt.Println("> GO111MODULE=on go mod tidy")
-		}
+		//}
 		fmt.Println("> GO111MODULE=on go run .")
 	} else {
 		fmt.Println("> make init module=" + p.Module)
-		if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
-			fmt.Println("> GORPOXY=https://goproxy.io make install")
-		} else {
+		//if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
+		//	fmt.Println("> GORPOXY=https://goproxy.io make install")
+		//} else {
 			fmt.Println("> make install")
-		}
+		//}
 		fmt.Println("> make serve")
 	}
 	fmt.Println()
@@ -290,13 +290,13 @@ func Init(c db.Connection) {
 		checkError(ioutil.WriteFile("./pages/index.go", adminlteIndexPage, 0644))
 	}
 
-	if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
-		checkError(ioutil.WriteFile("./main_test.go", mainTestCN, 0644))
-		checkError(ioutil.WriteFile("./README.md", []byte(fmt.Sprintf(readmeCN, p.Port+"/"+p.Prefix)), 0644))
-	} else {
+	//if defaultLang == "cn" || p.Language == language.CN || p.Language == "cn" {
+	//	checkError(ioutil.WriteFile("./main_test.go", mainTestCN, 0644))
+	//	checkError(ioutil.WriteFile("./README.md", []byte(fmt.Sprintf(readmeCN, p.Port+"/"+p.Prefix)), 0644))
+	//} else {
 		checkError(ioutil.WriteFile("./main_test.go", mainTest, 0644))
 		checkError(ioutil.WriteFile("./README.md", []byte(fmt.Sprintf(readme, p.Port+"/"+p.Prefix)), 0644))
-	}
+	//}
 
 	makefileContent := makefile
 	if p.Driver == db.DriverSqlite {

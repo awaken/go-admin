@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	UserSuspendedValue    = "y"
-	UserNotSuspendedValue = "n"
+	UserDisabledValue = "y"
+	UserEnabledValue  = "n"
 
 	varUserId = "${uid}"
 )
@@ -16,15 +16,15 @@ func normMatchPath(matchPath string) string {
 	return strings.ReplaceAll(matchPath, "/*", "/.*")
 }
 
-func normUserSuspended(s string) string {
+func normUserDisabled(s string) string {
 	if len(s) == 0 {
-		return UserNotSuspendedValue
+		return UserEnabledValue
 	}
 	switch s[:1] {
-	case UserSuspendedValue, "Y", "Yes", "yes":
-		return UserSuspendedValue
+	case UserDisabledValue, "Y", "Yes", "yes":
+		return UserDisabledValue
 	}
-	return UserNotSuspendedValue
+	return UserEnabledValue
 
 }
 
@@ -35,8 +35,8 @@ func (t UserModel) patchPathParams(path string) string {
 	return path
 }
 
-func (t UserModel) IsSuspended() bool {
-	return t.Suspended == UserSuspendedValue
+func (t UserModel) IsDisabled() bool {
+	return t.Disabled == UserDisabledValue
 }
 
 /*
