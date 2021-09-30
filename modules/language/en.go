@@ -43,9 +43,9 @@ var en = LangSet{
 	"adapter is nil, import the default adapter or use addadapter method add the adapter": "adapter is nil, import the default adapter or use AddAdapter method add the adapter",
 
 	"are you sure to delete":               "Are you sure to delete",
-	"yes":                                  "yes",
-	"got it":                               "got it",
-	"cancel":                               "cancel",
+	"yes":                                  "Yes",
+	"got it":                               "Got it",
+	"cancel":                               "Cancel",
 	"refresh succeeded":                    "Refresh succeeded",
 	"reload succeeded":                     "Reload succeeded",
 	"all method if empty":                  "All method if empty",

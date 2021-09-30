@@ -26,6 +26,7 @@ type UserModel struct {
 	Email         string            `json:"email"`
 	Avatar        string            `json:"avatar"`
 	RememberToken string            `json:"remember_token"`
+	Suspended     string            `json:"suspended"`
 	Permissions   []PermissionModel `json:"permissions"`
 	MenuIds       []int64           `json:"menu_ids"`
 	Roles         []RoleModel       `json:"role"`
@@ -389,11 +390,11 @@ func (t UserModel) New(username, password, name, email, avatar string) (UserMode
 }
 
 // Update update the user model.
-func (t UserModel) Update(username, password, name, email, avatar string, isUpdateAvatar bool) (int64, error) {
-
+func (t UserModel) Update(username, password, name, email, suspended, avatar string, isUpdateAvatar bool) (int64, error) {
 	fieldValues := dialect.H{
 		"username":   username,
 		"name":       name,
+		"suspended":  normUserSuspended(suspended),
 		"updated_at": time.Now().Format("2006-01-02 15:04:05"),
 	}
 

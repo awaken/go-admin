@@ -49,12 +49,30 @@ func (s *SystemTable) link(url, content string) tmpl.HTML {
 func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table) {
 	managerTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 
+	boolOptions := types.FieldOptions{
+		{ Text: lgWithConfigScore("Yes"), Value: "y" },
+		{ Text: lgWithConfigScore("No" ), Value: "n" },
+	}
+	optionalBoolOptions := append(types.FieldOptions{{}}, boolOptions...)
+
 	info := managerTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
 	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable()
 	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable()
+	info.AddField(lg("Suspended"), "suspended", db.Varchar).
+		FieldFilterable(types.FilterType{
+			FormType: form.SelectSingle,
+			Options : optionalBoolOptions,
+		}).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			switch model.Value {
+			case "": return ""
+			case models.UserSuspendedValue: return lg("Yes")
+			}
+			return lg("No")
+		})
 	info.AddField(lg("Roles"), "name", db.Varchar).
 		FieldJoin(types.Join{
 			Table:     "goadmin_role_users",
@@ -139,6 +157,8 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 	formList.AddField(lg("Nickname"), "name", db.Varchar, form.Text).
 		FieldHelpMsg(template.HTML(lg("use to display"))).FieldMust()
 	formList.AddField(lg("Email"), "email", db.Varchar, form.Email)
+	formList.AddField(lg("Suspended"), "suspended", db.Varchar, form.Switch).FieldOptions(boolOptions).
+		FieldHelpMsg(template.HTML(lg("Use to deny login and access")))
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
 	formList.AddField(lg("Roles"), "role_id", db.Varchar, form.Select).
 		FieldOptionsFromTable("goadmin_roles", "slug", "id").
@@ -212,7 +232,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 			}
 
 			_, updateUserErr := user.WithTx(tx).Update(values.Get("username"),
-				password, values.Get("name"), values.Get("email"), avatar, values.Get("avatar__change_flag") == "1")
+				password, values.Get("name"), values.Get("email"), values.Get("suspended"), avatar, values.Get("avatar__change_flag") == "1")
 
 			if db.CheckError(updateUserErr, db.UPDATE) {
 				return updateUserErr, nil
@@ -296,6 +316,11 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 	detail.AddField(lg("Username"), "username", db.Varchar)
 	detail.AddField(lg("Nickname"), "name", db.Varchar)
 	detail.AddField(lg("Email"), "email", db.Varchar)
+	detail.AddField(lg("Suspended"), "suspended", db.Varchar).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			if model.Value == models.UserSuspendedValue { return lg("Yes") }
+			return lg("No")
+		})
 	detail.AddField(lg("Avatar"), "avatar", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			if model.Value == "" || config.GetStore().Prefix == "" {
@@ -362,12 +387,27 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable Table) {
 	managerTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 
+	boolOptions := types.FieldOptions{
+		{ Text: lgWithConfigScore("Yes"), Value: "y" },
+		{ Text: lgWithConfigScore("No" ), Value: "n" },
+	}
+	optionalBoolOptions := append(types.FieldOptions{{}}, boolOptions...)
+
 	info := managerTable.GetInfo().AddXssJsFilter().HideFilterArea()
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
 	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable()
 	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable()
+	info.AddField(lg("Suspended"), "suspended", db.Varchar).
+		FieldFilterable(types.FilterType{
+			FormType: form.SelectSingle,
+			Options : optionalBoolOptions,
+		}).
+		FieldDisplay(func(model types.FieldModel) interface{} {
+			if model.Value == models.UserSuspendedValue { return lg("Yes") }
+			return lg("No")
+		})
 	info.AddField(lg("role"), "name", db.Varchar).
 		FieldJoin(types.Join{
 			Table:     "goadmin_role_users",
@@ -450,6 +490,8 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 	formList.AddField(lg("Name"), "username", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("use for login"))).FieldMust()
 	formList.AddField(lg("Nickname"), "name", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("use to display"))).FieldMust()
 	formList.AddField(lg("Email"), "email", db.Varchar, form.Email)
+	formList.AddField(lg("Suspended"), "suspended", db.Varchar, form.Switch).FieldOptions(boolOptions).
+		FieldHelpMsg(template.HTML(lg("Use to deny login and access")))
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
 	formList.AddField(lg("Password"), "password", db.Varchar, form.Password).
 		FieldDisplay(func(value types.FieldModel) interface{} {
@@ -491,7 +533,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 		}
 
 		_, updateUserErr := user.Update(values.Get("username"),
-			password, values.Get("name"), values.Get("email"), avatar, values.Get("avatar__change_flag") == "1")
+			password, values.Get("name"), values.Get("email"), values.Get("suspended"), avatar, values.Get("avatar__change_flag") == "1")
 
 		if db.CheckError(updateUserErr, db.UPDATE) {
 			return updateUserErr
