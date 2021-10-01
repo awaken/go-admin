@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -23,7 +22,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/constant"
 )
 
-const abortIndex int8 = math.MaxInt8 / 2
+const abortIndex int = math.MaxInt32 / 2
 
 // Context is the simplify version of web framework context.
 // But it is important which will be used in plugins to custom
@@ -35,7 +34,7 @@ type Context struct {
 	Request   *http.Request
 	Response  *http.Response
 	UserValue map[string]interface{}
-	index     int8
+	index     int
 	handlers  Handlers
 }
 
@@ -97,7 +96,7 @@ func (ctx *Context) Abort() {
 // Next should be used only inside middleware.
 func (ctx *Context) Next() {
 	ctx.index++
-	for s := int8(len(ctx.handlers)); ctx.index < s; ctx.index++ {
+	for s := len(ctx.handlers); ctx.index < s; ctx.index++ {
 		ctx.handlers[ctx.index](ctx)
 	}
 }
@@ -147,7 +146,7 @@ const (
 
 func (ctx *Context) BindJSON(data interface{}) error {
 	if ctx.Request.Body != nil {
-		b, err := ioutil.ReadAll(ctx.Request.Body)
+		b, err := io.ReadAll(ctx.Request.Body)
 		if err == nil {
 			return json.Unmarshal(b, data)
 		}
@@ -158,7 +157,7 @@ func (ctx *Context) BindJSON(data interface{}) error {
 
 func (ctx *Context) MustBindJSON(data interface{}) {
 	if ctx.Request.Body != nil {
-		b, err := ioutil.ReadAll(ctx.Request.Body)
+		b, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
 			panic(err)
 		}
@@ -176,7 +175,7 @@ func (ctx *Context) Write(code int, header map[string]string, Body string) {
 	for key, head := range header {
 		ctx.AddHeader(key, head)
 	}
-	ctx.Response.Body = ioutil.NopCloser(strings.NewReader(Body))
+	ctx.Response.Body = io.NopCloser(strings.NewReader(Body))
 }
 
 // JSON serializes the given struct as JSON into the response body.
@@ -188,7 +187,7 @@ func (ctx *Context) JSON(code int, Body map[string]interface{}) {
 	if err != nil {
 		panic(err)
 	}
-	ctx.Response.Body = ioutil.NopCloser(bytes.NewReader(BodyStr))
+	ctx.Response.Body = io.NopCloser(bytes.NewReader(BodyStr))
 }
 
 // DataWithHeaders save the given status code, headers and body data into the response.
@@ -197,14 +196,14 @@ func (ctx *Context) DataWithHeaders(code int, header map[string]string, data []b
 	for key, head := range header {
 		ctx.AddHeader(key, head)
 	}
-	ctx.Response.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+	ctx.Response.Body = io.NopCloser(bytes.NewBuffer(data))
 }
 
 // Data writes some data into the body stream and updates the HTTP code.
 func (ctx *Context) Data(code int, contentType string, data []byte) {
 	ctx.Response.StatusCode = code
 	ctx.SetContentType(contentType)
-	ctx.Response.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+	ctx.Response.Body = io.NopCloser(bytes.NewBuffer(data))
 }
 
 // Redirect add redirect url to header.
@@ -225,12 +224,12 @@ func (ctx *Context) HTML(code int, body string) {
 func (ctx *Context) HTMLByte(code int, body []byte) {
 	ctx.SetContentType("text/html; charset=utf-8")
 	ctx.SetStatusCode(code)
-	ctx.Response.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	ctx.Response.Body = io.NopCloser(bytes.NewBuffer(body))
 }
 
 // WriteString save the given body string into the response.
 func (ctx *Context) WriteString(body string) {
-	ctx.Response.Body = ioutil.NopCloser(strings.NewReader(body))
+	ctx.Response.Body = io.NopCloser(strings.NewReader(body))
 }
 
 // SetStatusCode save the given status code into the response.
@@ -462,8 +461,8 @@ func (ctx *Context) ServeContent(content io.ReadSeeker, filename string, modtime
 		ctx.SetContentType(filename)
 	}
 
-	buf, _ := ioutil.ReadAll(content)
-	ctx.Response.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+	buf, _ := io.ReadAll(content)
+	ctx.Response.Body = io.NopCloser(bytes.NewBuffer(buf))
 	return nil
 }
 

@@ -127,7 +127,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 		return false
 	}
 
-	if utils.RexPathLogout.MatchString(path) {
+	if utils.IsLogoutUrl(path) {
 		return true
 	}
 

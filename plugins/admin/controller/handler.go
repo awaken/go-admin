@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"strings"
 
@@ -51,11 +50,12 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 			return
 		}
 
-		if utils.RexPathEdit.MatchString(ctx.Path()) {
+		ctxPath := ctx.Path()
+		if strings.Contains(ctxPath, "/edit") {
 			h.setFormWithReturnErrMessage(ctx, errMsg, "edit")
 			return
 		}
-		if utils.RexPathNew.MatchString(ctx.Path()); ok {
+		if strings.Contains(ctxPath, "/new"); ok {
 			h.setFormWithReturnErrMessage(ctx, errMsg, "new")
 			return
 		}

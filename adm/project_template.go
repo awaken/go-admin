@@ -18,7 +18,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/chartjs"
 	"github.com/gin-gonic/gin"
-	
+
 	"{{.Module}}/pages"
 	"{{.Module}}/tables"
 	{{if ne .Orm ""}}"{{.Module}}/models"{{end}}
@@ -139,7 +139,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/engine"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/chartjs"
-	"github.com/gobuffalo/buffalo"	
+	"github.com/gobuffalo/buffalo"
 
 	"{{.Module}}/pages"
 	"{{.Module}}/tables"
@@ -960,28 +960,28 @@ func GetDashBoard(ctx *context.Context) (types.Panel, error) {
 
 	productList := productlist.New().SetData([]map[string]string{
 		{
-			"img":         "//adminlte.io/themes/AdminLTE/dist/img/default-50x50.gif",
+			"img":         "/default-50x50.gif",
 			"title":       "GoAdmin",
 			"has_tabel":   "true",
 			"labeltype":   "warning",
 			"label":       "free",
 			"description": ` + "`" + `a framework help you build the dataviz system` + "`" + `,
 		}, {
-			"img":         "//adminlte.io/themes/AdminLTE/dist/img/default-50x50.gif",
+			"img":         "/default-50x50.gif",
 			"title":       "GoAdmin",
 			"has_tabel":   "true",
 			"labeltype":   "warning",
 			"label":       "free",
 			"description": ` + "`" + `a framework help you build the dataviz system` + "`" + `,
 		}, {
-			"img":         "//adminlte.io/themes/AdminLTE/dist/img/default-50x50.gif",
+			"img":         "/default-50x50.gif",
 			"title":       "GoAdmin",
 			"has_tabel":   "true",
 			"labeltype":   "warning",
 			"label":       "free",
 			"description": ` + "`" + `a framework help you build the dataviz system` + "`" + `,
 		}, {
-			"img":         "//adminlte.io/themes/AdminLTE/dist/img/default-50x50.gif",
+			"img":         "/default-50x50.gif",
 			"title":       "GoAdmin",
 			"has_tabel":   "true",
 			"labeltype":   "warning",
@@ -1391,10 +1391,10 @@ file = {{.File}}
 {{else}}
 driver = {{.DriverName}}
 host = {{.Host}}
-username = {{.User}} 
+username = {{.User}}
 port = {{.Port}}
 password = {{.Password}}
-database = {{.Database}} 
+database = {{.Database}}
 {{end}}
 ; Here are new tables to generate. 新的待转换的表格
 ; tables = new_table1,new_table2
@@ -1412,7 +1412,7 @@ output = ./tables
 
 var readme = `# GoAdmin Instruction
 
-GoAdmin is a golang framework help gopher quickly build a data visualization platform. 
+GoAdmin is a golang framework help gopher quickly build a data visualization platform.
 
 - [github](https://github.com/GoAdminGroup/go-admin)
 - [forum](http://discuss.go-admin.com)
@@ -1455,7 +1455,7 @@ adm generate
 
 var readmeCN = `# GoAdmin 介绍
 
-GoAdmin 是一个帮你快速搭建数据可视化管理应用平台的框架。 
+GoAdmin 是一个帮你快速搭建数据可视化管理应用平台的框架。
 
 - [github](https://github.com/GoAdminGroup/go-admin)
 - [论坛](http://discuss.go-admin.com)

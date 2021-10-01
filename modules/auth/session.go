@@ -18,7 +18,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 )
 
-const DefaultCookieKey = "flower_session"
+const DefaultCookieKey = "_f_"
 
 // NewDBDriver return the default PersistenceDriver.
 func newDBDriver(conn db.Connection) *DBDriver {
@@ -74,15 +74,13 @@ func (ses *Session) Add(key string, value interface{}) error {
 		return err
 	}
 	cookie := http.Cookie{
-		Name:     ses.Cookie,
-		Value:    ses.Sid,
-		MaxAge:   config.GetSessionLifeTime(),
-		Expires:  time.Now().Add(ses.Expires),
+		Name    : ses.Cookie,
+		Value   : ses.Sid,
+		MaxAge  : config.GetSessionLifeTime(),
+		Expires : time.Now().Add(ses.Expires),
 		HttpOnly: true,
-		Path:     "/",
-	}
-	if config.GetDomain() != "" {
-		cookie.Domain = config.GetDomain()
+		Path    : "/",
+		Domain  : config.GetDomain(),
 	}
 	ses.Context.SetCookie(&cookie)
 	return nil
@@ -90,8 +88,8 @@ func (ses *Session) Add(key string, value interface{}) error {
 
 // Clear clear a Session.
 func (ses *Session) Clear() error {
-	ses.Values = map[string]interface{}{}
-	return ses.Driver.Update(ses.Sid, ses.Values)
+	//ses.Values = map[string]interface{}{}
+	return ses.Driver.Update(ses.Sid, nil)
 }
 
 // UseDriver set the driver of the Session.

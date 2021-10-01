@@ -71,7 +71,7 @@ func Login(account, password string) LoginRes {
 		return resData
 	}
 	if resData.Code != 0 {
-		logger.Error("login to remote GoAdmin server error: ", resData.Msg)
+		logger.Error("login to remote server error: ", resData.Msg)
 		return resData
 	}
 	return resData

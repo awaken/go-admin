@@ -83,7 +83,6 @@ func (e NewFormParam) Value() form.Values {
 }
 
 func (g *Guard) NewForm(ctx *context.Context) {
-
 	var (
 		previous      = ctx.FormValue(form.PreviousKey)
 		panel, prefix = g.table(ctx)
@@ -97,9 +96,10 @@ func (g *Guard) NewForm(ctx *context.Context) {
 		return
 	}
 
-	fromList := utils.IsInfoUrl(previous)
-	param := parameter.GetParamFromURL(previous, panel.GetInfo().DefaultPageSize,
-		panel.GetInfo().GetSort(), panel.GetPrimaryKey().Name)
+	fromList  := utils.IsInfoUrl(previous)
+	infoPanel := panel.GetInfo()
+	param := parameter.GetParamFromURL(previous, infoPanel.DefaultPageSize,
+		infoPanel.GetSort(), panel.GetPrimaryKey().Name)
 
 	if fromList {
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())

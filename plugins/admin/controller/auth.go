@@ -87,7 +87,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 func (h *Handler) Logout(ctx *context.Context) {
 	err := auth.DelCookie(ctx, db.GetConnection(h.services))
 	if err != nil {
-		logger.Error("logout error", err)
+		logger.Error("user logout error:", err)
 	}
 	ctx.AddHeader("Location", h.config.Url(config.GetLoginUrl()))
 	ctx.SetStatusCode(302)

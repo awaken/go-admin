@@ -5,9 +5,6 @@
 package auth
 
 import (
-	"net/http"
-	"net/url"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/constant"
@@ -19,6 +16,9 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	template2 "github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 // Invoker contains the callback functions which are used
@@ -49,23 +49,23 @@ func DefaultInvoker(conn db.Connection) *Invoker {
 				}, ``)
 				return
 			}
-			param := ""
-			if ref := ctx.Referer(); ref != "" {
+
+			loginUrl := config.GetLoginUrl()
+			param    := ""
+			ref      := ctx.Referer()
+
+			if ref != "" && !strings.HasSuffix(ref, config.Prefix()) && !strings.HasSuffix(ref, loginUrl) {
 				param = "?ref=" + url.QueryEscape(ref)
 			}
 
-			u := config.Url(config.GetLoginUrl() + param)
+			u := config.Url(loginUrl + param)
 			_, err := ctx.Request.Cookie(DefaultCookieKey)
-			referer := ctx.Referer()
+			if err == nil { ctx.SetCookie(DefaultCookie()) }
 
-			if (ctx.Headers(constant.PjaxHeader) == "" && ctx.Method() != "GET") ||
-				err != nil ||
-				referer == "" {
-				ctx.Write(302, map[string]string{
-					"Location": u,
-				}, ``)
+			if err != nil || ref == "" || (ctx.Headers(constant.PjaxHeader) == "" && ctx.Method() != "GET") {
+				ctx.Write(302, map[string]string{ "Location": u }, ``)
 			} else {
-				msg := language.Get("login overdue, please login again")
+				msg := language.Get("invalid web session, please login again")
 				ctx.HTML(http.StatusOK, `<script>
 	if (typeof(swal) === "function") {
 		swal({

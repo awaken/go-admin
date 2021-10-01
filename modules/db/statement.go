@@ -113,16 +113,19 @@ func (sql *SQL) Table(table string) *SQL {
 
 // Select set select fields.
 func (sql *SQL) Select(fields ...string) *SQL {
-	sql.Fields = fields
-	sql.Functions = make([]string, len(fields))
-	r := utils.RegSqlSelect
-	for k, field := range fields {
-		res := r.FindAllStringSubmatch(field, -1)
-		if len(res) > 0 && len(res[0]) > 2 {
-			sql.Functions[k] = res[0][1]
-			sql.Fields[k] = res[0][2]
+	funcs := make([]string, len(fields))
+	rex   := utils.RexSqlSelect
+	for i, field := range fields {
+		m := rex.FindAllStringSubmatch(field, -1)		// TODO: optimize, it seems too much, given that we are using only the first matching result!
+		if len(m) > 0 {
+			if s := m[0]; len(s) > 2 {
+				funcs [i] = s[1]
+				fields[i] = s[2]
+			}
 		}
 	}
+	sql.Fields    = fields
+	sql.Functions = funcs
 	return sql
 }
 

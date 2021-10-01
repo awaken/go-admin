@@ -295,7 +295,7 @@ func GenerateTables(outputPath, packageName string, tables []string, isNew bool)
 				commentStr += `
 `
 			}
-			commentStr += fmt.Sprintf(`// "%s" => http://localhost:9033/admin/info/%s`, lowerTable, lowerTable)
+			commentStr += fmt.Sprintf(`// "%s" => http://localhost:3333/ui/info/%s`, lowerTable, lowerTable)
 		}
 	}
 

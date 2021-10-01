@@ -33,18 +33,18 @@ func (h *Handler) ShowForm(ctx *context.Context) {
 }
 
 func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix string, param parameter.Parameters, isEdit bool, animation ...bool) {
-
 	panel := h.table(prefix, ctx)
+	f     := panel.GetForm()
 
-	if panel.GetForm().HasError() {
-		if panel.GetForm().PageErrorHTML != template2.HTML("") {
+	if f.HasError() {
+		if f.PageErrorHTML != template2.HTML("") {
 			h.HTML(ctx, auth.Auth(ctx),
-				types.Panel{Content: panel.GetForm().PageErrorHTML}, template.ExecuteOptions{Animation: param.Animation})
+				types.Panel{Content: f.PageErrorHTML}, template.ExecuteOptions{Animation: param.Animation})
 			return
 		}
 		h.HTML(ctx, auth.Auth(ctx),
-			template.WarningPanel(panel.GetForm().PageError.Error(),
-				template.GetPageTypeFromPageError(panel.GetForm().PageError)), template.ExecuteOptions{Animation: param.Animation})
+			template.WarningPanel(f.PageError.Error(),
+			template.GetPageTypeFromPageError(f.PageError)), template.ExecuteOptions{Animation: param.Animation})
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 	if err != nil {
 		logger.Error("receive data error: ", err)
 		h.HTML(ctx, user, template.
-			WarningPanelWithDescAndTitle(err.Error(), panel.GetForm().Description, panel.GetForm().Title),
+			WarningPanelWithDescAndTitle(err.Error(), f.Description, f.Title),
 			template.ExecuteOptions{Animation: alert == "" || ((len(animation) > 0) && animation[0])})
 
 		if isEdit {
@@ -82,8 +82,6 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 	if referer != "" && !utils.IsInfoUrl(referer) && !utils.IsEditUrl(referer, ctx.Query(constant.PrefixKey)) {
 		infoUrl = referer
 	}
-
-	f := panel.GetForm()
 
 	isNotIframe := ctx.Query(constant.IframeKey) != "true"
 

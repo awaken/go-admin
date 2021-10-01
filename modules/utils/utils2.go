@@ -8,10 +8,16 @@ import (
 var (
 	rexCache Cache
 
-	rexCompareVersion, rexInfoUrl, rexFormUrl,	rexTypeName, rexTypeName2, rexCleanPassword, rexIsoDate *regexp.Regexp
+	rexCompareVersion, rexInfoUrl, rexFormUrl, rexTypeName, rexTypeName2, rexMaskPassword, rexIsoDate *regexp.Regexp
 
-	RexCommonQuery, RegSqlSelect, RexMenuActiveClass, RexPathEdit, RexPathNew, RexPathLogout *regexp.Regexp
+	RexCommonQuery, RexSqlSelect, RexMenuActiveClass *regexp.Regexp
+
+	logoutUrl string
 )
+
+func IsLogoutUrl(s string) bool {
+	return s == logoutUrl
+}
 
 func IsInfoUrl(s string) bool {
 	sub := rexInfoUrl.FindStringSubmatch(s)
@@ -19,13 +25,11 @@ func IsInfoUrl(s string) bool {
 }
 
 func IsNewUrl(s string, p string) bool {
-	reg, _ := CachedRex("info/" + p + "/new")
-	return reg.MatchString(s)
+	return strings.Contains(s, "info/" + p + "/new")
 }
 
 func IsEditUrl(s string, p string) bool {
-	reg, _ := CachedRex("info/" + p + "/edit")
-	return reg.MatchString(s)
+	return strings.Contains(s, "info/" + p + "/edit")
 }
 
 func IsFormUrl(s string) bool {
@@ -37,11 +41,9 @@ func GetTypeName(typeName string) string {
 	return strings.TrimSpace(strings.Title(strings.ToLower(rexTypeName2.ReplaceAllString(typeName, ""))))
 }
 
-func CleanContentToLog(input string) string {
-	return rexCleanPassword.ReplaceAllString(input, `$1:["****"]`)
+func MaskContentToLog(input string) string {
+	return rexMaskPassword.ReplaceAllString(input, `$1:["****"]`)
 }
-
-var _ = regexp.MustCompile("^([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])T([0-9][0-9]:[0-9][0-9]:[0-9][0-9])(?:\\.[0-9]*)?(?:Z|[-+][0-9][0-9]:?[0-9][0-9])$")
 
 func StrIsoDateToDateTime(s string) string {
 	if m := rexIsoDate.FindStringSubmatch(s); len(m) >= 3 {
@@ -50,23 +52,22 @@ func StrIsoDateToDateTime(s string) string {
 	return s
 }
 
-func InitUiRex(size int) {
-	rexCache = MustNewCache(size)
+func InitUtils(cacheSize int, urler func(string) string) {
+	rexCache = MustNewCache(cacheSize)
 
 	RexCommonQuery     = regexp.MustCompile(`\\((.*)\\)`)
-	RegSqlSelect       = regexp.MustCompile(`(.*?)\((.*?)\)`)
+	RexSqlSelect       = regexp.MustCompile(`(.*?)\((.*?)\)`)
 	RexMenuActiveClass = regexp.MustCompile(`\?(.*)`)
-	RexPathEdit        = regexp.MustCompile(`/edit`)
-	RexPathNew         = regexp.MustCompile(`/new`)
-	RexPathLogout      = regexp.MustCompile(`/logout`)
 
 	rexCompareVersion  = regexp.MustCompile(`-(.*)`)
 	rexInfoUrl         = regexp.MustCompile(`(.*?)info/(.*?)$`)
 	rexFormUrl         = regexp.MustCompile(`info/(.*)/(new|edit)`)
 	rexTypeName        = regexp.MustCompile(`\(.*?\)`)
 	rexTypeName2       = regexp.MustCompile(`unsigned(.*)`)
-	rexCleanPassword   = regexp.MustCompile(`("password[^"]*")\s*:\s*\[\s*".*?"\s*]`)
+	rexMaskPassword    = regexp.MustCompile(`("password[^"]*")\s*:\s*\[\s*".*?"\s*]`)
 	rexIsoDate         = regexp.MustCompile("^([0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])T([0-9][0-9]:[0-9][0-9]:[0-9][0-9])(?:\\.[0-9]*)?(?:Z|[-+][0-9][0-9]:?[0-9][0-9])$")
+
+	logoutUrl = urler("/logout")
 }
 
 func CachedRex(rexStr string) (*regexp.Regexp, error) {

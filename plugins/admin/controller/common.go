@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/GoAdminGroup/go-admin/template/types/action"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	c "github.com/GoAdminGroup/go-admin/modules/config"
@@ -166,21 +164,21 @@ func (h *Handler) HTML(ctx *context.Context, user models.UserModel, panel types.
 func (h *Handler) HTMLPlug(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string,
 	options ...template.ExecuteOptions) {
 	var btns types.Buttons
-	if plugName == "" {
+	//if plugName == "" {
 		btns = (*h.navButtons).CheckPermission(user)
-	} else {
-		btns = (*h.navButtons).Copy().
-			RemoveToolNavButton().
-			RemoveSiteNavButton().
-			RemoveInfoNavButton().
-			Add(types.GetDropDownButton("", icon.Gear, []*types.NavDropDownItemButton{
-				types.GetDropDownItemButton(language.GetFromHtml("plugin setting"),
-					action.Jump(h.config.Url("/info/plugin_"+plugName+"/edit"))),
-				types.GetDropDownItemButton(language.GetFromHtml("menus manage"),
-					action.Jump(h.config.Url("/menu?__plugin_name="+plugName))),
-			})).
-			CheckPermission(user)
-	}
+	//} else {
+	//	btns = (*h.navButtons).Copy().
+	//		RemoveToolNavButton().
+	//		RemoveSiteNavButton().
+	//		RemoveInfoNavButton().
+	//		Add(types.GetDropDownButton("", icon.Gear, []*types.NavDropDownItemButton{
+	//			types.GetDropDownItemButton(language.GetFromHtml("plugin setting"),
+	//				action.Jump(h.config.Url("/info/plugin_"+plugName+"/edit"))),
+	//			types.GetDropDownItemButton(language.GetFromHtml("menus manage"),
+	//				action.Jump(h.config.Url("/menu?__plugin_name="+plugName))),
+	//		})).
+	//		CheckPermission(user)
+	//}
 	buf := h.ExecuteWithBtns(ctx, user, panel, plugName, btns, options...)
 	ctx.HTML(http.StatusOK, buf.String())
 }

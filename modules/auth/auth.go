@@ -5,6 +5,8 @@
 package auth
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"net/http"
 	"sync"
 
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
@@ -67,8 +69,20 @@ func SetCookie(ctx *context.Context, user models.UserModel, conn db.Connection) 
 	return ses.Add("user_id", user.Id)
 }
 
+func DefaultCookie() *http.Cookie {
+	return &http.Cookie{
+		Name    : DefaultCookieKey,
+		Path    : "/",
+		HttpOnly: true,
+		Domain  : config.GetDomain(),
+		MaxAge  : -1,
+	}
+}
+
 // DelCookie delete the cookie from Context.
 func DelCookie(ctx *context.Context, conn db.Connection) error {
+	ctx.SetCookie(DefaultCookie())
+
 	ses, err := InitSession(ctx, conn)
 
 	if err != nil {

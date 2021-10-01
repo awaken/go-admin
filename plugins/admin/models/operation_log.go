@@ -44,7 +44,7 @@ func (t OperationLogModel) New(userId int64, path, method, ip, input string) Ope
 		"path":    path,
 		"method":  method,
 		"ip":      ip,
-		"input":   utils.CleanContentToLog(input),
+		"input":   utils.MaskContentToLog(input),
 	})
 
 	t.Id = id
