@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	// ServerHost    = "http://localhost:8055"
-	// ServerHostApi = "http://localhost:8055/api"
+	ServerHost    = "http://localhost:3333"
+	ServerHostApi = "http://localhost:3333/api"
 
-	ServerHost    = "https://www.go-admin.cn"
-	ServerHostApi = "https://www.go-admin.cn/api"
+	//ServerHost    = "https://www.go-admin.cn"
+	//ServerHostApi = "https://www.go-admin.cn/api"
 )
 
 type LoginRes struct {

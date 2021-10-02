@@ -97,9 +97,27 @@ func (ses *Session) UseDriver(driver PersistenceDriver) {
 	ses.Driver = driver
 }
 
+func (ses *Session) load(ctx *context.Context) (bool, error) {
+	if cookie, err := ctx.Request.Cookie(ses.Cookie); err == nil && cookie.Value != "" {
+		ses.Sid = cookie.Value
+		valueFromDriver, err := ses.Driver.Load(cookie.Value)
+		if err != nil {
+			return false, err
+		}
+		if len(valueFromDriver) > 0 {
+			ses.Values = valueFromDriver
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 // StartCtx return a Session from the given Context.
 func (ses *Session) StartCtx(ctx *context.Context) (*Session, error) {
-	if cookie, err := ctx.Request.Cookie(ses.Cookie); err == nil && cookie.Value != "" {
+	ok, err := ses.load(ctx)
+	if err != nil { return nil, err }
+	if !ok { ses.Sid = modules.Uuid() }
+	/*if cookie, err := ctx.Request.Cookie(ses.Cookie); err == nil && cookie.Value != "" {
 		ses.Sid = cookie.Value
 		valueFromDriver, err := ses.Driver.Load(cookie.Value)
 		if err != nil {
@@ -110,24 +128,36 @@ func (ses *Session) StartCtx(ctx *context.Context) (*Session, error) {
 		}
 	} else {
 		ses.Sid = modules.Uuid()
-	}
+	}*/
 	ses.Context = ctx
 	return ses, nil
 }
 
-// InitSession return the default Session.
-func InitSession(ctx *context.Context, conn db.Connection) (*Session, error) {
-
-	sessions := new(Session)
-	sessions.UpdateConfig(Config{
+func initSession(conn db.Connection) *Session {
+	ses := new(Session)
+	ses.UpdateConfig(Config{
 		Expires: time.Second * time.Duration(config.GetSessionLifeTime()),
 		Cookie:  DefaultCookieKey,
 	})
 
-	sessions.UseDriver(newDBDriver(conn))
-	sessions.Values = make(map[string]interface{})
+	ses.UseDriver(newDBDriver(conn))
+	ses.Values = make(map[string]interface{})
 
-	return sessions.StartCtx(ctx)
+	return ses
+}
+
+// InitSession return the default Session.
+func InitSession(ctx *context.Context, conn db.Connection) (*Session, error) {
+	return initSession(conn).StartCtx(ctx)
+}
+
+// LoadSession return the default Session, only if already exists.
+func LoadSession(ctx *context.Context, conn db.Connection) (*Session, error) {
+	ses := initSession(conn)
+	ok, err := ses.load(ctx)
+	if err != nil { return nil, err }
+	if !ok { return nil, nil }
+	return ses, nil
 }
 
 // DBDriver is a driver which uses database as a persistence tool.

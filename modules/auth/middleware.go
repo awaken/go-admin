@@ -7,7 +7,6 @@ package auth
 import (
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/errors"
 	"github.com/GoAdminGroup/go-admin/modules/language"
@@ -51,8 +50,8 @@ func DefaultInvoker(conn db.Connection) *Invoker {
 			}
 
 			loginUrl := config.GetLoginUrl()
-			param    := ""
 			ref      := ctx.Referer()
+			param    := ""
 
 			if ref != "" && !strings.HasSuffix(ref, config.Prefix()) && !strings.HasSuffix(ref, loginUrl) {
 				param = "?ref=" + url.QueryEscape(ref)
@@ -62,7 +61,7 @@ func DefaultInvoker(conn db.Connection) *Invoker {
 			_, err := ctx.Request.Cookie(DefaultCookieKey)
 			if err == nil { ctx.SetCookie(DefaultCookie()) }
 
-			if err != nil || ref == "" || (ctx.Headers(constant.PjaxHeader) == "" && ctx.Method() != "GET") {
+			if err != nil || ref == "" || ctx.IsDataRequest() {
 				ctx.Write(302, map[string]string{ "Location": u }, ``)
 			} else {
 				msg := language.Get("invalid web session, please login again")
@@ -85,7 +84,7 @@ func DefaultInvoker(conn db.Connection) *Invoker {
 			}
 		},
 		permissionDenyCallback: func(ctx *context.Context) {
-			if ctx.Headers(constant.PjaxHeader) == "" && ctx.Method() != "GET" {
+			if ctx.IsDataRequest() {
 				ctx.JSON(http.StatusForbidden, map[string]interface{}{
 					"code": http.StatusForbidden,
 					"msg":  language.Get(errors.PermissionDenied),

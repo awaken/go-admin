@@ -31,7 +31,6 @@ func (h *Handler) Auth(ctx *context.Context) {
 
 	if capDriver, ok := h.captchaConfig["driver"]; ok {
 		capt, ok := captcha.Get(capDriver)
-
 		if ok {
 			if !capt.Validate(ctx.FormValue("token")) {
 				response.BadRequest(ctx, "wrong captcha")
@@ -95,6 +94,12 @@ func (h *Handler) Logout(ctx *context.Context) {
 
 // ShowLogin show the login page.
 func (h *Handler) ShowLogin(ctx *context.Context) {
+	// TODO: check if already logged in!!!
+	ses, _ := auth.LoadSession(ctx, db.GetConnection(h.services))
+	if ses != nil {
+		ctx.Write(302, map[string]string{ "Location": config.PrefixFixSlash() }, ``)
+		return
+	}
 
 	tmpl, name := template.GetComp("login").GetTemplate()
 	buf := new(bytes.Buffer)
@@ -116,6 +121,6 @@ func (h *Handler) ShowLogin(ctx *context.Context) {
 		ctx.HTML(http.StatusOK, buf.String())
 	} else {
 		logger.Error(err)
-		ctx.HTML(http.StatusOK, "parse template error (；′⌒`)")
+		ctx.HTML(http.StatusOK, "error: cannot parse login template")
 	}
 }

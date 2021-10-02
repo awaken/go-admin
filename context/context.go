@@ -112,6 +112,10 @@ func (ctx *Context) Method() string {
 	return ctx.Request.Method
 }
 
+func (ctx *Context) IsDataRequest() bool {
+	return ctx.Headers(constant.PjaxHeader) == "" && ctx.Method() != "GET"
+}
+
 // NewContext used in adapter which return a Context with request
 // and slice of UserValue and a default Response.
 func NewContext(req *http.Request) *Context {
