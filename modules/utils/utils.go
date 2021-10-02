@@ -310,7 +310,7 @@ func FileExist(path string) bool {
 
 // TimeSincePro calculates the time interval and generate full user-friendly string.
 func TimeSincePro(then time.Time, m map[string]string) string {
-	now := time.Now()
+	now  := time.Now()
 	diff := now.Unix() - then.Unix()
 
 	if then.After(now) {

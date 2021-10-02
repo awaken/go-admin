@@ -3,6 +3,7 @@ package utils
 import (
 	"regexp"
 	"strings"
+	"time"
 )
 
 var (
@@ -50,6 +51,10 @@ func StrIsoDateToDateTime(s string) string {
 		return m[1] + " " + m[2]
 	}
 	return s
+}
+
+func NowStr() string {
+	return time.Now().UTC().Format("2006-01-02 15:04:05")
 }
 
 func InitUtils(cacheSize int, urler func(string) string) {

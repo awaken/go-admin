@@ -34,7 +34,6 @@ func (g *Guard) table(ctx *context.Context) (table.Table, string) {
 }
 
 func (g *Guard) CheckPrefix(ctx *context.Context) {
-
 	prefix := ctx.Query(constant.PrefixKey)
 
 	if _, ok := g.tableList[prefix]; !ok {

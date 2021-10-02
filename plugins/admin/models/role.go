@@ -2,17 +2,15 @@ package models
 
 import (
 	"database/sql"
-	"strconv"
-	"time"
-
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+	"strconv"
 )
 
 // RoleModel is role model structure.
 type RoleModel struct {
 	Base
-
 	Id        int64
 	Name      string
 	Slug      string
@@ -62,28 +60,24 @@ func (t RoleModel) IsSlugExist(slug string, id string) bool {
 
 // New create a role model.
 func (t RoleModel) New(name, slug string) (RoleModel, error) {
-
 	id, err := t.WithTx(t.Tx).Table(t.TableName).Insert(dialect.H{
 		"name": name,
 		"slug": slug,
 	})
-
 	t.Id = id
 	t.Name = name
 	t.Slug = slug
-
 	return t, err
 }
 
 // Update update the role model.
 func (t RoleModel) Update(name, slug string) (int64, error) {
-
 	return t.WithTx(t.Tx).Table(t.TableName).
 		Where("id", "=", t.Id).
 		Update(dialect.H{
 			"name":       name,
 			"slug":       slug,
-			"updated_at": time.Now().Format("2006-01-02 15:04:05"),
+			"updated_at": utils.NowStr(),
 		})
 }
 

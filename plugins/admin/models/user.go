@@ -2,17 +2,15 @@ package models
 
 import (
 	"database/sql"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"net/url"
+	"strconv"
+	"strings"
 )
 
 // UserModel is user model structure.
@@ -397,7 +395,7 @@ func (t UserModel) Update(username, password, name, email, disabled, avatar stri
 	fieldValues := dialect.H{
 		"username":   username,
 		"name":       name,
-		"updated_at": time.Now().UTC().Format("2006-01-02 15:04:05"),
+		"updated_at": utils.NowStr(),
 	}
 
 	if email != "" {

@@ -2,11 +2,10 @@ package models
 
 import (
 	"encoding/json"
-	"strconv"
-	"time"
-
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+	"strconv"
 )
 
 // MenuModel is menu model structure.
@@ -96,7 +95,7 @@ func (t MenuModel) Update(title, icon, uri, header, pluginName string, parentId 
 			"plugin_name": pluginName,
 			"uri":         uri,
 			"header":      header,
-			"updated_at":  time.Now().Format("2006-01-02 15:04:05"),
+			"updated_at":  utils.NowStr(),
 		})
 }
 

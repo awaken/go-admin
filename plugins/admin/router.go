@@ -4,7 +4,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 	"github.com/GoAdminGroup/go-admin/template"
 )
@@ -23,11 +22,11 @@ func (admin *Admin) initRouter() *Admin {
 	//route.GET("/install", admin.handler.ShowInstall)
 	//route.POST("/install/database/check", admin.handler.CheckDatabase)
 
-	checkRepeatedPath := make([]string, 0)
+	checkRepeatedPath := make(map[string]struct{}, 32)
 	for _, themeName := range template.Themes() {
 		for _, path := range template.Get(themeName).GetAssetList() {
-			if !utils.InArray(checkRepeatedPath, path) {
-				checkRepeatedPath = append(checkRepeatedPath, path)
+			if _, ok := checkRepeatedPath[path]; !ok {
+				checkRepeatedPath[path] = struct{}{}
 				route.GET("/assets"+path, admin.handler.Assets)
 			}
 		}
@@ -82,7 +81,6 @@ func (admin *Admin) initRouter() *Admin {
 	route.ANY("/operation/:__goadmin_op_id", auth.Middleware(admin.Conn), admin.handler.Operation)
 
 	if config.GetOpenAdminApi() {
-
 		// crud json apis
 		apiRoute := route.Group("/api", auth.Middleware(admin.Conn), admin.guardian.CheckPrefix)
 		apiRoute.GET("/list/:__prefix", admin.handler.ApiList).Name("api_info")

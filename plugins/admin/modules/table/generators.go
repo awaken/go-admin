@@ -4,12 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	tmpl "html/template"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/collection"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -31,6 +25,10 @@ import (
 	selection "github.com/GoAdminGroup/go-admin/template/types/form/select"
 	"github.com/GoAdminGroup/html"
 	"golang.org/x/crypto/bcrypt"
+	tmpl "html/template"
+	"net/url"
+	"strconv"
+	"strings"
 )
 
 type SystemTable struct {
@@ -695,7 +693,7 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 		_, err := s.connection().Table("goadmin_permissions").
 			Where("id", "=", values.Get("id")).
 			Update(dialect.H{
-				"updated_at": time.Now().UTC().Format("2006-01-02 15:04:05"),
+				"updated_at": utils.NowStr(),
 			})
 
 		if db.CheckError(err, db.UPDATE) {

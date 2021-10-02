@@ -9,11 +9,10 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/service"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
@@ -27,9 +26,7 @@ func Auth(ctx *context.Context) models.UserModel {
 
 // Check check the password and username and return the user model.
 func Check(password string, username string, conn db.Connection) (user models.UserModel, ok bool) {
-
 	user = models.User().SetConn(conn).FindByUserName(username)
-
 	if user.IsEmpty() || user.IsDisabled() {
 		ok = false
 	} else {
@@ -51,21 +48,16 @@ func comparePassword(comPwd, pwdHash string) bool {
 
 // EncodePassword encode the password.
 func EncodePassword(pwd []byte) string {
-	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
-	if err != nil {
-		return ""
-	}
+	hash, _ := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
 	return string(hash)
 }
 
 // SetCookie set the cookie.
 func SetCookie(ctx *context.Context, user models.UserModel, conn db.Connection) error {
 	ses, err := InitSession(ctx, conn)
-
 	if err != nil {
 		return err
 	}
-
 	return ses.Add("user_id", user.Id)
 }
 
@@ -82,13 +74,10 @@ func DefaultCookie() *http.Cookie {
 // DelCookie delete the cookie from Context.
 func DelCookie(ctx *context.Context, conn db.Connection) error {
 	ctx.SetCookie(DefaultCookie())
-
 	ses, err := InitSession(ctx, conn)
-
 	if err != nil {
 		return err
 	}
-
 	return ses.Clear()
 }
 

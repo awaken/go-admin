@@ -4,13 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html"
-	"html/template"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/constant"
@@ -23,6 +16,11 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	form2 "github.com/GoAdminGroup/go-admin/template/types/form"
+	"html"
+	"html/template"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
 type FieldOption struct {
@@ -865,7 +863,7 @@ func (f *FormPanel) FieldPostFilterFn(post PostFieldFilterFn) *FormPanel {
 
 func (f *FormPanel) FieldNow() *FormPanel {
 	f.FieldList[f.curFieldListIndex].PostFilterFn = func(value PostFieldModel) interface{} {
-		return time.Now().Format("2006-01-02 15:04:05")
+		return utils.NowStr()
 	}
 	return f
 }
@@ -873,7 +871,7 @@ func (f *FormPanel) FieldNow() *FormPanel {
 func (f *FormPanel) FieldNowWhenUpdate() *FormPanel {
 	f.FieldList[f.curFieldListIndex].PostFilterFn = func(value PostFieldModel) interface{} {
 		if value.IsUpdate() {
-			return time.Now().Format("2006-01-02 15:04:05")
+			return utils.NowStr()
 		}
 		return value.Value.Value()
 	}
@@ -883,7 +881,7 @@ func (f *FormPanel) FieldNowWhenUpdate() *FormPanel {
 func (f *FormPanel) FieldNowWhenInsert() *FormPanel {
 	f.FieldList[f.curFieldListIndex].PostFilterFn = func(value PostFieldModel) interface{} {
 		if value.IsCreate() {
-			return time.Now().Format("2006-01-02 15:04:05")
+			return utils.NowStr()
 		}
 		return value.Value.Value()
 	}
