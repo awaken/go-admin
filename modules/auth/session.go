@@ -117,18 +117,6 @@ func (ses *Session) StartCtx(ctx *context.Context) (*Session, error) {
 	ok, err := ses.load(ctx)
 	if err != nil { return nil, err }
 	if !ok { ses.Sid = modules.Uuid() }
-	/*if cookie, err := ctx.Request.Cookie(ses.Cookie); err == nil && cookie.Value != "" {
-		ses.Sid = cookie.Value
-		valueFromDriver, err := ses.Driver.Load(cookie.Value)
-		if err != nil {
-			return nil, err
-		}
-		if len(valueFromDriver) > 0 {
-			ses.Values = valueFromDriver
-		}
-	} else {
-		ses.Sid = modules.Uuid()
-	}*/
 	ses.Context = ctx
 	return ses, nil
 }
