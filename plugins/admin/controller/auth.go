@@ -94,7 +94,6 @@ func (h *Handler) Logout(ctx *context.Context) {
 
 // ShowLogin show the login page.
 func (h *Handler) ShowLogin(ctx *context.Context) {
-	// TODO: check if already logged in!!!
 	ses, _ := auth.LoadSession(ctx, db.GetConnection(h.services))
 	if ses != nil {
 		ctx.Write(302, map[string]string{ "Location": config.PrefixFixSlash() }, ``)
