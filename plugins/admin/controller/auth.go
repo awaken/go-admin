@@ -96,7 +96,8 @@ func (h *Handler) Logout(ctx *context.Context) {
 func (h *Handler) ShowLogin(ctx *context.Context) {
 	ses, _ := auth.LoadSession(ctx, db.GetConnection(h.services))
 	if ses != nil {
-		ctx.Write(302, map[string]string{ "Location": config.PrefixFixSlash() }, ``)
+		ctx.AddHeader("Location", config.PrefixFixSlash())
+		ctx.SetStatusCode(302)
 		return
 	}
 
