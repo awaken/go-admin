@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -755,6 +756,7 @@ func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) e
 				defer func() {
 					if err := recover(); err != nil {
 						logger.Error(err)
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 
@@ -826,6 +828,7 @@ func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) e
 				defer func() {
 					if err := recover(); err != nil {
 						logger.Error(err)
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 
@@ -989,8 +992,9 @@ func (tb *DefaultTable) DeleteData(ctx *context.Context, id string) error {
 		defer func() {
 			go func() {
 				defer func() {
-					if recoverErr := recover(); recoverErr != nil {
-						logger.Error(recoverErr)
+					if r := recover(); r != nil {
+						logger.Error(r)
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 
@@ -1005,8 +1009,9 @@ func (tb *DefaultTable) DeleteData(ctx *context.Context, id string) error {
 		defer func() {
 			go func() {
 				defer func() {
-					if recoverErr := recover(); recoverErr != nil {
-						logger.Error(recoverErr)
+					if r := recover(); r != nil {
+						logger.Error(r)
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 

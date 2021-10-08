@@ -6,6 +6,7 @@ import (
 	"html"
 	"html/template"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -732,6 +733,8 @@ func (h Handler) Wrap() context.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				logger.Error(err)
+				logger.Error(string(debug.Stack()))
+
 				ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 					"code": 500,
 					"data": "",

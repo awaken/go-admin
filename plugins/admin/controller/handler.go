@@ -28,7 +28,7 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 
 	if err := recover(); err != nil {
 		logger.Error(err)
-		logger.Error(string(debug.Stack()))		// NOTE: keep commented in prod (uncomment only for debugging)
+		logger.Error(string(debug.Stack()))		// TODO: keep commented in prod??? (uncomment only for debugging)
 
 		var (
 			errMsg string

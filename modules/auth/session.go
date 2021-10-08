@@ -172,7 +172,6 @@ func (driver *DBDriver) Load(sid string) (map[string]interface{}, error) {
 }
 
 func (driver *DBDriver) deleteOverdueSession() {
-
 	defer func() {
 		if err := recover(); err != nil {
 			logger.Error(err)

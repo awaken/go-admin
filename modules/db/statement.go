@@ -366,7 +366,6 @@ type TxFn func(tx *dbsql.Tx) (error, map[string]interface{})
 // WithTransaction call the callback function within the transaction and
 // catch the error.
 func (sql *SQL) WithTransaction(fn TxFn) (res map[string]interface{}, err error) {
-
 	tx := sql.diver.BeginTxAndConnection(sql.conn)
 
 	defer func() {
@@ -390,7 +389,6 @@ func (sql *SQL) WithTransaction(fn TxFn) (res map[string]interface{}, err error)
 // WithTransactionByLevel call the callback function within the transaction
 // of given transaction level and catch the error.
 func (sql *SQL) WithTransactionByLevel(level dbsql.IsolationLevel, fn TxFn) (res map[string]interface{}, err error) {
-
 	tx := sql.diver.BeginTxWithLevelAndConnection(sql.conn, level)
 
 	defer func() {
@@ -626,7 +624,6 @@ func (sql *SQL) clean() {
 
 // RecycleSQL clear the SQL and put into the pool.
 func RecycleSQL(sql *SQL) {
-
 	logger.LogSQL(sql.Statement, sql.Args)
 
 	sql.clean()
