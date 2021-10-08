@@ -76,11 +76,11 @@ func (h *Handler) showTableData(ctx *context.Context, prefix string, params para
 	var (
 		paramStr = params.DeleteIsAll().GetRouteParamStr()
 
-		editUrl   = modules.AorEmpty(!panel.GetInfo().IsHideEditButton, h.routePathWithPrefix(urlNamePrefix+"show_edit", prefix)+paramStr)
-		newUrl    = modules.AorEmpty(!panel.GetInfo().IsHideNewButton, h.routePathWithPrefix(urlNamePrefix+"show_new", prefix)+paramStr)
-		deleteUrl = modules.AorEmpty(!panel.GetInfo().IsHideDeleteButton, h.routePathWithPrefix(urlNamePrefix+"delete", prefix)+paramStr)
-		exportUrl = modules.AorEmpty(!panel.GetInfo().IsHideExportButton, h.routePathWithPrefix(urlNamePrefix+"export", prefix)+paramStr)
-		detailUrl = modules.AorEmpty(!panel.GetInfo().IsHideDetailButton, h.routePathWithPrefix(urlNamePrefix+"detail", prefix)+paramStr)
+		editUrl   = modules.AorEmpty(!panel.GetInfo().IsHideEditButton, h.routePathWithPrefix(urlNamePrefix + "show_edit", prefix)+paramStr)
+		newUrl    = modules.AorEmpty(!panel.GetInfo().IsHideNewButton, h.routePathWithPrefix(urlNamePrefix + "show_new", prefix)+paramStr)
+		deleteUrl = modules.AorEmpty(!panel.GetInfo().IsHideDeleteButton, h.routePathWithPrefix(urlNamePrefix + "delete", prefix)+paramStr)
+		exportUrl = modules.AorEmpty(!panel.GetInfo().IsHideExportButton, h.routePathWithPrefix(urlNamePrefix + "export", prefix)+paramStr)
+		detailUrl = modules.AorEmpty(!panel.GetInfo().IsHideDetailButton, h.routePathWithPrefix(urlNamePrefix + "detail", prefix)+paramStr)
 
 		infoUrl   = h.routePathWithPrefix(urlNamePrefix+"info", prefix)
 		updateUrl = h.routePathWithPrefix(urlNamePrefix+"update", prefix) + paramStr
@@ -88,11 +88,11 @@ func (h *Handler) showTableData(ctx *context.Context, prefix string, params para
 		user = auth.Auth(ctx)
 	)
 
-	editUrl = user.GetCheckPermissionByUrlMethod(editUrl, h.route(urlNamePrefix+"show_edit").Method())
-	newUrl = user.GetCheckPermissionByUrlMethod(newUrl, h.route(urlNamePrefix+"show_new").Method())
-	deleteUrl = user.GetCheckPermissionByUrlMethod(deleteUrl, h.route(urlNamePrefix+"delete").Method())
-	exportUrl = user.GetCheckPermissionByUrlMethod(exportUrl, h.route(urlNamePrefix+"export").Method())
-	detailUrl = user.GetCheckPermissionByUrlMethod(detailUrl, h.route(urlNamePrefix+"detail").Method())
+	editUrl = user.GetCheckPermissionByUrlMethod(editUrl, h.route(urlNamePrefix + "show_edit").Method())
+	newUrl = user.GetCheckPermissionByUrlMethod(newUrl, h.route(urlNamePrefix + "show_new").Method())
+	deleteUrl = user.GetCheckPermissionByUrlMethod(deleteUrl, h.route(urlNamePrefix + "delete").Method())
+	exportUrl = user.GetCheckPermissionByUrlMethod(exportUrl, h.route(urlNamePrefix + "export").Method())
+	detailUrl = user.GetCheckPermissionByUrlMethod(detailUrl, h.route(urlNamePrefix + "detail").Method())
 
 	return panel, panelInfo, []string{editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl, updateUrl}, nil
 }
@@ -132,7 +132,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 		allActionBtns = info.ActionButtons.CheckPermissionWhenURLAndMethodNotEmpty(user)
 	)
 
-	if actionBtns == template.HTML("") && len(allActionBtns) > 0 {
+	if actionBtns == "" && len(allActionBtns) > 0 {
 		if info.ActionButtonFold {
 			ext := template2.HTML("")
 			if deleteUrl != "" {
@@ -141,7 +141,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 					types.NewDefaultAction(`data-id='{{.Id}}' data-param='{{(index .Value "__goadmin_delete_params").Content}}' style="cursor: pointer;"`,
 						ext, "", ""), "grid-row-delete")}, allActionBtns...)
 			}
-			ext = template2.HTML("")
+			ext = ""
 			if detailUrl != "" {
 				if editUrl == "" && deleteUrl == "" {
 					ext = html.LiEl().SetClass("divider").Get()
@@ -366,11 +366,9 @@ func (h *Handler) Export(ctx *context.Context) {
 		infoData.InfoList = p.InfoList
 	} else {
 		if len(param.Id) == 0 {
-			params = parameter.GetParam(ctx.Request.URL, tableInfo.DefaultPageSize, tableInfo.SortField,
-				tableInfo.GetSort())
+			params = parameter.GetParam(ctx.Request.URL, tableInfo.DefaultPageSize, tableInfo.SortField, tableInfo.GetSort())
 			infoData, err = panel.GetData(params.WithIsAll(param.IsAll))
-			fileName = fmt.Sprintf("%s-%d-page-%s-pageSize-%s.xlsx", tableInfo.Title, time.Now().Unix(),
-				params.Page, params.PageSize)
+			fileName = fmt.Sprintf("%s-%d-page-%s-pageSize-%s.xlsx", tableInfo.Title, time.Now().Unix(), params.Page, params.PageSize)
 		} else {
 			infoData, err = panel.GetDataWithIds(parameter.GetParam(ctx.Request.URL,
 				tableInfo.DefaultPageSize, tableInfo.SortField, tableInfo.GetSort()).WithPKs(param.Id...))
@@ -383,16 +381,15 @@ func (h *Handler) Export(ctx *context.Context) {
 	}
 
 	// TODO: support any numbers of fields.
-	orders := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K",
-		"L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
+	orders := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
 
 	if len(infoData.Thead) > 26 {
 		j := -1
-		for i := 0; i < len(infoData.Thead)-26; i++ {
-			if i%26 == 0 {
-				j++
-			}
-			letter := orders[j] + orders[i%26]
+		n := len(infoData.Thead) - 26
+		for i := 0; i < n; i++ {
+			r := i % 26
+			if r == 0 { j++ }
+			letter := orders[j] + orders[r]
 			orders = append(orders, letter)
 		}
 	}
@@ -400,21 +397,24 @@ func (h *Handler) Export(ctx *context.Context) {
 	columnIndex := 0
 	for _, head := range infoData.Thead {
 		if !head.Hide {
-			f.SetCellValue(tableName, orders[columnIndex]+"1", head.Head)
+			f.SetCellValue(tableName, orders[columnIndex] + "1", head.Head)
 			columnIndex++
 		}
 	}
 
 	count := 2
 	for _, info := range infoData.InfoList {
+		strCount := strconv.Itoa(count)
 		columnIndex = 0
 		for _, head := range infoData.Thead {
 			if !head.Hide {
+				var v interface{}
 				if tableInfo.IsExportValue() {
-					f.SetCellValue(tableName, orders[columnIndex]+strconv.Itoa(count), info[head.Field].Value)
+					v = info[head.Field].Value
 				} else {
-					f.SetCellValue(tableName, orders[columnIndex]+strconv.Itoa(count), info[head.Field].Content)
+					v = info[head.Field].Content
 				}
+				f.SetCellValue(tableName, orders[columnIndex] + strCount, v)
 				columnIndex++
 			}
 		}

@@ -51,13 +51,13 @@ func Get(cfg Config) types.PaginatorAttribute {
 	}
 
 	paginator.Option = make(map[string]template.HTML, len(cfg.PageSizeList))
-	for i := 0; i < len(cfg.PageSizeList); i++ {
-		paginator.Option[cfg.PageSizeList[i]] = template.HTML("")
+	for _, p := range cfg.PageSizeList {
+		paginator.Option[p] = ""
 	}
 
-	paginator.Option[cfg.Param.PageSize] = template.HTML("selected")
+	paginator.Option[cfg.Param.PageSize] = "selected"
 
-	paginator.Pages = []map[string]string{}
+	//paginator.Pages = []map[string]string{}
 
 	var pagesArr []map[string]string
 

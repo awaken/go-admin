@@ -81,29 +81,23 @@ func (eng *Engine) Use(router interface{}) error {
 
 // AddPlugins add the plugins
 func (eng *Engine) AddPlugins(plugs ...plugins.Plugin) *Engine {
-
 	if len(plugs) == 0 {
 		return eng
 	}
-
 	for _, plug := range plugs {
 		eng.PluginList = eng.PluginList.Add(plug)
 	}
-
 	return eng
 }
 
 // AddPluginList add the plugins
 func (eng *Engine) AddPluginList(plugs plugins.Plugins) *Engine {
-
 	if len(plugs) == 0 {
 		return eng
 	}
-
 	for _, plug := range plugs {
 		eng.PluginList = eng.PluginList.Add(plug)
 	}
-
 	return eng
 }
 
@@ -315,7 +309,6 @@ func (eng *Engine) deferHandler(conn db.Connection) context.Handler {
 				if form != nil {
 					input, _ = json.Marshal((*form).Value)
 				}
-
 				models.OperationLog().SetConn(conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
 			}
 
@@ -334,7 +327,6 @@ func (eng *Engine) deferHandler(conn db.Connection) context.Handler {
 						errMsg = e.Error()
 					}
 				}
-
 				if errMsg == "" {
 					errMsg = "system error"
 				}
@@ -399,7 +391,7 @@ func (eng *Engine) addJumpNavButton(param navJumpButtonParam) *Engine {
 }
 
 func printInitMsg(msg string) {
-	logger.Info("=====> " + msg)
+	logger.Info("====> " + msg)
 }
 
 func (eng *Engine) initJumpNavButtons() {
@@ -412,13 +404,9 @@ func (eng *Engine) initJumpNavButtons() {
 }
 
 func (eng *Engine) initPlugins() {
-
 	//printInitMsg(language.Get("initialize plugins"))
-
 	eng.AddPlugins(admin.NewAdmin()).AddPluginList(plugins.Get())
-
 	var plugGenerators = make(table.GeneratorList)
-
 	for i := range eng.PluginList {
 		if eng.PluginList[i].Name() != "admin" {
 			printInitMsg("--> " + eng.PluginList[i].Name())
@@ -469,9 +457,7 @@ func (eng *Engine) initNavJumpButtonParams() []navJumpButtonParam {
 }
 
 func (eng *Engine) initSiteSetting() {
-
 	//printInitMsg(language.Get("initialize configuration"))
-
 	/*err := eng.config.Update(models.Site().
 		SetConn(eng.DefaultConnection()).
 		Init(eng.config.ToMap()).
@@ -480,7 +466,6 @@ func (eng *Engine) initSiteSetting() {
 		logger.Panic(err)
 	}*/
 	eng.Services.Add("config", config.SrvWithConfig(eng.config))
-
 	errors.Init()
 }
 
@@ -517,7 +502,6 @@ func (eng *Engine) Data(method, url string, handler context.Handler, noAuth ...b
 
 // HTML inject the route and corresponding handler wrapped by the given function to the web framework.
 func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...bool) {
-
 	var handler = func(ctx *context.Context) {
 		panel, err := fn(ctx)
 		if err != nil {
@@ -561,9 +545,7 @@ func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...b
 // HTMLFile inject the route and corresponding handler which returns the panel content of given html file path
 // to the web framework.
 func (eng *Engine) HTMLFile(method, url, path string, data map[string]interface{}, noAuth ...bool) {
-
 	var handler = func(ctx *context.Context) {
-
 		cbuf := new(bytes.Buffer)
 
 		t, err := template2.ParseFiles(path)
@@ -583,11 +565,9 @@ func (eng *Engine) HTMLFile(method, url, path string, data map[string]interface{
 		)
 
 		hasError := tmpl.ExecuteTemplate(buf, tmplName, types.NewPage(&types.NewPageParam{
-			User: user,
-			Menu: menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(eng.config.URLRemovePrefix(ctx.Path())),
-			Panel: types.Panel{
-				Content: template.HTML(cbuf.String()),
-			},
+			User:         user,
+			Menu:         menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(eng.config.URLRemovePrefix(ctx.Path())),
+			Panel:        types.Panel{ Content: template.HTML(cbuf.String()) },
 			Assets:       template.GetComponentAssetImportHTML(),
 			Buttons:      eng.NavButtons.CheckPermission(user),
 			TmplHeadHTML: template.Default().GetHeadHTML(),
@@ -625,7 +605,6 @@ func (eng *Engine) HTMLFilesNoAuth(method, url string, data map[string]interface
 // to the web framework.
 func (eng *Engine) htmlFilesHandler(data map[string]interface{}, files ...string) context.Handler {
 	return func(ctx *context.Context) {
-
 		cbuf := new(bytes.Buffer)
 
 		t, err := template2.ParseFiles(files...)
@@ -645,11 +624,9 @@ func (eng *Engine) htmlFilesHandler(data map[string]interface{}, files ...string
 		)
 
 		hasError := tmpl.ExecuteTemplate(buf, tmplName, types.NewPage(&types.NewPageParam{
-			User: user,
-			Menu: menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(eng.config.URLRemovePrefix(ctx.Path())),
-			Panel: types.Panel{
-				Content: template.HTML(cbuf.String()),
-			},
+			User:         user,
+			Menu:         menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(eng.config.URLRemovePrefix(ctx.Path())),
+			Panel:        types.Panel{ Content: template.HTML(cbuf.String()) },
 			Assets:       template.GetComponentAssetImportHTML(),
 			Buttons:      eng.NavButtons.CheckPermission(user),
 			TmplHeadHTML: template.Default().GetHeadHTML(),
@@ -667,7 +644,6 @@ func (eng *Engine) htmlFilesHandler(data map[string]interface{}, files ...string
 
 // errorPanelHTML add an error panel html to context response.
 func (eng *Engine) errorPanelHTML(ctx *context.Context, buf *bytes.Buffer, err error) {
-
 	user := auth.Auth(ctx)
 	tmpl, tmplName := template.Default().GetTemplate(ctx.IsPjax())
 

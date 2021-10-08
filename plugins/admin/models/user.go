@@ -23,8 +23,8 @@ type UserModel struct {
 	Password      string            `json:"password"`
 	Email         string            `json:"email"`
 	Avatar        string            `json:"avatar"`
-	RememberToken string            `json:"remember_token"`
 	Disabled      string            `json:"disabled"`
+	Root          string            `json:"root"`
 	Permissions   []PermissionModel `json:"permissions"`
 	MenuIds       []int64           `json:"menu_ids"`
 	Roles         []RoleModel       `json:"role"`
@@ -82,6 +82,7 @@ func (t UserModel) HasMenu() bool {
 
 // IsSuperAdmin check the user model is super admin or not.
 func (t UserModel) IsSuperAdmin() bool {
+	if t.IsRootAdmin() { return true }
 	for _, per := range t.Permissions {
 		if len(per.HttpPath) > 0 && per.HttpPath[0] == "*" && per.HttpMethod[0] == "" {
 			return true
@@ -91,14 +92,14 @@ func (t UserModel) IsSuperAdmin() bool {
 }
 
 func (t UserModel) GetCheckPermissionByUrlMethod(path, method string) string {
-	if !t.CheckPermissionByUrlMethod(path, method, url.Values{}) {
+	if !t.CheckPermissionByUrlMethod(path, method, nil) {
 		return ""
 	}
 	return path
 }
 
 func (t UserModel) IsVisitor() bool {
-	return !t.CheckPermissionByUrlMethod(config.Url("/info/normal_manager"), "GET", url.Values{})
+	return !t.CheckPermissionByUrlMethod(config.Url("/info/normal_manager"), "GET", nil)
 }
 
 func (t UserModel) HideUserCenterEntrance() bool {
@@ -114,13 +115,11 @@ func (t UserModel) Template(str string) string {
 }
 
 func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams url.Values) bool {
-
-	// path, _ = url.PathUnescape(path)
-
 	if t.IsSuperAdmin() {
 		return true
 	}
 
+	// path, _ = url.PathUnescape(path)
 	if path == "" {
 		return false
 	}
@@ -142,7 +141,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 		}
 	}
 
-	//if t.isMyRequest(method, path, params) {
+	//if t.isMySettingRequest(method, path, params) {
 	//	return true
 	//}
 
@@ -367,8 +366,9 @@ func (t UserModel) WithMenus() UserModel {
 }
 
 // New create a user model.
-func (t UserModel) New(username, password, name, email, disabled, avatar string) (UserModel, error) {
+func (t UserModel) New(username, password, name, email, disabled, root, avatar string) (UserModel, error) {
 	disabled = normUserDisabled(disabled)
+	root     = normUserRoot(root)
 
 	id, err := t.WithTx(t.Tx).Table(t.TableName).Insert(dialect.H{
 		"username" : username,
@@ -376,6 +376,7 @@ func (t UserModel) New(username, password, name, email, disabled, avatar string)
 		"name"     : name,
 		"email"    : email,
 		"disabled" : disabled,
+		"root"     : root,
 		"avatar"   : avatar,
 	})
 
@@ -385,35 +386,36 @@ func (t UserModel) New(username, password, name, email, disabled, avatar string)
 	t.Name = name
 	t.Email = email
 	t.Disabled = disabled
+	t.Root = root
 	t.Avatar = avatar
 
 	return t, err
 }
 
 // Update update the user model.
-func (t UserModel) Update(username, password, name, email, disabled, avatar string, isUpdateAvatar bool) (int64, error) {
+func (t UserModel) Update(username, password, name, email, disabled, root, avatar string, isUpdateAvatar bool) (int64, error) {
 	fieldValues := dialect.H{
-		"username":   username,
-		"name":       name,
+		"username"  : username,
 		"updated_at": utils.NowStr(),
 	}
-
+	if name != "" {
+		fieldValues["name"] = name
+	}
 	if email != "" {
 		fieldValues["email"] = email
 	}
-
 	if disabled != "" {
 		fieldValues["disabled"] = normUserDisabled(disabled)
 	}
-
-	if avatar == "" || isUpdateAvatar {
+	if root != "" {
+		fieldValues["root"] = normUserRoot(root)
+	}
+	if avatar != "" || isUpdateAvatar {
 		fieldValues["avatar"] = avatar
 	}
-
 	if password != "" {
 		fieldValues["password"] = password
 	}
-
 	return t.WithTx(t.Tx).Table(t.TableName).
 		Where("id", "=", t.Id).
 		Update(fieldValues)
@@ -421,13 +423,9 @@ func (t UserModel) Update(username, password, name, email, disabled, avatar stri
 
 // UpdatePwd update the password of the user model.
 func (t UserModel) UpdatePwd(password string) UserModel {
-
 	_, _ = t.Table(t.TableName).
 		Where("id", "=", t.Id).
-		Update(dialect.H{
-			"password": password,
-		})
-
+		Update(dialect.H{ "password": password })
 	t.Password = password
 	return t
 }
@@ -469,7 +467,6 @@ func (t UserModel) CheckRole(slug string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -489,7 +486,6 @@ func (t UserModel) CheckPermission(permission string) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -507,7 +503,7 @@ func (t UserModel) AddPermission(permissionId string) (int64, error) {
 			return t.WithTx(t.Tx).Table("goadmin_user_permissions").
 				Insert(dialect.H{
 					"permission_id": permissionId,
-					"user_id":       t.Id,
+					"user_id"      : t.Id,
 				})
 		}
 	}
@@ -522,8 +518,8 @@ func (t UserModel) MapToModel(m map[string]interface{}) UserModel {
 	t.Password, _ = m["password"].(string)
 	t.Email, _ = m["email"].(string)
 	t.Disabled, _ = m["disabled"].(string)
+	t.Root, _ = m["root"].(string)
 	t.Avatar, _ = m["avatar"].(string)
-	t.RememberToken, _ = m["remember_token"].(string)
 	t.CreatedAt, _ = m["created_at"].(string)
 	t.UpdatedAt, _ = m["updated_at"].(string)
 	return t

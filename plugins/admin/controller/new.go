@@ -114,7 +114,7 @@ func (h *Handler) NewForm(ctx *context.Context) {
 		}
 	}
 
-	err := param.Panel.InsertData(param.Value())
+	err := param.Panel.InsertData(ctx, param.Value())
 	if err != nil {
 		logger.Error("insert data error: ", err)
 		if ctx.WantJSON() {

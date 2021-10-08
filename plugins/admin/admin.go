@@ -26,7 +26,6 @@ type Admin struct {
 // InitPlugin implements Plugin.InitPlugin.
 // TODO: find a better way to manage the dependencies
 func (admin *Admin) InitPlugin(services service.List) {
-
 	// DO NOT DELETE
 	admin.InitBase(services, "")
 
@@ -43,9 +42,9 @@ func (admin *Admin) InitPlugin(services service.List) {
 	if c.IsAllowConfigModification() {
 		genList.Add("site", st.GetSiteTable)
 	}
-	if c.IsNotProductionEnvironment() {
-		genList.Add("generate", st.GetGenerateForm)
-	}
+	//if c.IsNotProductionEnvironment() {
+	//	genList.Add("generate", st.GetGenerateForm)
+	//}
 	admin.tableList.Combine(genList)
 	admin.guardian = guard.New(admin.Services, admin.Conn, admin.tableList, admin.UI.NavButtons)
 	handlerCfg := controller.Config{
@@ -70,13 +69,12 @@ func (admin *Admin) GetIndexURL() string {
 
 func (admin *Admin) GetInfo() plugins.Info {
 	return plugins.Info{
-		Title:       "Basic Admin",
-		Website:     "https://www.go-admin.cn",
-		Description: "A built-in plugins of GoAdmin which help you to build a crud manager platform quickly.",
-		Author:      "official",
-		Version:     system.Version(),
-		CreateDate:  utils.ParseTime("2018-07-08 00:00:00"),
-		UpdateDate:  utils.ParseTime("2020-06-28 00:00:00"),
+		Title      : "Base Admin",
+		Website    : "https://flow-er.app",
+		Description: "Built-in plugin which help you to build a crud manager platform quickly.",
+		Version    : system.Version(),
+		CreateDate : utils.ParseTime("2018-07-08 00:00:00"),
+		UpdateDate : utils.ParseTime("2020-06-28 00:00:00"),
 	}
 }
 

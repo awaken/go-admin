@@ -38,13 +38,14 @@ func (t OperationLogModel) SetConn(con db.Connection) OperationLogModel {
 
 // New create a new operation log model.
 func (t OperationLogModel) New(userId int64, path, method, ip, input string) OperationLogModel {
+	input = utils.MaskContentToLog(input)
 
 	id, _ := t.Table(t.TableName).Insert(dialect.H{
 		"user_id": userId,
 		"path":    path,
 		"method":  method,
 		"ip":      ip,
-		"input":   utils.MaskContentToLog(input),
+		"input":   input,
 	})
 
 	t.Id = id

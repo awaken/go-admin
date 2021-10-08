@@ -12,7 +12,7 @@ import (
 func (admin *Admin) initRouter() *Admin {
 	app := context.NewApp()
 
-	route := app.Group(config.Prefix(), admin.globalErrorHandler)
+	route := app.Group(config.Prefix(), admin.GlobalErrorHandler)
 
 	// auth
 	route.GET(config.GetLoginUrl(), admin.handler.ShowLogin)
@@ -27,13 +27,13 @@ func (admin *Admin) initRouter() *Admin {
 		for _, path := range template.Get(themeName).GetAssetList() {
 			if _, ok := checkRepeatedPath[path]; !ok {
 				checkRepeatedPath[path] = struct{}{}
-				route.GET("/assets"+path, admin.handler.Assets)
+				route.GET("/assets" + path, admin.handler.Assets)
 			}
 		}
 	}
 
 	for _, path := range template.GetComponentAsset() {
-		route.GET("/assets"+path, admin.handler.Assets)
+		route.GET("/assets" + path, admin.handler.Assets)
 	}
 
 	authRoute := route.Group("/", auth.Middleware(admin.Conn))
@@ -98,12 +98,8 @@ func (admin *Admin) initRouter() *Admin {
 	return admin
 }
 
-func (admin *Admin) globalErrorHandler(ctx *context.Context) {
+func (admin *Admin) GlobalErrorHandler(ctx *context.Context) {
 	defer admin.handler.GlobalDeferHandler(ctx)
 	response.OffLineHandler(ctx)
 	ctx.Next()
-}
-
-func (admin *Admin) GlobalErrorHandler() context.Handler {
-	return admin.globalErrorHandler
 }

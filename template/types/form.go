@@ -655,7 +655,7 @@ func (f *FormPanel) FieldOptionExt(m map[string]interface{}) *FormPanel {
 
 	s, _ := json.Marshal(m)
 
-	if f.FieldList[f.curFieldListIndex].OptionExt != template.JS("") {
+	if f.FieldList[f.curFieldListIndex].OptionExt != "" {
 		ss := string(f.FieldList[f.curFieldListIndex].OptionExt)
 		ss = strings.Replace(ss, "}", "", strings.Count(ss, "}"))
 		ss = strings.TrimRight(ss, " ")
@@ -678,7 +678,7 @@ func (f *FormPanel) FieldOptionExt2(m map[string]interface{}) *FormPanel {
 
 	s, _ := json.Marshal(m)
 
-	if f.FieldList[f.curFieldListIndex].OptionExt2 != template.JS("") {
+	if f.FieldList[f.curFieldListIndex].OptionExt2 != "" {
 		ss := string(f.FieldList[f.curFieldListIndex].OptionExt2)
 		ss = strings.Replace(ss, "}", "", strings.Count(ss, "}"))
 		ss = strings.TrimRight(ss, " ")
@@ -692,7 +692,7 @@ func (f *FormPanel) FieldOptionExt2(m map[string]interface{}) *FormPanel {
 }
 
 func (f *FormPanel) FieldOptionExtJS(js template.JS) *FormPanel {
-	if js != template.JS("") {
+	if js != "" {
 		f.FieldList[f.curFieldListIndex].OptionExt = js
 	}
 	return f
@@ -1025,7 +1025,7 @@ func searchJS(ext template.JS, url string, handler Handler, delay ...int) (templ
 		delayStr = strconv.Itoa(delay[0])
 	}
 
-	if ext != template.JS("") {
+	if ext != "" {
 		s := string(ext)
 		s = strings.Replace(s, "{", "", 1)
 		s = utils.ReplaceNth(s, "}", "", strings.Count(s, "}"))
@@ -1037,20 +1037,12 @@ func searchJS(ext template.JS, url string, handler Handler, delay ...int) (templ
 	return template.JS(`{
 		`) + ext + template.JS(`
 		ajax: {
-		    url: "`+url+`",
-		    dataType: 'json',
-		    data: function (params) {
-			      var query = {
-			        	search: params.term,
-						page: params.page || 1
-			      }
-			      return query;
-		    },
-		    delay: `+delayStr+`,
-		    processResults: function (data, params) {
-			      return data.data;
-	    	}
-	  	}
+			url: "`+url+`",
+			dataType: 'json',
+			data: function(params){ return { search: params.term, page: params.page || 1 }},
+			delay: ` + delayStr + `,
+			processResults: function(data, params){ return data.data }
+		}
 	}`), context.Node{
 			Path:     url,
 			Method:   "get",
@@ -1091,14 +1083,12 @@ func chooseJS(field, chooseField, val string, value template.HTML) template.HTML
 }
 
 func chooseAjax(field, chooseField, url string, handler Handler, js ...template.HTML) (template.HTML, context.Node) {
-
 	actionJS := template.HTML("")
 	passValue := template.JS("")
 
 	if len(js) > 0 {
 		actionJS = js[0]
 	}
-
 	if len(js) > 1 {
 		passValue = template.JS(js[1])
 	}
@@ -1176,14 +1166,26 @@ func decorateChooseValue(val []string) template.JS {
 		return ""
 	}
 
-	res := make([]string, len(val))
+	//res := make([]string, len(val))
+	var sb strings.Builder
+	sb.Grow(256)
+	sb.WriteByte('[')
 
 	for k, v := range val {
-
-		if v == "" {
+		if k > 0 { sb.WriteByte(',') }
+		switch {
+		case v == "":
+			sb.WriteString(`""`)
+		case v[0] != '"':
+			sb.WriteByte('"')
+			sb.WriteString(v)
+			sb.WriteByte('"')
+		default:
+			sb.WriteString(v)
+		}
+		/*if v == "" {
 			v = `""`
 		}
-
 		if v[0] != '"' {
 			if strings.Contains(v, "$(this)") {
 				res[k] = v
@@ -1197,10 +1199,12 @@ func decorateChooseValue(val []string) template.JS {
 			res[k] = `"` + v + `"`
 		} else {
 			res[k] = v
-		}
+		}*/
 	}
 
-	return template.JS("[" + strings.Join(res, ",") + "]")
+	sb.WriteByte(']')
+	return template.JS(sb.String())
+	//return template.JS("[" + strings.Join(res, ",") + "]")
 }
 
 // FormPanel attribute setting functions
@@ -1356,7 +1360,7 @@ type AjaxData struct {
 
 func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 	f.Ajax = true
-	if f.AjaxSuccessJS == template.JS("") {
+	if f.AjaxSuccessJS == "" {
 		successMsg := modules.AorB(data.SuccessTitle != "", `"`+data.SuccessTitle+`"`, "data.msg")
 		errorMsg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "data.msg")
 		jump := modules.AorB(data.SuccessJumpURL != "", `"`+data.SuccessJumpURL+`"`, "data.data.url")
@@ -1406,7 +1410,7 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 	}
 `)
 	}
-	if f.AjaxErrorJS == template.JS("") {
+	if f.AjaxErrorJS == "" {
 		errorMsg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "data.responseJSON.msg")
 		error2Msg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "'"+language.Get("error")+"'")
 		wrongText := modules.AorB(data.ErrorText != "", `text:"`+data.ErrorText+`",`, "text:data.msg,")
@@ -1671,7 +1675,7 @@ func (f *FormPanel) GetNewFormFields(sql ...func() *db.SQL) (FormFields, []FormF
 
 type (
 	FormPreProcessFn  func(values form.Values) form.Values
-	FormPostFn        func(values form.Values) error
+	FormPostFn        func(ctx *context.Context, values form.Values) error
 	FormFields        []FormField
 	GroupFormFields   []FormFields
 	GroupFieldHeaders []string

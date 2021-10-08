@@ -24,13 +24,12 @@ func (h *Handler) Operation(ctx *context.Context) {
 
 // RecordOperationLog record all operation logs, store into database.
 func (h *Handler) RecordOperationLog(ctx *context.Context) {
-	if user, ok := ctx.UserValue["user"].(models.UserModel); ok {
+	if user, ok := ctx.User().(models.UserModel); ok {
 		var input []byte
 		form := ctx.Request.MultipartForm
 		if form != nil {
 			input, _ = json.Marshal((*form).Value)
 		}
-
 		models.OperationLog().SetConn(h.conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
 	}
 }

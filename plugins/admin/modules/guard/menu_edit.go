@@ -23,7 +23,7 @@ type MenuEditParam struct {
 }
 
 func (e MenuEditParam) HasAlert() bool {
-	return e.Alert != template.HTML("")
+	return e.Alert != ""
 }
 
 func (g *Guard) MenuEdit(ctx *context.Context) {
@@ -71,5 +71,5 @@ func checkEmpty(ctx *context.Context, key ...string) template.HTML {
 			return getAlert("wrong " + k)
 		}
 	}
-	return template.HTML("")
+	return ""
 }

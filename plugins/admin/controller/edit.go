@@ -2,12 +2,10 @@ package controller
 
 import (
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"net/http"
-	"net/url"
-
-	"github.com/GoAdminGroup/go-admin/modules/logger"
 
 	"github.com/GoAdminGroup/go-admin/template"
 
@@ -37,7 +35,7 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 	f     := panel.GetForm()
 
 	if f.HasError() {
-		if f.PageErrorHTML != template2.HTML("") {
+		if f.PageErrorHTML != "" {
 			h.HTML(ctx, auth.Auth(ctx),
 				types.Panel{Content: f.PageErrorHTML}, template.ExecuteOptions{Animation: param.Animation})
 			return
@@ -55,7 +53,7 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 		footerKind = "edit"
 	)
 
-	if newUrl == "" || !user.CheckPermissionByUrlMethod(newUrl, h.route("show_new").Method(), url.Values{}) {
+	if newUrl == "" || !user.CheckPermissionByUrlMethod(newUrl, h.route("show_new").Method(), nil) {
 		footerKind = "edit_only"
 	}
 
@@ -168,7 +166,7 @@ func (h *Handler) EditForm(ctx *context.Context) {
 		}
 	}
 
-	err := param.Panel.UpdateData(param.Value())
+	err := param.Panel.UpdateData(ctx, param.Value())
 	if err != nil {
 		logger.Error("update data error: ", err)
 		if ctx.WantJSON() {
@@ -195,17 +193,14 @@ func (h *Handler) EditForm(ctx *context.Context) {
 	}
 
 	if !param.FromList {
-
 		if utils.IsNewUrl(param.PreviousPath, param.Prefix) {
 			h.showNewForm(ctx, param.Alert, param.Prefix, param.Param.DeleteEditPk().GetRouteParamStr(), true)
 			return
 		}
-
 		if utils.IsEditUrl(param.PreviousPath, param.Prefix) {
 			h.showForm(ctx, param.Alert, param.Prefix, param.Param, true, false)
 			return
 		}
-
 		ctx.HTML(http.StatusOK, fmt.Sprintf(`<script>location.href="%s"</script>`, param.PreviousPath))
 		ctx.AddHeader(constant.PjaxUrlHeader, param.PreviousPath)
 		return

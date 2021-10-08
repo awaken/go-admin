@@ -116,12 +116,10 @@ func (h *Handler) routePathWithPrefix(name string, prefix string) string {
 func (h *Handler) AddOperation(nodes ...context.Node) {
 	h.operationLock.Lock()
 	defer h.operationLock.Unlock()
-	// TODO: 避免重复增加，第一次加入后，后面大部分会存在重复情况，以下循环可以优化
-	addNodes := make([]context.Node, 0)
+	// TODO: Avoid repeated additions. After the first addition, most of the subsequent repetitions will occur. The following loop can be optimized
+	var addNodes []context.Node
 	for _, node := range nodes {
-		if h.searchOperation(node.Path, node.Method) {
-			continue
-		}
+		if h.searchOperation(node.Path, node.Method) { continue }
 		addNodes = append(addNodes, node)
 	}
 	h.operations = append(h.operations, addNodes...)
@@ -183,9 +181,7 @@ func (h *Handler) HTMLPlug(ctx *context.Context, user models.UserModel, panel ty
 	ctx.HTML(http.StatusOK, buf.String())
 }
 
-func (h *Handler) ExecuteWithBtns(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string, btns types.Buttons,
-	options ...template.ExecuteOptions) *bytes.Buffer {
-
+func (h *Handler) ExecuteWithBtns(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string, btns types.Buttons, options ...template.ExecuteOptions) *bytes.Buffer {
 	tmpl, tmplName := aTemplate().GetTemplate(isPjax(ctx))
 	option := template.GetExecuteOptions(options)
 
@@ -204,9 +200,7 @@ func (h *Handler) ExecuteWithBtns(ctx *context.Context, user models.UserModel, p
 	})
 }
 
-func (h *Handler) Execute(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string,
-	options ...template.ExecuteOptions) *bytes.Buffer {
-
+func (h *Handler) Execute(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string, options ...template.ExecuteOptions) *bytes.Buffer {
 	tmpl, tmplName := aTemplate().GetTemplate(isPjax(ctx))
 	option := template.GetExecuteOptions(options)
 

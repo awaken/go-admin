@@ -187,14 +187,12 @@ type FilterFormField struct {
 }
 
 func (f Field) GetFilterFormFields(params parameter.Parameters, headField string, sql ...*db.SQL) []FormField {
-
 	var (
-		filterForm               = make([]FormField, 0)
+		filterForm []FormField
 		value, value2, keySuffix string
 	)
 
 	for index, filter := range f.FilterFormFields {
-
 		if index > 0 {
 			keySuffix = parameter.FilterParamCountInfix + strconv.Itoa(index)
 		}
@@ -216,17 +214,17 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 			optionExt2 template.JS
 		)
 
-		if filter.OptionExt == template.JS("") {
+		if filter.OptionExt == "" {
 			op1, op2, js := filter.Type.GetDefaultOptions(headField + keySuffix)
 			if op1 != nil {
 				s, _ := json.Marshal(op1)
-				optionExt1 = template.JS(string(s))
+				optionExt1 = template.JS(s)
 			}
 			if op2 != nil {
 				s, _ := json.Marshal(op2)
-				optionExt2 = template.JS(string(s))
+				optionExt2 = template.JS(s)
 			}
-			if js != template.JS("") {
+			if js != "" {
 				optionExt1 = js
 			}
 		}

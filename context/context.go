@@ -78,6 +78,11 @@ type Node struct {
 	Value    map[string]interface{}
 }
 
+// User return the current login user.
+func (ctx *Context) User() interface{} {
+	return ctx.UserValue["user"]
+}
+
 // SetUserValue set the value of user context.
 func (ctx *Context) SetUserValue(key string, value interface{}) {
 	ctx.UserValue[key] = value
@@ -119,7 +124,6 @@ func (ctx *Context) IsDataRequest() bool {
 // NewContext used in adapter which return a Context with request
 // and slice of UserValue and a default Response.
 func NewContext(req *http.Request) *Context {
-
 	return &Context{
 		Request:   req,
 		UserValue: make(map[string]interface{}),
@@ -268,7 +272,6 @@ var ParseTime = func(text string) (t time.Time, err error) {
 	if err != nil {
 		return http.ParseTime(text)
 	}
-
 	return
 }
 
@@ -313,16 +316,13 @@ func (ctx *Context) LocalIP() string {
 	if ip != "" {
 		return ip
 	}
-
 	ip = strings.TrimSpace(ctx.Request.Header.Get("X-Real-Ip"))
 	if ip != "" {
 		return ip
 	}
-
 	if ip, _, err := net.SplitHostPort(strings.TrimSpace(ctx.Request.RemoteAddr)); err == nil {
 		return ip
 	}
-
 	return "127.0.0.1"
 }
 
@@ -445,11 +445,6 @@ func (ctx *Context) Cookie(name string) string {
 	return ""
 }
 
-// User return the current login user.
-func (ctx *Context) User() interface{} {
-	return ctx.UserValue["user"]
-}
-
 // ServeContent serves content, headers are autoset
 // receives three parameters, it's low-level function, instead you can use .ServeFile(string,bool)/SendFile(string,string)
 //
@@ -460,11 +455,9 @@ func (ctx *Context) ServeContent(content io.ReadSeeker, filename string, modtime
 		ctx.WriteNotModified()
 		return nil
 	}
-
 	if ctx.GetContentType() == "" {
 		ctx.SetContentType(filename)
 	}
-
 	buf, _ := io.ReadAll(content)
 	ctx.Response.Body = io.NopCloser(bytes.NewBuffer(buf))
 	return nil
@@ -483,7 +476,6 @@ func (ctx *Context) ServeFile(filename string, gzipCompression bool) error {
 	if fi.IsDir() {
 		return ctx.ServeFile(path.Join(filename, "index.html"), gzipCompression)
 	}
-
 	return ctx.ServeContent(f, fi.Name(), fi.ModTime(), gzipCompression)
 }
 
@@ -497,10 +489,9 @@ type App struct {
 	Handlers    HandlerMap
 	Middlewares Handlers
 	Prefix      string
-
-	Routers    RouterMap
-	routeIndex int
-	routeANY   bool
+	Routers     RouterMap
+	routeIndex  int
+	routeANY    bool
 }
 
 // NewApp return an empty app.
@@ -531,13 +522,11 @@ type Handlers []Handler
 // The RegUrl will be used to recognize the incoming path and find
 // the handler.
 func (app *App) AppendReqAndResp(url, method string, handler []Handler) {
-
 	app.Requests = append(app.Requests, Path{
 		URL:    join(app.Prefix, url),
 		Method: method,
 	})
 	app.routeIndex++
-
 	app.Handlers[Path{
 		URL:    join(app.Prefix, url),
 		Method: method,
@@ -605,15 +594,20 @@ func (app *App) ANY(url string, handler ...Handler) *App {
 	return app
 }
 
+var allMethods []string
+
 func (app *App) Name(name string) {
 	if app.routeANY {
+		if allMethods == nil {
+			allMethods = []string{ "POST", "GET", "DELETE", "PUT", "OPTIONS", "HEAD" }
+		}
 		app.Routers[name] = Router{
-			Methods: []string{"POST", "GET", "DELETE", "PUT", "OPTIONS", "HEAD"},
+			Methods: allMethods,
 			Patten:  app.Requests[app.routeIndex].URL,
 		}
 	} else {
 		app.Routers[name] = Router{
-			Methods: []string{app.Requests[app.routeIndex].Method},
+			Methods: []string{ app.Requests[app.routeIndex].Method },
 			Patten:  app.Requests[app.routeIndex].URL,
 		}
 	}

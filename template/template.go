@@ -198,19 +198,19 @@ func GetPageContentFromPageType(title, desc, msg string, pt PageType) (template.
 	}
 
 	if pt == Missing404Page {
-		if c.GetCustom404HTML() != template.HTML("") {
+		if c.GetCustom404HTML() != "" {
 			return "", "", c.GetCustom404HTML()
 		} else {
 			return "", "", Default().Get404HTML()
 		}
 	} else if pt == NoPermission403Page {
-		if c.GetCustom404HTML() != template.HTML("") {
+		if c.GetCustom404HTML() != "" {
 			return "", "", c.GetCustom403HTML()
 		} else {
 			return "", "", Default().Get403HTML()
 		}
 	} else {
-		if c.GetCustom500HTML() != template.HTML("") {
+		if c.GetCustom500HTML() != "" {
 			return "", "", c.GetCustom500HTML()
 		} else {
 			return "", "", Default().Get500HTML()
@@ -399,7 +399,7 @@ type ExecuteParam struct {
 }
 
 func updateNavAndLogoJS(logo template.HTML) template.JS {
-	if logo == template.HTML("") {
+	if logo == "" {
 		return ""
 	}
 	return `$(function () {

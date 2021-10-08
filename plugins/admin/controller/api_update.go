@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"net/url"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/file"
@@ -32,7 +30,7 @@ func (h *Handler) ApiUpdate(ctx *context.Context) {
 		}
 	}
 
-	err := param.Panel.UpdateData(param.Value())
+	err := param.Panel.UpdateData(ctx, param.Value())
 	if err != nil {
 		response.Error(ctx, err.Error())
 		return
@@ -52,9 +50,9 @@ func (h *Handler) ApiUpdateForm(ctx *context.Context) {
 
 	paramStr := param.GetRouteParamStr()
 
-	newUrl := modules.AorEmpty(panel.GetCanAdd(), h.routePathWithPrefix("api_show_new", prefix)+paramStr)
+	newUrl := modules.AorEmpty(panel.GetCanAdd(), h.routePathWithPrefix("api_show_new", prefix) + paramStr)
 	footerKind := "edit"
-	if newUrl == "" || !user.CheckPermissionByUrlMethod(newUrl, h.route("api_show_new").Method(), url.Values{}) {
+	if newUrl == "" || !user.CheckPermissionByUrlMethod(newUrl, h.route("api_show_new").Method(), nil) {
 		footerKind = "edit_only"
 	}
 

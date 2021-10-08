@@ -22,7 +22,7 @@ type MenuNewParam struct {
 }
 
 func (e MenuNewParam) HasAlert() bool {
-	return e.Alert != template.HTML("")
+	return e.Alert != ""
 }
 
 func (g *Guard) MenuNew(ctx *context.Context) {

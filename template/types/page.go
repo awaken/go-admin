@@ -130,13 +130,12 @@ func (param *NewPageParam) NavButtonsAndJS() (template.HTML, template.HTML) {
 }
 
 func NewPage(param *NewPageParam) *Page {
-
-	if param.NavButtonsHTML == template.HTML("") {
+	if param.NavButtonsHTML == "" {
 		param.NavButtonsHTML, param.NavButtonsJS = param.NavButtonsAndJS()
 	}
 
 	logo := param.Logo
-	if logo == template.HTML("") {
+	if logo == "" {
 		logo = config.GetLogo()
 	}
 
@@ -315,7 +314,7 @@ func (p Panel) GetContent(params ...bool) Panel {
 
 		p.Content += `<script>
 window.setTimeout(function(){
-	$.pjax.reload('#pjax-container');	
+	$.pjax.reload('#pjax-container');
 }, ` + template.HTML(strconv.Itoa(refreshTime*1000)) + `);
 </script>`
 	}

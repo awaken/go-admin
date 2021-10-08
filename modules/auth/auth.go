@@ -99,8 +99,8 @@ func InitCSRFTokenSrv(conn db.Connection) (string, service.Service) {
 		logger.Error("csrf token query from database error: ", err)
 	}
 	tokens := make(CSRFToken, len(list))
-	for i := 0; i < len(list); i++ {
-		tokens[i] = list[i]["sid"].(string)
+	for _, elem := range list {
+		tokens[elem["sid"].(string)] = struct{}{}
 	}
 	return TokenServiceKey, &TokenService{
 		tokens: tokens,
@@ -125,7 +125,7 @@ func (s *TokenService) AddToken() string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	tokenStr := modules.Uuid()
-	s.tokens = append(s.tokens, tokenStr)
+	s.tokens[tokenStr] = struct{}{}
 	_, err := db.WithDriver(s.conn).Table("goadmin_session").Insert(dialect.H{
 		"sid":    tokenStr,
 		"values": "__csrf_token__",
@@ -136,27 +136,26 @@ func (s *TokenService) AddToken() string {
 	return tokenStr
 }
 
-// CheckToken check the given token with tokens in the CSRFToken, if exist
-// return true.
-func (s *TokenService) CheckToken(toCheckToken string) bool {
-	for i := 0; i < len(s.tokens); i++ {
-		if (s.tokens)[i] == toCheckToken {
-			s.tokens = append((s.tokens)[:i], (s.tokens)[i+1:]...)
-			err := db.WithDriver(s.conn).Table("goadmin_session").
-				Where("sid", "=", toCheckToken).
-				Where("values", "=", "__csrf_token__").
-				Delete()
-			if db.CheckError(err, db.DELETE) {
-				logger.Error("csrf token delete from database error: ", err)
-			}
-			return true
+// CheckToken check the given token with tokens in the CSRFToken, if exist return true.
+func (s *TokenService) CheckToken(tokenToCheck string) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.tokens[tokenToCheck]; ok {
+		delete(s.tokens, tokenToCheck)
+		err := db.WithDriver(s.conn).Table("goadmin_session").
+			Where("sid", "=", tokenToCheck).
+			Where("values", "=", "__csrf_token__").
+			Delete()
+		if db.CheckError(err, db.DELETE) {
+			logger.Error("csrf token delete from database error: ", err)
 		}
+		return true
 	}
 	return false
 }
 
 // CSRFToken is type of a csrf token list.
-type CSRFToken []string
+type CSRFToken map[string]struct{}
 
 type Processor func(ctx *context.Context) (model models.UserModel, exist bool, msg string)
 

@@ -2,6 +2,7 @@ package icon
 
 import (
 	"html/template"
+	"strings"
 
 	"github.com/GoAdminGroup/html"
 )
@@ -17,19 +18,21 @@ func Icon(class string, num ...int) template.HTML {
 }
 
 func IconWithStyle(class string, style html.Style, num ...int) template.HTML {
-	space := template.HTML("")
-	if len(num) > 0 {
-		for i := 0; i < num[0]; i++ {
-			space += "&nbsp;"
-		}
-	}
-
 	i := html.IEl().SetClass("icon fa", class)
 	for k, s := range style {
 		i.SetStyle(k, s)
 	}
 
-	return i.Get() + space
+	var sb strings.Builder
+	sb.WriteString(string(i.Get()))
+
+	if len(num) > 0 {
+		for n := num[0]; n > 0; n-- {
+			sb.WriteString("&nbsp;")
+		}
+	}
+
+	return template.HTML(sb.String())
 }
 
 const (

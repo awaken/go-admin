@@ -1,12 +1,11 @@
 package types
 
 import (
-	"html/template"
-	"net/url"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
+	"html/template"
+	"strings"
 )
 
 type Button interface {
@@ -87,20 +86,57 @@ func GetColumnButton(title template.HTML, icon string, action Action, colors ...
 }
 
 func (b *DefaultButton) Content() (template.HTML, template.JS) {
+	var hb strings.Builder
+	hb.Grow(256)
+	if b.Group {
+		hb.WriteString(`<div class="btn-group pull-`)
+		hb.WriteString(string(b.Direction))
+		hb.WriteString(`" style="margin-right: 10px">`)
+	}
+	hb.WriteString(`<a`)
+	if b.Color != "" || b.TextColor != "" {
+		hb.WriteString(` style="`)
+		if b.Color != "" {
+			hb.WriteString(`background-color:`)
+			hb.WriteString(string(b.Color))
+			hb.WriteByte(';')
+		}
+		if b.TextColor != "" {
+			hb.WriteString(`color:`)
+			hb.WriteString(string(b.TextColor))
+			hb.WriteByte(';')
+		}
+		hb.WriteByte('"')
+	}
+	hb.WriteString(` class="`)
+	hb.WriteString(b.Id)
+	hb.WriteString(` btn btn-sm btn-default `)
+	hb.WriteString(string(b.Action.BtnClass()))
+	hb.WriteString(`" `)
+	hb.WriteString(string(b.Action.BtnAttribute()))
+	hb.WriteString(`><i class="fa `)
+	hb.WriteString(b.Icon)
+	hb.WriteString(`"></i>&nbsp;&nbsp;`)
+	hb.WriteString(string(b.Title))
+	hb.WriteString(`</a>`)
+	if b.Group {
+		hb.WriteString(`</div>`)
+	}
+	hb.WriteString(string(b.Action.ExtContent()))
+	return template.HTML(hb.String()), b.Action.Js()
 
-	color := template.HTML("")
-	if b.Color != template.HTML("") {
+	/*color := template.HTML("")
+	if b.Color != "" {
 		color = template.HTML(`background-color:`) + b.Color + template.HTML(`;`)
 	}
 	textColor := template.HTML("")
-	if b.TextColor != template.HTML("") {
+	if b.TextColor != "" {
 		textColor = template.HTML(`color:`) + b.TextColor + template.HTML(`;`)
 	}
 
 	style := template.HTML("")
 	addColor := color + textColor
-
-	if addColor != template.HTML("") {
+	if addColor != "" {
 		style = template.HTML(`style="`) + addColor + template.HTML(`"`)
 	}
 
@@ -109,13 +145,13 @@ func (b *DefaultButton) Content() (template.HTML, template.JS) {
 		h += `<div class="btn-group pull-` + b.Direction + `" style="margin-right: 10px">`
 	}
 
-	h += `<a ` + style + ` class="` + template.HTML(b.Id) + ` btn btn-sm btn-default ` + b.Action.BtnClass() + `" ` + b.Action.BtnAttribute() + `>
-                    <i class="fa ` + template.HTML(b.Icon) + `"></i>&nbsp;&nbsp;` + b.Title + `
-                </a>`
+	h += `<a ` + style + ` class="` + template.HTML(b.Id) + ` btn btn-sm btn-default ` + b.Action.BtnClass() + `" ` + b.Action.BtnAttribute() +
+		`><i class="fa ` + template.HTML(b.Icon) + `"></i>&nbsp;&nbsp;` + b.Title + `</a>`
 	if b.Group {
 		h += `</div>`
 	}
-	return h + b.Action.ExtContent(), b.Action.Js()
+
+	return h + b.Action.ExtContent(), b.Action.Js()*/
 }
 
 type ActionButton struct {
@@ -123,7 +159,6 @@ type ActionButton struct {
 }
 
 func GetActionButton(title template.HTML, action Action, ids ...string) *ActionButton {
-
 	id := ""
 	if len(ids) > 0 {
 		id = ids[0]
@@ -146,9 +181,27 @@ func GetActionButton(title template.HTML, action Action, ids ...string) *ActionB
 }
 
 func (b *ActionButton) Content() (template.HTML, template.JS) {
-	h := template.HTML(`<li style="cursor: pointer;"><a data-id="{{.Id}}" class="`+template.HTML(b.Id)+` `+
-		b.Action.BtnClass()+`" `+b.Action.BtnAttribute()+`>`+b.Title+`</a></li>`) + b.Action.ExtContent()
-	return h, b.Action.Js()
+	const c1 = `<li style="cursor: pointer;"><a data-id="{{.Id}}" class="`
+	const c2 = `" `
+	const c3 = `</a></li>`
+	cls  := b.Action.BtnClass()
+	attr := b.Action.BtnAttribute()
+	ext  := b.Action.ExtContent()
+	var hb strings.Builder
+	hb.Grow(len(c1) + len(b.Id) + 1 + len(cls) + len(c2) + len(attr) + 1 + len(b.Title) + len(c3) + len(ext))
+	hb.WriteString(c1)
+	hb.WriteString(b.Id)
+	hb.WriteByte(' ')
+	hb.WriteString(string(cls))
+	hb.WriteString(c2)
+	hb.WriteString(string(attr))
+	hb.WriteByte('>')
+	hb.WriteString(string(b.Title))
+	hb.WriteString(c3)
+	hb.WriteString(string(ext))
+	return template.HTML(hb.String()), b.Action.Js()
+	//h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + `>` + b.Title + c3 + ext
+	//return h, b.Action.Js()
 }
 
 type ActionIconButton struct {
@@ -157,7 +210,6 @@ type ActionIconButton struct {
 }
 
 func GetActionIconButton(icon string, action Action, ids ...string) *ActionIconButton {
-
 	id := ""
 	if len(ids) > 0 {
 		id = ids[0]
@@ -180,9 +232,28 @@ func GetActionIconButton(icon string, action Action, ids ...string) *ActionIconB
 }
 
 func (b *ActionIconButton) Content() (template.HTML, template.JS) {
-	h := template.HTML(`<a data-id="{{.Id}}" class="`+template.HTML(b.Id)+` `+
-		b.Action.BtnClass()+`" `+b.Action.BtnAttribute()+`><i class="fa `+b.Icon+`" style="font-size: 16px;"></i></a>`) + b.Action.ExtContent()
-	return h, b.Action.Js()
+	const c1 = `<a data-id="{{.Id}}" class="`
+	const c2 = `" `
+	const c3 = `><i class="fa `
+	const c4 = `" style="font-size: 16px;"></i></a>`
+	cls  := b.Action.BtnClass()
+	attr := b.Action.BtnAttribute()
+	ext  := b.Action.ExtContent()
+	var hb strings.Builder
+	hb.Grow(len(c1) + len(b.Id) + 1 + len(cls) + 2 + len(attr) + len(c2) + len(b.Icon) + len(c4) + len(ext))
+	hb.WriteString(c1)
+	hb.WriteString(b.Id)
+	hb.WriteByte(' ')
+	hb.WriteString(string(cls))
+	hb.WriteString(c2)
+	hb.WriteString(string(attr))
+	hb.WriteString(c3)
+	hb.WriteString(string(b.Icon))
+	hb.WriteString(c4)
+	hb.WriteString(string(ext))
+	return template.HTML(hb.String()), b.Action.Js()
+	//h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + c3 + b.Icon + c4 + ext
+	//return h, b.Action.Js()
 }
 
 type Buttons []Button
@@ -192,46 +263,39 @@ func (b Buttons) Add(btn Button) Buttons {
 }
 
 func (b Buttons) Content() (template.HTML, template.JS) {
-	h := template.HTML("")
-	j := template.JS("")
-
+	var hb strings.Builder
+	var jb strings.Builder
 	for _, btn := range b {
 		hh, jj := btn.Content()
-		h += hh
-		j += jj
+		hb.WriteString(string(hh))
+		jb.WriteString(string(jj))
 	}
-	return h, j
+	return template.HTML(hb.String()), template.JS(jb.String())
 }
 
 func (b Buttons) Copy() Buttons {
-	var c = make(Buttons, len(b))
+	c := make(Buttons, len(b))
 	copy(c, b)
 	return c
 }
 
 func (b Buttons) FooterContent() template.HTML {
-	footer := template.HTML("")
-
+	var footer strings.Builder
 	for _, btn := range b {
-		footer += btn.GetAction().FooterContent()
+		footer.WriteString(string(btn.GetAction().FooterContent()))
 	}
-	return footer
+	return template.HTML(footer.String())
 }
 
 func (b Buttons) CheckPermission(user models.UserModel) Buttons {
-	btns := make(Buttons, 0)
+	btns := make(Buttons, 0, len(b))
 	for _, btn := range b {
-		if btn.IsType(ButtonTypeNavDropDown) {
-			items := make([]Button, 0)
-			for _, navItem := range btn.(*NavDropDownButton).Items {
-				if user.CheckPermissionByUrlMethod(btn.URL(), btn.METHOD(), url.Values{}) {
-					items = append(items, navItem)
+		if user.CheckPermissionByUrlMethod(btn.URL(), btn.METHOD(), nil) {
+			if btn.IsType(ButtonTypeNavDropDown) {
+				if len(btn.(*NavDropDownButton).Items) == 0 {
+					continue
 				}
 			}
-			if len(items) > 0 {
-				btns = append(btns, btn)
-			}
-		} else if user.CheckPermissionByUrlMethod(btn.URL(), btn.METHOD(), url.Values{}) {
 			btns = append(btns, btn)
 		}
 	}
@@ -239,10 +303,11 @@ func (b Buttons) CheckPermission(user models.UserModel) Buttons {
 }
 
 func (b Buttons) CheckPermissionWhenURLAndMethodNotEmpty(user models.UserModel) Buttons {
-	btns := make(Buttons, 0)
-	for _, b := range b {
-		if b.URL() == "" || b.METHOD() == "" || user.CheckPermissionByUrlMethod(b.URL(), b.METHOD(), url.Values{}) {
-			btns = append(btns, b)
+	btns := make(Buttons, 0, len(b))
+	for _, btn := range b {
+		url, method := btn.URL(), btn.METHOD()
+		if url == "" || method == "" || user.CheckPermissionByUrlMethod(url, method, nil) {
+			btns = append(btns, btn)
 		}
 	}
 	return btns
@@ -256,25 +321,22 @@ func (b Buttons) AddNavButton(ico, name string, action Action) Buttons {
 }
 
 func (b Buttons) RemoveButtonByName(name string) Buttons {
-	if name == "" {
-		return b
-	}
-
-	for i := 0; i < len(b); i++ {
-		if b[i].GetName() == name {
-			b = append(b[:i], b[i+1:]...)
+	if name != "" {
+		for i, btn := range b {
+			if btn.GetName() == name {
+				return append(b[:i], b[i+1:]...)
+			}
 		}
 	}
 	return b
 }
 
 func (b Buttons) CheckExist(name string) bool {
-	if name == "" {
-		return false
-	}
-	for i := 0; i < len(b); i++ {
-		if b[i].GetName() == name {
-			return true
+	if name != "" {
+		for _, btn := range b {
+			if btn.GetName() == name {
+				return true
+			}
 		}
 	}
 	return false
@@ -317,7 +379,6 @@ type NavButton struct {
 }
 
 func GetNavButton(title template.HTML, icon string, action Action, names ...string) *NavButton {
-
 	id := btnUUID()
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()

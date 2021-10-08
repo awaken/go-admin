@@ -61,7 +61,7 @@ func (compo *FormAttribute) SetId(id string) types.FormAttribute {
 }
 
 func (compo *FormAttribute) SetAjax(successJS, errorJS template.JS) types.FormAttribute {
-	if successJS != template.JS("") && errorJS != template.JS("") {
+	if successJS != "" && errorJS != "" {
 		compo.Ajax = true
 		compo.AjaxErrorJS = errorJS
 		compo.AjaxSuccessJS = successJS

@@ -1,8 +1,6 @@
 package components
 
 import (
-	"html/template"
-
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/template/types"
@@ -16,11 +14,6 @@ type Base struct {
 func (b Base) Box() types.BoxAttribute {
 	return &BoxAttribute{
 		Name:       "box",
-		Header:     template.HTML(""),
-		Body:       template.HTML(""),
-		Footer:     template.HTML(""),
-		Title:      "",
-		HeadBorder: "",
 		Attribute:  b.Attribute,
 	}
 }
@@ -29,7 +22,6 @@ func (b Base) Col() types.ColAttribute {
 	return &ColAttribute{
 		Name:      "col",
 		Size:      "col-md-2",
-		Content:   "",
 		Attribute: b.Attribute,
 	}
 }
@@ -55,7 +47,6 @@ func (b Base) Image() types.ImgAttribute {
 		Name:      "image",
 		Width:     "50",
 		Height:    "50",
-		Src:       "",
 		Attribute: b.Attribute,
 	}
 }
@@ -77,8 +68,6 @@ func (b Base) Alert() types.AlertAttribute {
 func (b Base) Label() types.LabelAttribute {
 	return &LabelAttribute{
 		Name:      "label",
-		Type:      "",
-		Content:   "",
 		Attribute: b.Attribute,
 	}
 }
@@ -86,7 +75,6 @@ func (b Base) Label() types.LabelAttribute {
 func (b Base) Link() types.LinkAttribute {
 	return &LinkAttribute{
 		Name:      "link",
-		Content:   "",
 		Attribute: b.Attribute,
 	}
 }
@@ -108,7 +96,6 @@ func (b Base) Paginator() types.PaginatorAttribute {
 func (b Base) Row() types.RowAttribute {
 	return &RowAttribute{
 		Name:      "row",
-		Content:   "",
 		Attribute: b.Attribute,
 	}
 }

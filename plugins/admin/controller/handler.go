@@ -2,6 +2,7 @@ package controller
 
 import (
 	template2 "html/template"
+	"runtime/debug"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -19,7 +20,6 @@ import (
 
 // GlobalDeferHandler is a global error handler of admin plugin.
 func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
-
 	logger.Access(ctx)
 
 	if !h.config.OperationLogOff {
@@ -28,6 +28,7 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 
 	if err := recover(); err != nil {
 		logger.Error(err)
+		logger.Error(string(debug.Stack()))		// NOTE: keep commented in prod (uncomment only for debugging)
 
 		var (
 			errMsg string
@@ -40,7 +41,6 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 				errMsg = e.Error()
 			}
 		}
-
 		if errMsg == "" {
 			errMsg = "system error"
 		}
@@ -65,7 +65,6 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 }
 
 func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg string, kind string) {
-
 	var (
 		formInfo table.FormInfo
 		prefix   = ctx.Query(constant.PrefixKey)

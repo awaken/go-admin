@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/context"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -34,14 +35,12 @@ type DefaultTable struct {
 	connection           string
 	sourceURL            string
 	getDataFun           GetDataFun
-
-	dbObj db.Connection
+	dbObj                db.Connection
 }
 
 type GetDataFun func(params parameter.Parameters) ([]map[string]interface{}, int)
 
 func NewDefaultTable(cfgs ...Config) Table {
-
 	var cfg Config
 
 	if len(cfgs) > 0 && cfgs[0].PrimaryKey.Name != "" {
@@ -108,7 +107,6 @@ func (tb *DefaultTable) Copy() Table {
 
 // GetData query the data set.
 func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) {
-
 	var (
 		data      []map[string]interface{}
 		size      int
@@ -185,7 +183,6 @@ type GetDataFromURLRes struct {
 }
 
 func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[string]interface{}, int) {
-
 	u := ""
 	if strings.Contains(tb.sourceURL, "?") {
 		u = tb.sourceURL + "&" + params.Join()
@@ -221,7 +218,6 @@ func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[strin
 
 // GetDataWithIds query the data set.
 func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, error) {
-
 	var (
 		data      []map[string]interface{}
 		size      int
@@ -265,9 +261,8 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 }
 
 func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columns Columns) map[string]types.InfoItem {
-
 	var tempModelData = map[string]types.InfoItem{
-		"__goadmin_edit_params":   {},
+		"__goadmin_edit_params"  : {},
 		"__goadmin_delete_params": {},
 		"__goadmin_detail_params": {},
 	}
@@ -279,7 +274,6 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 	primaryKeyValue := db.GetValueFromDatabaseType(tb.PrimaryKey.Type, res[tb.PrimaryKey.Name], len(columns) == 0)
 
 	for _, field := range tb.Info.FieldList {
-
 		headField = field.Field
 
 		if field.Joins.Valid() {
@@ -441,7 +435,6 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 
 // TODO: refactor
 func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelInfo, error) {
-
 	var (
 		connection     = tb.db()
 		delimiter      = connection.GetDelimiter()
@@ -485,7 +478,6 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	thead, fields, joinFields, joins, joinTables, filterForm := tb.getTheadAndFilterForm(params, columns)
 
 	fields += pk
-
 	allFields := fields
 	groupFields := fields
 
@@ -523,7 +515,6 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 		wheres = wheres[:len(wheres)-1]
 	} else {
-
 		// parameter
 		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, connection.GetDelimiter(), connection.GetDelimiter2(), whereArgs, columns, existKeys,
 			tb.Info.FieldList.GetFieldFilterProcessValue)
@@ -626,7 +617,6 @@ func getDataRes(list []map[string]interface{}, _ int) map[string]interface{} {
 
 // GetDataWithId query the single row of data.
 func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, error) {
-
 	var (
 		res     map[string]interface{}
 		columns Columns
@@ -642,12 +632,10 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 	} else if tb.Info.GetDataFn != nil {
 		res = getDataRes(tb.Info.GetDataFn(param))
 	} else {
-
 		columns, _ = tb.getColumns(tb.Form.Table)
 
 		var (
 			fields, joinFields, joins, groupBy = "", "", "", ""
-
 			err            error
 			joinTables     = make([]string, 0)
 			args           = []interface{}{id}
@@ -660,7 +648,6 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		)
 
 		for i := 0; i < len(tb.Form.FieldList); i++ {
-
 			if tb.Form.FieldList[i].Field != pk && modules.InArray(columns, tb.Form.FieldList[i].Field) &&
 				!tb.Form.FieldList[i].Joins.Valid() {
 				fields += tableName + "." + modules.FilterField(tb.Form.FieldList[i].Field, delimiter, delimiter2) + ","
@@ -710,9 +697,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		}
 
 		queryCmd := fmt.Sprintf(queryStatement, fields, tableName, joins, groupBy)
-
 		logger.LogSQL(queryCmd, args)
-
 		result, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
 
 		if err != nil {
@@ -754,8 +739,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 }
 
 // UpdateData update data.
-func (tb *DefaultTable) UpdateData(dataList form.Values) error {
-
+func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) error {
 	dataList.Add(form.PostTypeKey, "0")
 
 	var (
@@ -774,7 +758,7 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 					}
 				}()
 
-				err := tb.Form.PostHook(dataList)
+				err := tb.Form.PostHook(ctx, dataList)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -783,7 +767,7 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 	}
 
 	if tb.Form.Validator != nil {
-		if err := tb.Form.Validator(dataList); err != nil {
+		if err := tb.Form.Validator(ctx, dataList); err != nil {
 			errMsg = "post error: " + err.Error()
 			return err
 		}
@@ -795,7 +779,7 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 
 	if tb.Form.UpdateFn != nil {
 		dataList.Delete(form.PostTypeKey)
-		err = tb.Form.UpdateFn(tb.PreProcessValue(dataList, types.PostTypeUpdate))
+		err = tb.Form.UpdateFn(ctx, tb.PreProcessValue(dataList, types.PostTypeUpdate))
 		if err != nil {
 			errMsg = "post error: " + err.Error()
 		}
@@ -822,8 +806,7 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 }
 
 // InsertData insert data.
-func (tb *DefaultTable) InsertData(dataList form.Values) error {
-
+func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) error {
 	dataList.Add(form.PostTypeKey, "1")
 
 	var (
@@ -846,7 +829,7 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 					}
 				}()
 
-				err := f.PostHook(dataList)
+				err := f.PostHook(ctx, dataList)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -855,7 +838,7 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 	}
 
 	if f.Validator != nil {
-		if err := f.Validator(dataList); err != nil {
+		if err := f.Validator(ctx, dataList); err != nil {
 			errMsg = "post error: " + err.Error()
 			return err
 		}
@@ -867,7 +850,7 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 
 	if f.InsertFn != nil {
 		dataList.Delete(form.PostTypeKey)
-		err = f.InsertFn(tb.PreProcessValue(dataList, types.PostTypeCreate))
+		err = f.InsertFn(ctx, tb.PreProcessValue(dataList, types.PostTypeCreate))
 		if err != nil {
 			errMsg = "post error: " + err.Error()
 		}
@@ -890,7 +873,6 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 }
 
 func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ types.PostType) dialect.H {
-
 	var (
 		value         = make(dialect.H)
 		exceptString  = make([]string, 0)
@@ -963,16 +945,21 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 	return value
 }
 
-func (tb *DefaultTable) PreProcessValue(dataList form.Values, typ types.PostType) form.Values {
+var exceptStringMap = map[string]struct{}{
+	form.PreviousKey    : {},
+	form.MethodKey      : {},
+	form.TokenKey       : {},
+	constant.IframeKey  : {},
+	constant.IframeIDKey: {},
+}
 
-	exceptString := []string{form.PreviousKey, form.MethodKey, form.TokenKey,
-		constant.IframeKey, constant.IframeIDKey}
+func (tb *DefaultTable) PreProcessValue(dataList form.Values, typ types.PostType) form.Values {
 	dataList = dataList.RemoveRemark()
 	var fun types.PostFieldFilterFn
-
 	for k, v := range dataList {
 		k = strings.ReplaceAll(k, "[]", "")
-		if !modules.InArray(exceptString, k) {
+		//if !modules.InArray(exceptString, k) {
+		if _, ok := exceptStringMap[k]; !ok {
 			field := tb.Form.FieldList.FindByFieldName(k)
 			if field != nil {
 				fun = field.PostFilterFn
@@ -992,8 +979,7 @@ func (tb *DefaultTable) PreProcessValue(dataList form.Values, typ types.PostType
 }
 
 // DeleteData delete data.
-func (tb *DefaultTable) DeleteData(id string) error {
-
+func (tb *DefaultTable) DeleteData(ctx *context.Context, id string) error {
 	var (
 		idArr = strings.Split(id, ",")
 		err   error
@@ -1052,15 +1038,11 @@ func (tb *DefaultTable) DeleteData(id string) error {
 }
 
 func (tb *DefaultTable) GetNewFormInfo() FormInfo {
-
 	f := tb.GetActualNewForm()
-
 	if len(f.TabGroups) == 0 {
 		return FormInfo{FieldList: f.FieldsWithDefaultValue(tb.sqlObjOrNil)}
 	}
-
 	newForm, headers := f.GroupField(tb.sqlObjOrNil)
-
 	return FormInfo{GroupFieldList: newForm, GroupFieldHeaders: headers}
 }
 
@@ -1069,20 +1051,14 @@ func (tb *DefaultTable) GetNewFormInfo() FormInfo {
 // ***************************************
 
 func (tb *DefaultTable) delete(table, key string, values []string) error {
-
 	var vals = make([]interface{}, len(values))
 	for i, v := range values {
 		vals[i] = v
 	}
-
-	return tb.sql().Table(table).
-		WhereIn(key, vals).
-		Delete()
+	return tb.sql().Table(table).WhereIn(key, vals).Delete()
 }
 
-func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, columns Columns) (types.Thead,
-	string, string, string, []string, []types.FormField) {
-
+func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, columns Columns) (types.Thead, string, string, string, []string, []types.FormField) {
 	return tb.Info.FieldList.GetTheadAndFilterForm(types.TableInfo{
 		Table:      tb.Info.Table,
 		Delimiter:  tb.delimiter(),
@@ -1134,16 +1110,15 @@ func (tb *DefaultTable) sqlObjOrNil() *db.SQL {
 type Columns []string
 
 func (tb *DefaultTable) getColumns(table string) (Columns, bool) {
-
 	columnsModel, _ := tb.sql().Table(table).ShowColumns()
-
 	columns := make(Columns, len(columnsModel))
+
 	switch tb.connectionDriver {
 	case db.DriverPostgresql:
 		auto := false
 		for key, model := range columnsModel {
 			columns[key] = model["column_name"].(string)
-			if columns[key] == tb.PrimaryKey.Name {
+			if !auto && columns[key] == tb.PrimaryKey.Name {
 				if v, ok := model["column_default"].(string); ok {
 					if strings.Contains(v, "nextval") {
 						auto = true
@@ -1156,7 +1131,7 @@ func (tb *DefaultTable) getColumns(table string) (Columns, bool) {
 		auto := false
 		for key, model := range columnsModel {
 			columns[key] = model["Field"].(string)
-			if columns[key] == tb.PrimaryKey.Name {
+			if !auto && columns[key] == tb.PrimaryKey.Name {
 				if v, ok := model["Extra"].(string); ok {
 					if v == "auto_increment" {
 						auto = true
@@ -1169,10 +1144,7 @@ func (tb *DefaultTable) getColumns(table string) (Columns, bool) {
 		for key, model := range columnsModel {
 			columns[key] = string(model["name"].(string))
 		}
-
-		num, _ := tb.sql().Table("sqlite_sequence").
-			Where("name", "=", tb.GetForm().Table).Count()
-
+		num, _ := tb.sql().Table("sqlite_sequence").Where("name", "=", tb.GetForm().Table).Count()
 		return columns, num > 0
 	case db.DriverMssql:
 		for key, model := range columnsModel {
