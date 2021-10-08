@@ -745,10 +745,8 @@ func (h Handler) Wrap() context.Handler {
 
 		code := 0
 		s, m, d := h(ctx)
+		if !s { code = 500 }
 
-		if !s {
-			code = 500
-		}
 		ctx.JSON(http.StatusOK, map[string]interface{}{
 			"code": code,
 			"data": d,
