@@ -64,10 +64,10 @@ var operators = map[string]string{
 	"free": "free",
 }
 
-var keys = []string{Page, PageSize, Sort, Columns, Prefix, Pjax, form.NoAnimationKey}
+var keyMap = map[string]struct{}{ Page: {}, PageSize: {}, Sort: {}, Columns: {}, Prefix: {}, Pjax: {}, form.NoAnimationKey: {} }
 
 func BaseParam() Parameters {
-	return Parameters{Page: "1", PageSize: "10", PageInt: 1, PageSizeInt: 10, Fields: make(map[string][]string)}
+	return Parameters{ Page: "1", PageSize: "10", PageInt: 1, PageSizeInt: 10, Fields: make(map[string][]string) }
 }
 
 func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
@@ -95,17 +95,19 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 	fields := make(map[string][]string)
 
 	for key, value := range values {
-		if !modules.InArray(keys, key) && len(value) > 0 && value[0] != "" {
-			if key == SortType {
-				if value[0] != sortTypeDesc && value[0] != sortTypeAsc {
-					fields[key] = []string{sortTypeDesc}
+		if len(value) > 0 && value[0] != "" {
+			if _, ok := keyMap[key]; !ok {
+				if key == SortType {
+					if value[0] != sortTypeDesc && value[0] != sortTypeAsc {
+						fields[key] = []string{sortTypeDesc}
+					}
+				} else {
+					if strings.Contains(key, FilterParamOperatorSuffix) &&
+						values.Get(strings.ReplaceAll(key, FilterParamOperatorSuffix, "")) == "" {
+						continue
+					}
+					fields[strings.ReplaceAll(key, "[]", "")] = value
 				}
-			} else {
-				if strings.Contains(key, FilterParamOperatorSuffix) &&
-					values.Get(strings.ReplaceAll(key, FilterParamOperatorSuffix, "")) == "" {
-					continue
-				}
-				fields[strings.ReplaceAll(key, "[]", "")] = value
 			}
 		}
 	}
@@ -135,13 +137,10 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 }
 
 func GetParamFromURL(urlStr string, defaultPageSize int, defaultSortType, primaryKey string) Parameters {
-
 	u, err := url.Parse(urlStr)
-
 	if err != nil {
 		return BaseParam()
 	}
-
 	return GetParam(u, defaultPageSize, primaryKey, defaultSortType)
 }
 
@@ -153,9 +152,9 @@ func (param Parameters) WithPKs(id ...string) Parameters {
 func (param Parameters) PKs() []string {
 	pk := param.GetFieldValue(PrimaryKey)
 	if pk == "" {
-		return []string{}
+		return nil
 	}
-	return strings.Split(param.GetFieldValue(PrimaryKey), ",")
+	return strings.Split(pk, ",")
 }
 
 func (param Parameters) DeletePK() Parameters {
@@ -165,9 +164,7 @@ func (param Parameters) DeletePK() Parameters {
 
 func (param Parameters) PK() string {
 	pks := param.PKs()
-	if len(pks) > 0 {
-		return pks[0]
-	}
+	if len(pks) > 0 { return pks[0] }
 	return ""
 }
 
@@ -203,8 +200,8 @@ func (param Parameters) GetFilterFieldValueEnd(field string) string {
 }
 
 func (param Parameters) GetFieldValue(field string) string {
-	value, ok := param.Fields[field]
-	if ok && len(value) > 0 {
+	value, _ := param.Fields[field]
+	if len(value) > 0 {
 		return value[0]
 	}
 	return ""
@@ -298,7 +295,6 @@ func (param Parameters) GetFixedParamStrFromCache() url.Values {
 	if param.cacheFixedStr != nil {
 		return param.cacheFixedStr
 	}
-
 	p := param.GetFixedParamStr()
 	param.cacheFixedStr = p
 	return p
@@ -366,21 +362,17 @@ func (param Parameters) GetFixedParamStrWithoutSort() string {
 
 func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, whereArgs []interface{}, columns, existKeys []string,
 	filterProcess func(string, string, string) string) (string, []interface{}, []string) {
-	var multiKey = make(map[string]uint8)
+	multiKey := make(map[string]uint8)
+
 	for key, value := range param.Fields {
-
 		keyIndexSuffix := ""
-
 		keyArr := strings.Split(key, FilterParamCountInfix)
 
 		if len(keyArr) > 1 {
 			key = keyArr[0]
 			keyIndexSuffix = FilterParamCountInfix + keyArr[1]
-		}
-
-		if keyIndexSuffix != "" {
 			multiKey[key] = 0
-		} else if _, exist := multiKey[key]; !exist && modules.InArray(existKeys, key) {
+		} else if _, ok := multiKey[key]; !ok && modules.InArray(existKeys, key) {
 			continue
 		}
 
@@ -404,15 +396,13 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			val := filterProcess(key, value[0], keyIndexSuffix)
 			if op == "in" {
 				qmark := ""
-				for range value {
-					qmark += "?,"
-				}
+				for range value { qmark += "?," }
 				wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op + " (" + qmark[:len(qmark)-1] + ") and "
 			} else {
 				wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op + " ? and "
 			}
 			if op == "like" && !strings.Contains(val, "%") {
-				whereArgs = append(whereArgs, "%"+val+"%")
+				whereArgs = append(whereArgs, "%" + val + "%")
 			} else {
 				for _, v := range value {
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
@@ -422,15 +412,13 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			if modules.InArray(columns, key) {
 				if op == "in" {
 					qmark := ""
-					for range value {
-						qmark += "?,"
-					}
+					for range value { qmark += "?," }
 					wheres += table + "." + modules.FilterField(key, delimiter, delimiter2) + " " + op + " (" + qmark[:len(qmark)-1] + ") and "
 				} else {
 					wheres += table + "." + modules.FilterField(key, delimiter, delimiter2) + " " + op + " ? and "
 				}
 				if op == "like" && !strings.Contains(value[0], "%") {
-					whereArgs = append(whereArgs, "%"+filterProcess(key, value[0], keyIndexSuffix)+"%")
+					whereArgs = append(whereArgs, "%" + filterProcess(key, value[0], keyIndexSuffix) + "%")
 				} else {
 					for _, v := range value {
 						whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
@@ -475,8 +463,6 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 
 func getDefault(values url.Values, key, def string) string {
 	value := values.Get(key)
-	if value == "" {
-		return def
-	}
+	if value == "" { return def }
 	return value
 }

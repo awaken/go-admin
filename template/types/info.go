@@ -636,11 +636,11 @@ type Wheres []Where
 
 func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []interface{}, existKeys, columns []string) (string, []interface{}) {
 	pwheres := ""
-	for k, wh := range whs {
 
+	for k, wh := range whs {
 		whFieldArr := strings.Split(wh.Field, ".")
-		whField := ""
-		whTable := ""
+		whField    := ""
+		whTable    := ""
 		if len(whFieldArr) > 1 {
 			whField = whFieldArr[1]
 			whTable = whFieldArr[0]
@@ -681,18 +681,19 @@ type WhereRaw struct {
 
 func (wh WhereRaw) check() int {
 	index := 0
-	for i := 0; i < len(wh.Raw); i++ {
-		if wh.Raw[i] == ' ' {
+	n     := len(wh.Raw)
+	for i, ch := range wh.Raw {
+		if ch == ' ' {
 			continue
 		}
-		if wh.Raw[i] == 'a' {
-			if len(wh.Raw) < i+3 {
+		if ch == 'a' {
+			if n < i + 3 {
 				break
 			} else if wh.Raw[i+1] == 'n' && wh.Raw[i+2] == 'd' {
 				index = i + 3
 			}
-		} else if wh.Raw[i] == 'o' {
-			if len(wh.Raw) < i+2 {
+		} else if ch == 'o' {
+			if n < i + 2 {
 				break
 			} else if wh.Raw[i+1] == 'r' {
 				index = i + 2
@@ -705,25 +706,19 @@ func (wh WhereRaw) check() int {
 }
 
 func (wh WhereRaw) Statement(wheres string, whereArgs []interface{}) (string, []interface{}) {
-
 	if wh.Raw == "" {
 		return wheres, whereArgs
 	}
 
-	if wheres != "" {
-		if wh.check() != 0 {
-			wheres += wh.Raw + " "
-		} else {
-			wheres += " and " + wh.Raw + " "
-		}
-
-		whereArgs = append(whereArgs, wh.Args...)
-	} else {
+	if wheres == "" {
 		wheres += wh.Raw[wh.check():] + " "
-		whereArgs = append(whereArgs, wh.Args...)
+	} else if wh.check() != 0 {
+		wheres += wh.Raw + " "
+	} else {
+		wheres += " and " + wh.Raw + " "
 	}
 
-	return wheres, whereArgs
+	return wheres, append(whereArgs, wh.Args...)
 }
 
 type Handler func(ctx *context.Context) (success bool, msg string, data interface{})
@@ -738,7 +733,7 @@ func (h Handler) Wrap() context.Handler {
 				ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 					"code": 500,
 					"data": "",
-					"msg":  "error",
+					"msg" : "internal server error",
 				})
 			}
 		}()
@@ -750,7 +745,7 @@ func (h Handler) Wrap() context.Handler {
 		ctx.JSON(http.StatusOK, map[string]interface{}{
 			"code": code,
 			"data": d,
-			"msg":  m,
+			"msg" : m,
 		})
 	}
 }

@@ -392,9 +392,9 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 	}
 
 	var (
-		wheres    = ""
-		whereArgs = make([]interface{}, 0)
-		existKeys = make([]string, 0)
+		wheres    string
+		whereArgs []interface{}
+		existKeys []string
 	)
 
 	wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, connection.GetDelimiter(), connection.GetDelimiter2(), whereArgs, columns, existKeys,
