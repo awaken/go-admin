@@ -2,25 +2,21 @@ package controller
 
 import (
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
-	template2 "html/template"
-	"net/http"
-
-	"github.com/GoAdminGroup/go-admin/template"
-
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/file"
 	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
+	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
+	template2 "html/template"
+	"net/http"
 )
 
 // ShowNewForm show a new form page.
@@ -30,7 +26,6 @@ func (h *Handler) ShowNewForm(ctx *context.Context) {
 }
 
 func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix, paramStr string, isNew bool) {
-
 	var (
 		user        = auth.Auth(ctx)
 		panel       = h.table(prefix, ctx)
@@ -114,7 +109,7 @@ func (h *Handler) NewForm(ctx *context.Context) {
 		}
 	}
 
-	err := param.Panel.InsertData(ctx, param.Value())
+	err := param.Panel.InsertData(param.Value())
 	if err != nil {
 		logger.Error("insert data error: ", err)
 		if ctx.WantJSON() {

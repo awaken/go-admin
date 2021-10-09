@@ -2,26 +2,23 @@ package controller
 
 import (
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
-	template2 "html/template"
-	"net/http"
-
-	"github.com/GoAdminGroup/go-admin/template"
-
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/file"
 	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
+	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
+	template2 "html/template"
+	"net/http"
 )
 
 // ShowForm show form page.
@@ -134,10 +131,10 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 }
 
 func (h *Handler) EditForm(ctx *context.Context) {
-
 	param := guard.GetEditFormParam(ctx)
+	pmf   := param.MultiForm.File
 
-	if len(param.MultiForm.File) > 0 {
+	if len(pmf) > 0 {
 		err := file.GetFileEngine(h.config.FileUploadEngine.Name).Upload(param.MultiForm)
 		if err != nil {
 			logger.Error("get file engine error: ", err)
@@ -150,9 +147,24 @@ func (h *Handler) EditForm(ctx *context.Context) {
 		}
 	}
 
+	pmv       := param.MultiForm.Value
 	formPanel := param.Panel.GetForm()
 
-	for i := 0; i < len(formPanel.FieldList); i++ {
+	for _, ff := range formPanel.FieldList {
+		if ff.FormType == form.File {
+			if len(pmf[ff.Field]) == 0 {
+				df := pmv[ff.Field + "__delete_flag"]
+				if len(df) > 0 && df[0] != "1" {
+					pmv[ff.Field] = []string{ "" }
+				}
+			}
+			cf := pmv[ff.Field + "__change_flag"]
+			if len(cf) > 0 && cf[0] != "1" {
+				delete(pmv, ff.Field)
+			}
+		}
+	}
+	/*for i := 0; i < len(formPanel.FieldList); i++ {
 		if formPanel.FieldList[i].FormType == form.File &&
 			len(param.MultiForm.File[formPanel.FieldList[i].Field]) == 0 &&
 			len(param.MultiForm.Value[formPanel.FieldList[i].Field+"__delete_flag"]) > 0 &&
@@ -164,9 +176,9 @@ func (h *Handler) EditForm(ctx *context.Context) {
 			param.MultiForm.Value[formPanel.FieldList[i].Field+"__change_flag"][0] != "1" {
 			delete(param.MultiForm.Value, formPanel.FieldList[i].Field)
 		}
-	}
+	}*/
 
-	err := param.Panel.UpdateData(ctx, param.Value())
+	err := param.Panel.UpdateData(param.Value())
 	if err != nil {
 		logger.Error("update data error: ", err)
 		if ctx.WantJSON() {

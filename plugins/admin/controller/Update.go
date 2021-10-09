@@ -10,7 +10,7 @@ import (
 func (h *Handler) Update(ctx *context.Context) {
 	param := guard.GetUpdateParam(ctx)
 
-	err := param.Panel.UpdateData(ctx, param.Value)
+	err := param.Panel.UpdateData(param.Value)
 
 	if err != nil {
 		response.Error(ctx, err.Error())

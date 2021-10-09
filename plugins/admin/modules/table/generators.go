@@ -196,7 +196,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 
 	formList.SetTable("goadmin_users").SetTitle(lg("Users"))//.SetDescription(lg("Users"))
 
-	formList.SetUpdateFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetUpdateFn(func(values form2.Values) error {
 		if values.IsEmpty("username") {
 			return errors.New("username cannot be empty")
 		}
@@ -256,7 +256,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 		return txErr
 	})
 
-	formList.SetInsertFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetInsertFn(func(values form2.Values) error {
 		if values.IsEmpty("username", "password") {
 			return errors.New("username and password cannot be empty")
 		}
@@ -488,7 +488,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 
 	formList.SetTable("goadmin_users").SetTitle(lg("Users"))//.SetDescription(lg("Users"))
 
-	formList.SetUpdateFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetUpdateFn(func(values form2.Values) error {
 		if values.IsEmpty("username") {
 			return errors.New("username cannot be empty")
 		}
@@ -523,7 +523,7 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 		return nil
 	})
 
-	formList.SetInsertFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetInsertFn(func(values form2.Values) error {
 		if values.IsEmpty("name", "username", "password") {
 			return errors.New("username, nickname and password cannot be empty")
 		}
@@ -654,7 +654,7 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 	formList.SetTable("goadmin_permissions").
 		SetTitle(lg("Permissions")).
 		//SetDescription(lg("Permissions")).
-		SetPostValidator(func(ctx *context.Context, values form2.Values) error {
+		SetPostValidator(func(values form2.Values) error {
 			if values.IsEmpty("slug", "http_path", "name") {
 				return errors.New("slug or http_path or name should not be empty")
 			}
@@ -662,7 +662,7 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 				return errors.New("slug exists")
 			}
 			return nil
-		}).SetPostHook(func(ctx *context.Context, values form2.Values) error {
+		}).SetPostHook(func(values form2.Values) error {
 			if values.IsInsertPost() {
 				return nil
 			}
@@ -764,7 +764,7 @@ func (s *SystemTable) GetRolesTable(ctx *context.Context) (roleTable Table) {
 
 	formList.SetTable("goadmin_roles").SetTitle(lg("Roles"))//.SetDescription(lg("Roles"))
 
-	formList.SetUpdateFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetUpdateFn(func(values form2.Values) error {
 		if models.Role().SetConn(s.conn).IsSlugExist(values.Get("slug"), values.Get("id")) {
 			return errors.New("slug exists")
 		}
@@ -794,7 +794,7 @@ func (s *SystemTable) GetRolesTable(ctx *context.Context) (roleTable Table) {
 		return txErr
 	})
 
-	formList.SetInsertFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetInsertFn(func(values form2.Values) error {
 		if models.Role().SetConn(s.conn).IsSlugExist(values.Get("slug"), "") {
 			return errors.New("slug exists")
 		}
@@ -1253,7 +1253,7 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	formList.SetTable("goadmin_site").
 		SetTitle(lgWithConfigScore("Site setting"))//.SetDescription(lgWithConfigScore("Site setting"))
 
-	formList.SetUpdateFn(func(ctx *context.Context, values form2.Values) error {
+	formList.SetUpdateFn(func(values form2.Values) error {
 		ses := values.Get("session_life_time")
 		sesInt, _ := strconv.Atoi(ses)
 		if sesInt < 900 {
@@ -1294,7 +1294,8 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 		return s.c.Update(values.ToMap())
 	})
 
-	formList.EnableAjax(lgWithConfigScore("Modify site config"),
+	formList.EnableAjax(
+		lgWithConfigScore("Modify site config"),
 		lgWithConfigScore("modify site config"),
 		"",
 		lgWithConfigScore("modify site config success"),

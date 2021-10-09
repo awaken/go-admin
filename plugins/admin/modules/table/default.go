@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	errs "github.com/GoAdminGroup/go-admin/modules/errors"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
@@ -836,7 +835,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 }
 
 // UpdateData update data.
-func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) error {
+func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 	dataList.Add(form.PostTypeKey, "0")
 
 	var (
@@ -856,7 +855,7 @@ func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) e
 					}
 				}()
 
-				err := tb.Form.PostHook(ctx, dataList)
+				err := tb.Form.PostHook(dataList)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -865,7 +864,7 @@ func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) e
 	}
 
 	if tb.Form.Validator != nil {
-		if err := tb.Form.Validator(ctx, dataList); err != nil {
+		if err := tb.Form.Validator(dataList); err != nil {
 			errMsg = "post error: " + err.Error()
 			return err
 		}
@@ -877,7 +876,7 @@ func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) e
 
 	if tb.Form.UpdateFn != nil {
 		dataList.Delete(form.PostTypeKey)
-		err = tb.Form.UpdateFn(ctx, tb.PreProcessValue(dataList, types.PostTypeUpdate))
+		err = tb.Form.UpdateFn(tb.PreProcessValue(dataList, types.PostTypeUpdate))
 		if err != nil {
 			errMsg = "post error: " + err.Error()
 		}
@@ -904,7 +903,7 @@ func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) e
 }
 
 // InsertData insert data.
-func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) error {
+func (tb *DefaultTable) InsertData(dataList form.Values) error {
 	dataList.Add(form.PostTypeKey, "1")
 
 	var (
@@ -928,7 +927,7 @@ func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) e
 					}
 				}()
 
-				err := f.PostHook(ctx, dataList)
+				err := f.PostHook(dataList)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -937,7 +936,7 @@ func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) e
 	}
 
 	if f.Validator != nil {
-		if err := f.Validator(ctx, dataList); err != nil {
+		if err := f.Validator(dataList); err != nil {
 			errMsg = "post error: " + err.Error()
 			return err
 		}
@@ -949,7 +948,7 @@ func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) e
 
 	if f.InsertFn != nil {
 		dataList.Delete(form.PostTypeKey)
-		err = f.InsertFn(ctx, tb.PreProcessValue(dataList, types.PostTypeCreate))
+		err = f.InsertFn(tb.PreProcessValue(dataList, types.PostTypeCreate))
 		if err != nil {
 			errMsg = "post error: " + err.Error()
 		}
@@ -1073,7 +1072,7 @@ func (tb *DefaultTable) PreProcessValue(dataList form.Values, typ types.PostType
 }
 
 // DeleteData delete data.
-func (tb *DefaultTable) DeleteData(ctx *context.Context, id string) error {
+func (tb *DefaultTable) DeleteData(id string) error {
 	var (
 		idArr = strings.Split(id, ",")
 		err   error

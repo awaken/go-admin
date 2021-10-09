@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"html/template"
 
 	"github.com/GoAdminGroup/go-admin/modules/db"
@@ -471,33 +472,14 @@ func getDateTimeRangeOptions(f Type) (map[string]interface{}, map[string]interfa
 }
 
 func GetFormTypeFromFieldType(typeName db.DatabaseType, fieldName string) string {
-
-	if fieldName == "password" {
-		return "Password"
-	}
-
-	if fieldName == "id" {
-		return "Default"
-	}
-
-	if fieldName == "ip" {
-		return "Ip"
-	}
-
-	if fieldName == "Url" {
-		return "Url"
-	}
-
-	if fieldName == "email" {
-		return "Email"
-	}
-
-	if fieldName == "color" {
-		return "Color"
-	}
-
-	if fieldName == "money" {
-		return "Currency"
+	switch fieldName {
+	case "password"  : return "Password"
+	case "id"        : return "Default"
+	case "ip"        : return "Ip"
+	case "email"     : return "Email"
+	case "url", "Url": return "Url"
+	case "color"     : return "Color"
+	case "money"     : return "Currency"
 	}
 
 	switch typeName {
@@ -514,10 +496,9 @@ func GetFormTypeFromFieldType(typeName db.DatabaseType, fieldName string) string
 }
 
 func DefaultHTML(value string) template.HTML {
-	return template.HTML(`<div class="box box-solid box-default no-margin"><div class="box-body" style="min-height: 40px;">` +
-		value + `</div></div>`)
+	return template.HTML(utils.StrConcat(`<div class="box box-solid box-default no-margin"><div class="box-body" style="min-height: 40px;">`, value, `</div></div>`))
 }
 
 func HiddenInputHTML(field, value string) template.HTML {
-	return template.HTML(`<input type="hidden" name="` + field + `" value="` + value + `" class="form-control">`)
+	return template.HTML(utils.StrConcat(`<input type="hidden" name="`, field, `" value="`, value, `" class="form-control">`))
 }

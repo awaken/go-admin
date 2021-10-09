@@ -10,9 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/GoAdminGroup/go-admin/modules/config"
-
 	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/errors"
 	"github.com/GoAdminGroup/go-admin/modules/language"
@@ -78,24 +77,23 @@ type InfoItem struct {
 	Value   string        `json:"value"`
 }
 
-func (i InfoList) GroupBy(groups TabGroups) []InfoList {
-
+func (il InfoList) GroupBy(groups TabGroups) []InfoList {
 	var res = make([]InfoList, len(groups))
 
-	for key, value := range groups {
-		var newInfoList = make(InfoList, len(i))
+	for i, value := range groups {
+		newInfoList := make(InfoList, len(il))
 
-		for index, info := range i {
-			var newRow = make(map[string]InfoItem)
-			for mk, m := range info {
-				if modules.InArray(value, mk) {
-					newRow[mk] = m
+		for j, info := range il {
+			newRow := make(map[string]InfoItem)
+			for k, m := range info {
+				if modules.InArray(value, k) {
+					newRow[k] = m
 				}
 			}
-			newInfoList[index] = newRow
+			newInfoList[j] = newRow
 		}
 
-		res[key] = newInfoList
+		res[i] = newInfoList
 	}
 
 	return res
@@ -194,10 +192,12 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 		sql                      *db.SQL
 	)
 	if len(sqls) > 0 { sql = sqls[0] }
+	headFieldWithKeySuffix := headField
 
 	for index, filter := range f.FilterFormFields {
 		if index > 0 {
 			keySuffix = parameter.FilterParamCountInfix + strconv.Itoa(index)
+			headFieldWithKeySuffix += keySuffix
 		}
 
 		if filter.Type.IsRange() {
@@ -209,7 +209,7 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 			if filter.Operator == FilterOperatorFree {
 				value2 = GetOperatorFromValue(params.GetFieldOperator(headField, keySuffix)).String()
 			}
-			value = params.GetFieldValue(headField + keySuffix)
+			value = params.GetFieldValue(headFieldWithKeySuffix)
 		}
 
 		var (
@@ -218,7 +218,7 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 		)
 
 		if filter.OptionExt == "" {
-			op1, op2, js := filter.Type.GetDefaultOptions(headField + keySuffix)
+			op1, op2, js := filter.Type.GetDefaultOptions(headFieldWithKeySuffix)
 			if op1 != nil {
 				s, _ := json.Marshal(op1)
 				optionExt1 = template.JS(s)
@@ -233,8 +233,8 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 		}
 
 		field := &FormField{
-			Field:       headField + keySuffix,
-			FieldClass:  headField + keySuffix,
+			Field:       headFieldWithKeySuffix,
+			FieldClass:  headFieldWithKeySuffix,
 			Head:        filter.Head,
 			TypeName:    f.TypeName,
 			HelpMsg:     filter.HelpMsg,
@@ -259,16 +259,14 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 
 		if filter.Type.IsSingleSelect() {
 			field.Options = field.Options.SetSelected(params.GetFieldValue(f.Field), filter.Type.SelectedLabel())
-		}
-
-		if filter.Type.IsMultiSelect() {
+		} else if filter.Type.IsMultiSelect() {
 			field.Options = field.Options.SetSelected(params.GetFieldValues(f.Field), filter.Type.SelectedLabel())
 		}
 
 		filterForm = append(filterForm, *field)
 
 		if filter.Operator.AddOrNot() {
-			ff := headField + parameter.FilterParamOperatorSuffix + keySuffix
+			ff := utils.StrConcat(headField, parameter.FilterParamOperatorSuffix, keySuffix)
 			filterForm = append(filterForm, FormField{
 				Field:      ff,
 				FieldClass: ff,
@@ -788,15 +786,13 @@ func (wh WhereRaw) Statement(wheres string, whereArgs []interface{}) (string, []
 	if wh.Raw == "" {
 		return wheres, whereArgs
 	}
-
 	if wheres == "" {
-		wheres += wh.Raw[wh.check():] + " "
+		wheres = wh.Raw[wh.check():] + " "
 	} else if wh.check() != 0 {
-		wheres += wh.Raw + " "
+		wheres = utils.StrConcat(wheres, wh.Raw, " ")
 	} else {
-		wheres += " and " + wh.Raw + " "
+		wheres = utils.StrConcat(wheres, " and ", wh.Raw, " ")
 	}
-
 	return wheres, append(whereArgs, wh.Args...)
 }
 
@@ -1091,17 +1087,26 @@ func (i *InfoPanel) AddColumn(head string, fun FieldFilterFn) *InfoPanel {
 }
 
 func (i *InfoPanel) AddColumnButtons(head string, buttons ...Button) *InfoPanel {
-	var content, js template.HTML
+	const bLen = 1024
+	var content, js, footer strings.Builder
+	content.Grow(bLen)
+	js     .Grow(bLen)
+	footer .Grow(bLen)
+	footer.WriteString(string(i.FooterHtml))
 	for _, btn := range buttons {
 		btn.GetAction().SetBtnId("." + btn.ID())
 		btnContent, btnJs := btn.Content()
-		content += btnContent
-		js += template.HTML(btnJs)
-		i.FooterHtml += template.HTML(ParseTableDataTmpl(btn.GetAction().FooterContent()))
+		content.WriteString(string(btnContent))
+		js     .WriteString(string(btnJs))
+		footer .WriteString(ParseTableDataTmpl(btn.GetAction().FooterContent()))
 		i.Callbacks = i.Callbacks.AddCallback(btn.GetAction().GetCallbacks())
 	}
-	i.FooterHtml += template.HTML("<script>") + template.HTML(ParseTableDataTmpl(js)) + template.HTML("</script>")
-	i.FieldList = append(i.FieldList, Field{
+	footer.WriteString(`<script>`)
+	footer.WriteString(ParseTableDataTmpl(js.String()))
+	footer.WriteString(`</script>`)
+	i.FooterHtml = template.HTML(footer.String())
+	contentStr  := content.String()
+	i.FieldList  = append(i.FieldList, Field{
 		Head:     head,
 		Field:    head,
 		TypeName: db.Varchar,
@@ -1111,12 +1116,12 @@ func (i *InfoPanel) AddColumnButtons(head string, buttons ...Button) *InfoPanel 
 		FieldDisplay: FieldDisplay{
 			Display: func(value FieldModel) interface{} {
 				pk := db.GetValueFromDatabaseType(i.primaryKey.Type, value.Row[i.primaryKey.Name], i.isFromJSON())
-				var v = make(map[string]InfoItem)
+				v  := make(map[string]InfoItem, len(value.Row))
 				for key, item := range value.Row {
 					itemValue := fmt.Sprintf("%v", item)
-					v[key] = InfoItem{Value: itemValue, Content: template.HTML(itemValue)}
+					v[key] = InfoItem{ Value: itemValue, Content: template.HTML(itemValue) }
 				}
-				return template.HTML(ParseTableDataTmplWithID(pk.HTML(), string(content), v))
+				return template.HTML(ParseTableDataTmplWithID(pk.HTML(), contentStr, v))
 			},
 			DisplayProcessChains: chooseDisplayProcessChains(i.processChains),
 		},
@@ -1138,9 +1143,6 @@ func (i *InfoPanel) AddField(head, field string, typeName db.DatabaseType) *Info
 		Head:     head,
 		Field:    field,
 		TypeName: typeName,
-		Sortable: false,
-		Joins:    make(Joins, 0),
-		EditAble: false,
 		EditType: table.Text,
 		FieldDisplay: FieldDisplay{
 			Display: func(value FieldModel) interface{} {
@@ -1243,7 +1245,7 @@ func (i *InfoPanel) FieldDownLoadable(prefix ...string) *InfoPanel {
 func (i *InfoPanel) FieldCopyable(prefix ...string) *InfoPanel {
 	i.addDisplayChains(displayFnGens["copyable"].Get(prefix))
 	if _, ok := i.DisplayGeneratorRecords["copyable"]; !ok {
-		i.addFooterHTML(`<script>` + displayFnGens["copyable"].JS() + `</script>`)
+		i.addFooterHTML(template.HTML(utils.StrConcat(`<script>`, string(displayFnGens["copyable"].JS()), `</script>`)))
 		i.DisplayGeneratorRecords["copyable"] = struct{}{}
 	}
 	return i
@@ -1259,7 +1261,7 @@ func (i *InfoPanel) FieldCarousel(fn FieldGetImgArrFn, size ...int) *InfoPanel {
 func (i *InfoPanel) FieldQrcode() *InfoPanel {
 	i.addDisplayChains(displayFnGens["qrcode"].Get())
 	if _, ok := i.DisplayGeneratorRecords["qrcode"]; !ok {
-		i.addFooterHTML(`<script>` + displayFnGens["qrcode"].JS() + `</script>`)
+		i.addFooterHTML(template.HTML(utils.StrConcat(`<script>`, string(displayFnGens["qrcode"].JS()), `</script>`)))
 		i.DisplayGeneratorRecords["qrcode"] = struct{}{}
 	}
 	return i
@@ -1279,21 +1281,16 @@ func (i *InfoPanel) FieldEditOptions(options FieldOptions, extra ...map[string]s
 	if i.FieldList[i.curFieldListIndex].EditType.IsSwitch() {
 		if len(extra) == 0 {
 			options[0].Extra = map[string]string{
-				"size":     "small",
-				"onColor":  "primary",
+				"size"    : "small",
+				"onColor" : "primary",
 				"offColor": "default",
 			}
 		} else {
-			if extra[0]["size"] == "" {
-				extra[0]["size"] = "small"
-			}
-			if extra[0]["onColor"] == "" {
-				extra[0]["onColor"] = "primary"
-			}
-			if extra[0]["offColor"] == "" {
-				extra[0]["offColor"] = "default"
-			}
-			options[0].Extra = extra[0]
+			m := extra[0]
+			if m["size"    ] == "" { m["size"    ] = "small"   }
+			if m["onColor" ] == "" { m["onColor" ] = "primary" }
+			if m["offColor"] == "" { m["offColor"] = "default" }
+			options[0].Extra = m
 		}
 	}
 	i.FieldList[i.curFieldListIndex].EditOptions = options
@@ -1365,8 +1362,7 @@ func (i *InfoPanel) FieldFilterable(filterType ...FilterType) *InfoPanel {
 		} else {
 			ff.Type = filter.FormType
 		}
-		ff.Head = modules.AorB(!filter.NoHead && filter.Head == "",
-			i.FieldList[i.curFieldListIndex].Head, filter.Head)
+		ff.Head = modules.AorB(!filter.NoHead && filter.Head == "", i.FieldList[i.curFieldListIndex].Head, filter.Head)
 		ff.Width = filter.Width
 		ff.HeadWidth = filter.HeadWidth
 		ff.InputWidth = filter.InputWidth
@@ -1532,19 +1528,17 @@ func (i *InfoPanel) SetDefaultPageSize(defaultPageSize int) *InfoPanel {
 }
 
 func (i *InfoPanel) GetPageSizeList() []string {
-	var pageSizeList = make([]string, len(i.PageSizeList))
-	for j := 0; j < len(i.PageSizeList); j++ {
-		pageSizeList[j] = strconv.Itoa(i.PageSizeList[j])
+	pageSizeList := make([]string, len(i.PageSizeList))
+	for j, ps := range i.PageSizeList {
+		pageSizeList[j] = strconv.Itoa(ps)
 	}
 	return pageSizeList
 }
 
 func (i *InfoPanel) GetSort() string {
 	switch i.Sort {
-	case SortAsc:
-		return "asc"
-	default:
-		return "desc"
+	case SortAsc: return "asc"
+	default     : return "desc"
 	}
 }
 
@@ -1728,11 +1722,11 @@ func (i *InfoPanel) addFooterHTML(footer template.HTML) *InfoPanel {
 }
 
 func (i *InfoPanel) AddCSS(css template.CSS) *InfoPanel {
-	return i.addFooterHTML(template.HTML("<style>" + css + "</style>"))
+	return i.addFooterHTML(template.HTML(utils.StrConcat("<style>", string(css), "</style>")))
 }
 
 func (i *InfoPanel) AddJS(js template.JS) *InfoPanel {
-	return i.addFooterHTML(template.HTML("<script>" + js + "</script>"))
+	return i.addFooterHTML(template.HTML(utils.StrConcat("<script>", string(js), "</script>")))
 }
 
 func (i *InfoPanel) addCallback(node context.Node) *InfoPanel {
@@ -1755,7 +1749,6 @@ func (i *InfoPanel) isFromJSON() bool {
 }
 
 func (i *InfoPanel) addDisplayChains(fn FieldFilterFn) *InfoPanel {
-	i.FieldList[i.curFieldListIndex].DisplayProcessChains =
-		i.FieldList[i.curFieldListIndex].DisplayProcessChains.Add(fn)
+	i.FieldList[i.curFieldListIndex].DisplayProcessChains = i.FieldList[i.curFieldListIndex].DisplayProcessChains.Add(fn)
 	return i
 }

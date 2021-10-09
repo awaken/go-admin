@@ -30,7 +30,7 @@ func (h *Handler) ApiUpdate(ctx *context.Context) {
 		}
 	}
 
-	err := param.Panel.UpdateData(ctx, param.Value())
+	err := param.Panel.UpdateData(param.Value())
 	if err != nil {
 		response.Error(ctx, err.Error())
 		return

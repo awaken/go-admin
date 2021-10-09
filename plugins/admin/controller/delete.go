@@ -19,7 +19,7 @@ func (h *Handler) Delete(ctx *context.Context) {
 	//	return
 	//}
 
-	if err := h.table(param.Prefix, ctx).DeleteData(ctx, param.Id); err != nil {
+	if err := h.table(param.Prefix, ctx).DeleteData(param.Id); err != nil {
 		logger.Error(err)
 		response.Error(ctx, "delete fail")
 		return

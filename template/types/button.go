@@ -56,7 +56,6 @@ func GetDefaultButtonGroup(title template.HTML, icon string, action Action, colo
 func defaultButton(title, direction template.HTML, icon string, action Action, group bool, colors ...template.HTML) *DefaultButton {
 	id := btnUUID()
 	action.SetBtnId("." + id)
-
 	var color, textColor template.HTML
 	if len(colors) > 0 {
 		color = colors[0]
@@ -87,7 +86,7 @@ func GetColumnButton(title template.HTML, icon string, action Action, colors ...
 
 func (b *DefaultButton) Content() (template.HTML, template.JS) {
 	var hb strings.Builder
-	hb.Grow(256)
+	hb.Grow(512)
 	if b.Group {
 		hb.WriteString(`<div class="btn-group pull-`)
 		hb.WriteString(string(b.Direction))
@@ -124,7 +123,6 @@ func (b *DefaultButton) Content() (template.HTML, template.JS) {
 	}
 	hb.WriteString(string(b.Action.ExtContent()))
 	return template.HTML(hb.String()), b.Action.Js()
-
 	/*color := template.HTML("")
 	if b.Color != "" {
 		color = template.HTML(`background-color:`) + b.Color + template.HTML(`;`)
@@ -133,24 +131,20 @@ func (b *DefaultButton) Content() (template.HTML, template.JS) {
 	if b.TextColor != "" {
 		textColor = template.HTML(`color:`) + b.TextColor + template.HTML(`;`)
 	}
-
 	style := template.HTML("")
 	addColor := color + textColor
 	if addColor != "" {
 		style = template.HTML(`style="`) + addColor + template.HTML(`"`)
 	}
-
 	h := template.HTML("")
 	if b.Group {
 		h += `<div class="btn-group pull-` + b.Direction + `" style="margin-right: 10px">`
 	}
-
 	h += `<a ` + style + ` class="` + template.HTML(b.Id) + ` btn btn-sm btn-default ` + b.Action.BtnClass() + `" ` + b.Action.BtnAttribute() +
 		`><i class="fa ` + template.HTML(b.Icon) + `"></i>&nbsp;&nbsp;` + b.Title + `</a>`
 	if b.Group {
 		h += `</div>`
 	}
-
 	return h + b.Action.ExtContent(), b.Action.Js()*/
 }
 
@@ -184,24 +178,24 @@ func (b *ActionButton) Content() (template.HTML, template.JS) {
 	const c1 = `<li style="cursor: pointer;"><a data-id="{{.Id}}" class="`
 	const c2 = `" `
 	const c3 = `</a></li>`
-	cls  := b.Action.BtnClass()
-	attr := b.Action.BtnAttribute()
-	ext  := b.Action.ExtContent()
 	var hb strings.Builder
-	hb.Grow(len(c1) + len(b.Id) + 1 + len(cls) + len(c2) + len(attr) + 1 + len(b.Title) + len(c3) + len(ext))
+	hb.Grow(256)
 	hb.WriteString(c1)
 	hb.WriteString(b.Id)
 	hb.WriteByte(' ')
-	hb.WriteString(string(cls))
+	hb.WriteString(string(b.Action.BtnClass()))
 	hb.WriteString(c2)
-	hb.WriteString(string(attr))
+	hb.WriteString(string(b.Action.BtnAttribute()))
 	hb.WriteByte('>')
 	hb.WriteString(string(b.Title))
 	hb.WriteString(c3)
-	hb.WriteString(string(ext))
+	hb.WriteString(string(b.Action.ExtContent()))
 	return template.HTML(hb.String()), b.Action.Js()
-	//h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + `>` + b.Title + c3 + ext
-	//return h, b.Action.Js()
+	/*cls  := b.Action.BtnClass()
+	attr := b.Action.BtnAttribute()
+	ext  := b.Action.ExtContent()
+	h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + `>` + b.Title + c3 + ext
+	return h, b.Action.Js()*/
 }
 
 type ActionIconButton struct {
@@ -232,28 +226,24 @@ func GetActionIconButton(icon string, action Action, ids ...string) *ActionIconB
 }
 
 func (b *ActionIconButton) Content() (template.HTML, template.JS) {
-	const c1 = `<a data-id="{{.Id}}" class="`
-	const c2 = `" `
-	const c3 = `><i class="fa `
-	const c4 = `" style="font-size: 16px;"></i></a>`
-	cls  := b.Action.BtnClass()
-	attr := b.Action.BtnAttribute()
-	ext  := b.Action.ExtContent()
 	var hb strings.Builder
-	hb.Grow(len(c1) + len(b.Id) + 1 + len(cls) + 2 + len(attr) + len(c2) + len(b.Icon) + len(c4) + len(ext))
-	hb.WriteString(c1)
+	hb.Grow(256)
+	hb.WriteString(`<a data-id="{{.Id}}" class="`)
 	hb.WriteString(b.Id)
 	hb.WriteByte(' ')
-	hb.WriteString(string(cls))
-	hb.WriteString(c2)
-	hb.WriteString(string(attr))
-	hb.WriteString(c3)
+	hb.WriteString(string(b.Action.BtnClass()))
+	hb.WriteString(`" `)
+	hb.WriteString(string(b.Action.BtnAttribute()))
+	hb.WriteString(`><i class="fa `)
 	hb.WriteString(string(b.Icon))
-	hb.WriteString(c4)
-	hb.WriteString(string(ext))
+	hb.WriteString(`" style="font-size: 16px;"></i></a>`)
+	hb.WriteString(string(b.Action.ExtContent()))
 	return template.HTML(hb.String()), b.Action.Js()
-	//h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + c3 + b.Icon + c4 + ext
-	//return h, b.Action.Js()
+	/*cls  := b.Action.BtnClass()
+	attr := b.Action.BtnAttribute()
+	ext  := b.Action.ExtContent()
+	h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + c3 + b.Icon + c4 + ext
+	return h, b.Action.Js()*/
 }
 
 type Buttons []Button
@@ -265,6 +255,8 @@ func (b Buttons) Add(btn Button) Buttons {
 func (b Buttons) Content() (template.HTML, template.JS) {
 	var hb strings.Builder
 	var jb strings.Builder
+	hb.Grow(1024)
+	jb.Grow(1024)
 	for _, btn := range b {
 		hh, jj := btn.Content()
 		hb.WriteString(string(hh))
@@ -383,11 +375,9 @@ func GetNavButton(title template.HTML, icon string, action Action, names ...stri
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()
 	name := ""
-
 	if len(names) > 0 {
 		name = names[0]
 	}
-
 	return &NavButton{
 		BaseButton: &BaseButton{
 			Id:     id,
@@ -402,25 +392,43 @@ func GetNavButton(title template.HTML, icon string, action Action, names ...stri
 }
 
 func (n *NavButton) Content() (template.HTML, template.JS) {
-
-	ico := template.HTML("")
+	var h strings.Builder
+	h.Grow(256)
+	h.WriteString(`<li><a class="`)
+	h.WriteString(n.Id)
+	h.WriteByte(' ')
+	h.WriteString(string(n.Action.BtnClass()))
+	h.WriteString(`" `)
+	h.WriteString(string(n.Action.BtnAttribute()))
+	h.WriteByte('>')
+	if n.Icon != "" {
+		h.WriteString(`<i class="fa `)
+		h.WriteString(n.Icon)
+		h.WriteString(`"></i>`)
+	}
+	if n.Title != "" {
+		h.WriteString(`<span>`)
+		h.WriteString(string(n.Title))
+		h.WriteString(`</span>`)
+	}
+	h.WriteString(`</a></li>`)
+	h.WriteString(string(n.Action.ExtContent()))
+	return template.HTML(h.String()), n.Action.Js()
+	/*ico := template.HTML("")
 	title := template.HTML("")
-
 	if n.Icon != "" {
 		ico = template.HTML(`<i class="fa ` + n.Icon + `"></i>`)
 	}
-
 	if n.Title != "" {
 		title = `<span>` + n.Title + `</span>`
 	}
-
 	h := template.HTML(`<li>
     <a class="`+template.HTML(n.Id)+` `+n.Action.BtnClass()+`" `+n.Action.BtnAttribute()+`>
       `+ico+`
       `+title+`
     </a>
 </li>`) + n.Action.ExtContent()
-	return h, n.Action.Js()
+	return h, n.Action.Js()*/
 }
 
 type NavDropDownButton struct {
@@ -463,29 +471,50 @@ func (n *NavDropDownButton) AddItem(item *NavDropDownItemButton) {
 }
 
 func (n *NavDropDownButton) Content() (template.HTML, template.JS) {
-
-	ico := template.HTML("")
+	var h, js strings.Builder
+	h.Grow(1024)
+	js.Grow(1024)
+	did := utils.Uuid(10)
+	h.WriteString(`<li class="dropdown" id="`)
+	h.WriteString(did)
+	h.WriteString(`"><a class="`)
+	h.WriteString(n.Id)
+	h.WriteString(` dropdown-toggle" data-toggle="dropdown" style="cursor:pointer;">`)
+	if n.Icon != "" {
+		h.WriteString(`<i class="fa `)
+		h.WriteString(n.Icon)
+		h.WriteString(`"></i>`)
+	}
+	if n.Title != "" {
+		h.WriteString(`<span>`)
+		h.WriteString(string(n.Title))
+		h.WriteString(`</span>`)
+	}
+	h.WriteString(`</a><ul class="dropdown-menu"  aria-labelledby="`)
+	h.WriteString(did)
+	h.WriteString(`">`)
+	for _, item := range n.Items {
+		c, j := item.Content()
+		h.WriteString(string(c))
+		js.WriteString(string(j))
+	}
+	h.WriteString(`</ul>`)
+	return template.HTML(h.String()), template.JS(js.String())
+	/*ico := template.HTML("")
 	title := template.HTML("")
-
 	if n.Icon != "" {
 		ico = template.HTML(`<i class="fa ` + n.Icon + `"></i>`)
 	}
-
 	if n.Title != "" {
 		title = `<span>` + n.Title + `</span>`
 	}
-
 	content := template.HTML("")
 	js := template.JS("")
-
 	for _, item := range n.Items {
 		c, j := item.Content()
 		content += c
 		js += j
 	}
-
-	did := utils.Uuid(10)
-
 	h := template.HTML(`<li class="dropdown" id="` + template.HTML(did) + `">
     <a class="` + template.HTML(n.Id) + ` dropdown-toggle" data-toggle="dropdown" style="cursor:pointer;">
       ` + ico + `
@@ -495,8 +524,7 @@ func (n *NavDropDownButton) Content() (template.HTML, template.JS) {
     	` + content + `
 	</ul>
 </li>`)
-
-	return h, js
+	return h, js*/
 }
 
 const (
@@ -528,16 +556,30 @@ func GetDropDownItemButton(title template.HTML, action Action, names ...string) 
 }
 
 func (n *NavDropDownItemButton) Content() (template.HTML, template.JS) {
-
-	title := template.HTML("")
-
+	var h strings.Builder
+	h.Grow(256)
+	h.WriteString(`<li><a class="dropdown-item `)
+	h.WriteString(n.Id)
+	h.WriteByte(' ')
+	h.WriteString(string(n.Action.BtnClass()))
+	h.WriteString(`" `)
+	h.WriteString(string(n.Action.BtnAttribute()))
+	h.WriteByte('>')
+	if n.Title != "" {
+		h.WriteString(`<span>`)
+		h.WriteString(string(n.Title))
+		h.WriteString(`</span>`)
+	}
+	h.WriteString(`</a></li>`)
+	h.WriteString(string(n.Action.ExtContent()))
+	return template.HTML(h.String()), n.Action.Js()
+	/*title := template.HTML("")
 	if n.Title != "" {
 		title = `<span>` + n.Title + `</span>`
 	}
-
 	h := template.HTML(`<li><a class="dropdown-item `+template.HTML(n.Id)+` `+
 		n.Action.BtnClass()+`" `+n.Action.BtnAttribute()+`>
       `+title+`
 </a></li>`) + n.Action.ExtContent()
-	return h, n.Action.Js()
+	return h, n.Action.Js()*/
 }

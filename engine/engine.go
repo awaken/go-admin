@@ -406,15 +406,15 @@ func (eng *Engine) initJumpNavButtons() {
 func (eng *Engine) initPlugins() {
 	//printInitMsg(language.Get("initialize plugins"))
 	eng.AddPlugins(admin.NewAdmin()).AddPluginList(plugins.Get())
-	var plugGenerators = make(table.GeneratorList)
-	for i := range eng.PluginList {
-		if eng.PluginList[i].Name() != "admin" {
-			printInitMsg("--> " + eng.PluginList[i].Name())
-			eng.PluginList[i].InitPlugin(eng.Services)
-			if !eng.PluginList[i].GetInfo().SkipInstallation {
-				eng.AddGenerator("plugin_"+eng.PluginList[i].Name(), eng.PluginList[i].GetSettingPage())
+	plugGenerators := make(table.GeneratorList)
+	for _, plugin := range eng.PluginList {
+		if plugin.Name() != "admin" {
+			printInitMsg("--> " + plugin.Name())
+			plugin.InitPlugin(eng.Services)
+			if !plugin.GetInfo().SkipInstallation {
+				eng.AddGenerator("plugin_" + plugin.Name(), plugin.GetSettingPage())
 			}
-			plugGenerators = plugGenerators.Combine(eng.PluginList[i].GetGenerators())
+			plugGenerators = plugGenerators.Combine(plugin.GetGenerators())
 		}
 	}
 	adm := eng.AdminPlugin().AddGenerators(plugGenerators)
@@ -514,10 +514,10 @@ func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...b
 			tmpl, tmplName = template.Default().GetTemplate(ctx.IsPjax())
 
 			user = auth.Auth(ctx)
-			buf  strings.Builder
+			sb   strings.Builder
 		)
 
-		hasError := tmpl.ExecuteTemplate(&buf, tmplName, types.NewPage(&types.NewPageParam{
+		hasError := tmpl.ExecuteTemplate(&sb, tmplName, types.NewPage(&types.NewPageParam{
 			User:         user,
 			Menu:         menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(config.URLRemovePrefix(ctx.Path())),
 			Panel:        panel.GetContent(eng.config.IsProductionEnvironment()),
@@ -532,7 +532,7 @@ func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...b
 			logger.Error(fmt.Sprintf("error: %s adapter content, ", eng.Adapter.Name()), hasError)
 		}
 
-		ctx.HTML(http.StatusOK, buf.String())
+		ctx.HTML(http.StatusOK, sb.String())
 	}
 
 	if len(noAuth) > 0 && noAuth[0] {

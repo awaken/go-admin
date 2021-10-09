@@ -1674,7 +1674,7 @@ func (f *FormPanel) GetNewFormFields(sql ...func() *db.SQL) (FormFields, []FormF
 
 type (
 	FormPreProcessFn  func(values form.Values) form.Values
-	FormPostFn        func(ctx *context.Context, values form.Values) error
+	FormPostFn        func(values form.Values) error
 	FormFields        []FormField
 	GroupFormFields   []FormFields
 	GroupFieldHeaders []string

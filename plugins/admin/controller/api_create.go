@@ -20,7 +20,7 @@ func (h *Handler) ApiCreate(ctx *context.Context) {
 		}
 	}
 
-	err := param.Panel.InsertData(ctx, param.Value())
+	err := param.Panel.InsertData(param.Value())
 	if err != nil {
 		response.Error(ctx, err.Error())
 		return
@@ -30,7 +30,6 @@ func (h *Handler) ApiCreate(ctx *context.Context) {
 }
 
 func (h *Handler) ApiCreateForm(ctx *context.Context) {
-
 	var (
 		params           = guard.GetShowNewFormParam(ctx)
 		prefix, paramStr = params.Prefix, params.Param.GetRouteParamStr()
@@ -57,7 +56,6 @@ func (h *Handler) ApiCreateForm(ctx *context.Context) {
 		"footer": f.FooterHtml,
 		"prefix": h.config.PrefixFixSlash(),
 		"token":  h.authSrv().AddToken(),
-		"operation_footer": formFooter("new", f.IsHideContinueEditCheckBox, f.IsHideContinueNewCheckBox,
-			f.IsHideResetButton, f.FormNewBtnWord),
+		"operation_footer": formFooter("new", f.IsHideContinueEditCheckBox, f.IsHideContinueNewCheckBox, f.IsHideResetButton, f.FormNewBtnWord),
 	})
 }

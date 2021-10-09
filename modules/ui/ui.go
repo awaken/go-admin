@@ -20,7 +20,7 @@ func (s *Service) Name() string {
 }
 
 func GetService(srv service.List) *Service {
-	if v, ok := srv.Get("ui").(*Service); ok {
+	if v, ok := srv.Get(ServiceKey).(*Service); ok {
 		return v
 	}
 	panic("wrong service")
