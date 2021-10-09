@@ -187,11 +187,13 @@ type FilterFormField struct {
 	ProcessFn   func(string) string
 }
 
-func (f Field) GetFilterFormFields(params parameter.Parameters, headField string, sql ...*db.SQL) []FormField {
+func (f Field) GetFilterFormFields(params parameter.Parameters, headField string, sqls ...*db.SQL) []FormField {
 	var (
-		filterForm []FormField
+		filterForm               []FormField
 		value, value2, keySuffix string
+		sql                      *db.SQL
 	)
+	if len(sqls) > 0 { sql = sqls[0] }
 
 	for index, filter := range f.FilterFormFields {
 		if index > 0 {
@@ -253,7 +255,7 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 			Label:       filter.Operator.Label(),
 		}
 
-		field.setOptionsFromSQL(sql[0])
+		field.setOptionsFromSQL(sql)
 
 		if filter.Type.IsSingleSelect() {
 			field.Options = field.Options.SetSelected(params.GetFieldValue(f.Field), filter.Type.SelectedLabel())
@@ -296,29 +298,45 @@ type TableInfo struct {
 	Driver     string
 }
 
-func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parameters, columns []string,
-	sql ...func() *db.SQL) (Thead, string, string, string, []string, []FormField) {
+func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parameters, columns []string, sqlFuncs ...func() *db.SQL) (Thead, string, string, string, []string, []FormField) {
 	var (
-		thead      = make(Thead, 0)
-		fields     = ""
-		joinFields = ""
+		sql        *db.SQL
+		thead      Thead
+		fields     strings.Builder
+		joinFields strings.Builder
 		joins      = ""
-		joinTables = make([]string, 0)
-		filterForm = make([]FormField, 0)
-		tableName  = info.Delimiter + info.Table + info.Delimiter2
+		joinTables []string
+		filterForm []FormField
 	)
+	if len(sqlFuncs) > 0 { sql = sqlFuncs[0]() }
+	fields.Grow(256)
+
 	for _, field := range f {
-		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) &&
-			!field.Joins.Valid() {
-			fields += tableName + "." + modules.FilterField(field.Field, info.Delimiter, info.Delimiter2) + ","
+		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) && !field.Joins.Valid() {
+			fields.WriteString(info.Delimiter)
+			fields.WriteString(info.Table)
+			fields.WriteString(info.Delimiter2)
+			fields.WriteByte('.')
+			fields.WriteString(info.Delimiter)
+			fields.WriteString(field.Field)
+			fields.WriteString(info.Delimiter2)
+			fields.WriteByte(',')
 		}
 
 		headField := field.Field
 
 		if field.Joins.Valid() {
-			headField = field.Joins.Last().GetTableName() + parameter.FilterParamJoinInfix + field.Field
-			joinFields += db.GetAggregationExpression(info.Driver, field.Joins.Last().GetTableName(info.Delimiter, info.Delimiter2)+"."+
-				modules.FilterField(field.Field, info.Delimiter, info.Delimiter2), headField, JoinFieldValueDelimiter) + ","
+			lastJoin := field.Joins.Last()
+			headField = lastJoin.GetTableName() + parameter.FilterParamJoinInfix + field.Field
+			var sb strings.Builder
+			sb.Grow(64)
+			sb.WriteString(lastJoin.GetTableName(info.Delimiter, info.Delimiter2))
+			sb.WriteByte('.')
+			sb.WriteString(info.Delimiter)
+			sb.WriteString(field.Field)
+			sb.WriteString(info.Delimiter2)
+			joinFields.WriteString(db.GetAggregationExpression(info.Driver, sb.String(), headField, JoinFieldValueDelimiter))
+			joinFields.WriteByte(',')
 			for _, join := range field.Joins {
 				if !modules.InArray(joinTables, join.GetTableName(info.Delimiter, info.Delimiter2)) {
 					joinTables = append(joinTables, join.GetTableName(info.Delimiter, info.Delimiter2))
@@ -333,11 +351,7 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 		}
 
 		if field.Filterable {
-			if len(sql) > 0 {
-				filterForm = append(filterForm, field.GetFilterFormFields(params, headField, sql[0]())...)
-			} else {
-				filterForm = append(filterForm, field.GetFilterFormFields(params, headField)...)
-			}
+			filterForm = append(filterForm, field.GetFilterFormFields(params, headField, sql)...)
 		}
 
 		if field.Hide {
@@ -355,20 +369,28 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 		})
 	}
 
-	return thead, fields, joinFields, joins, joinTables, filterForm
+	return thead, fields.String(), joinFields.String(), joins, joinTables, filterForm
 }
 
 func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns []string) (Thead, string, string) {
 	var (
-		thead      = make(Thead, 0)
-		fields     = ""
-		joins      = ""
-		joinTables = make([]string, 0)
+		thead      Thead
+		fields     strings.Builder
+		joins      strings.Builder
+		joinTables []string
 	)
+	fields.Grow(256)
+
 	for _, field := range f {
-		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) &&
-			!field.Joins.Valid() {
-			fields += info.Table + "." + modules.FilterField(field.Field, info.Delimiter, info.Delimiter2) + ","
+		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) && !field.Joins.Valid() {
+			fields.WriteString(info.Delimiter)
+			fields.WriteString(info.Table)
+			fields.WriteString(info.Delimiter2)
+			fields.WriteByte('.')
+			fields.WriteString(info.Delimiter)
+			fields.WriteString(field.Field)
+			fields.WriteString(info.Delimiter2)
+			fields.WriteByte(',')
 		}
 
 		headField := field.Field
@@ -381,9 +403,31 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 					if join.BaseTable == "" {
 						join.BaseTable = info.Table
 					}
-					joins += " left join " + modules.FilterField(join.Table, info.Delimiter, info.Delimiter2) + " " + join.TableAlias + " on " +
-						join.GetTableName(info.Delimiter, info.Delimiter2) + "." + modules.FilterField(join.JoinField, info.Delimiter, info.Delimiter2) + " = " +
-						modules.Delimiter(info.Delimiter, info.Delimiter2, join.BaseTable) + "." + modules.FilterField(join.Field, info.Delimiter, info.Delimiter2)
+					if joins.Len() == 0 {
+						joins.Grow(256)
+					} else {
+						joins.WriteByte(' ')
+					}
+					joins.WriteString("LEFT JOIN ")
+					joins.WriteString(info.Delimiter)
+					joins.WriteString(join.Table)
+					joins.WriteString(info.Delimiter2)
+					joins.WriteByte(' ')
+					joins.WriteString(join.TableAlias)
+					joins.WriteString(" ON ")
+					joins.WriteString(join.GetTableName(info.Delimiter, info.Delimiter2))
+					joins.WriteByte('.')
+					joins.WriteString(info.Delimiter)
+					joins.WriteString(join.JoinField)
+					joins.WriteString(info.Delimiter2)
+					joins.WriteString(" = ")
+					joins.WriteString(info.Delimiter)
+					joins.WriteString(join.BaseTable)
+					joins.WriteString(info.Delimiter2)
+					joins.WriteByte('.')
+					joins.WriteString(info.Delimiter)
+					joins.WriteString(join.Field)
+					joins.WriteString(info.Delimiter2)
 				}
 			}
 		}
@@ -403,7 +447,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 		})
 	}
 
-	return thead, fields, joins
+	return thead, fields.String(), joins.String()
 }
 
 func (f FieldList) GetFieldFilterProcessValue(key, value, keyIndex string) string {
@@ -482,7 +526,7 @@ func (j Joins) Valid() bool {
 
 func (j Joins) Last() Join {
 	if len(j) > 0 {
-		return j[len(j)-1]
+		return j[len(j) - 1]
 	}
 	return Join{}
 }
@@ -496,7 +540,13 @@ func (j Join) GetTableName(delimiter ...string) string {
 		return j.TableAlias
 	}
 	if len(delimiter) > 0 {
-		return delimiter[0] + j.Table + delimiter[1]
+		var sb strings.Builder
+		sb.Grow(len(delimiter[0]) + len(j.Table) + len(delimiter[1]))
+		sb.WriteString(delimiter[0])
+		sb.WriteString(j.Table)
+		sb.WriteString(delimiter[1])
+		return sb.String()
+		//return delimiter[0] + j.Table + delimiter[1]
 	}
 	return j.Table
 }
@@ -635,18 +685,27 @@ type Where struct {
 type Wheres []Where
 
 func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []interface{}, existKeys, columns []string) (string, []interface{}) {
-	pwheres := ""
+	var pwheres strings.Builder
+	//pwheres := ""
+	last := len(whs) - 1
 
-	for k, wh := range whs {
-		whFieldArr := strings.Split(wh.Field, ".")
-		whField    := ""
-		whTable    := ""
-		if len(whFieldArr) > 1 {
-			whField = whFieldArr[1]
-			whTable = whFieldArr[0]
+	for i, wh := range whs {
+		whField := ""
+		whTable := ""
+		if p := strings.IndexByte(wh.Field, '.'); p >= 0 {
+			p++
+			whTable = wh.Field[:p]
+			whField = wh.Field[p:]
 		} else {
-			whField = whFieldArr[0]
+			whField = wh.Field
 		}
+		//whFieldArr := strings.Split(wh.Field, ".")
+		//if len(whFieldArr) > 1 {
+		//	whField = whFieldArr[1]
+		//	whTable = whFieldArr[0]
+		//} else {
+		//	whField = whFieldArr[0]
+		//}
 
 		if modules.InArray(existKeys, whField) {
 			continue
@@ -654,24 +713,44 @@ func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []in
 
 		// TODO: support like operation and join table
 		if modules.InArray(columns, whField) {
-
 			joinMark := ""
-			if k != len(whs)-1 {
-				joinMark = whs[k+1].Join
+			if i != last {
+				joinMark = whs[i + 1].Join
 			}
-
 			if whTable != "" {
-				pwheres += whTable + "." + modules.FilterField(whField, delimiter, delimiter2) + " " + wh.Operator + " ? " + joinMark + " "
-			} else {
-				pwheres += modules.FilterField(whField, delimiter, delimiter2) + " " + wh.Operator + " ? " + joinMark + " "
+				pwheres.WriteString(whTable)
+				//pwheres += whTable + "."
 			}
+			pwheres.WriteString(delimiter)
+			pwheres.WriteString(whField)
+			pwheres.WriteString(delimiter2)
+			pwheres.WriteByte(' ')
+			pwheres.WriteString(wh.Operator)
+			pwheres.WriteString(" ? ")
+			pwheres.WriteString(joinMark)
+			pwheres.WriteByte(' ')
+			//pwheres += modules.FilterField(whField, delimiter, delimiter2) + " " + wh.Operator + " ? " + joinMark + " "
 			whereArgs = append(whereArgs, wh.Arg)
 		}
 	}
-	if wheres != "" && pwheres != "" {
-		wheres += " and "
+
+	if wheres == "" {
+		return pwheres.String(), whereArgs
 	}
-	return wheres + pwheres, whereArgs
+	if pwheres.Len() == 0 {
+		return wheres, whereArgs
+	}
+	const andStr = " and "
+	var res strings.Builder
+	res.Grow(len(wheres) + len(andStr) + pwheres.Len())
+	res.WriteString(wheres)
+	res.WriteString(andStr)
+	res.WriteString(pwheres.String())
+	return res.String(), whereArgs
+	//if wheres != "" && pwheres != "" {
+	//	wheres += " and "
+	//}
+	//return wheres + pwheres, whereArgs
 }
 
 type WhereRaw struct {

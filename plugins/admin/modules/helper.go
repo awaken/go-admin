@@ -3,6 +3,7 @@ package modules
 import (
 	"html/template"
 	"strconv"
+	"strings"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -17,11 +18,23 @@ func InArray(arr []string, str string) bool {
 }
 
 func Delimiter(del, del2, s string) string {
-	return del + s + del2
+	var sb strings.Builder
+	sb.Grow(len(del) + len(s) + len(del2))
+	sb.WriteString(del)
+	sb.WriteString(s)
+	sb.WriteString(del2)
+	return sb.String()
+	//return del + s + del2
 }
 
-func FilterField(filed, delimiter, delimiter2 string) string {
-	return delimiter + filed + delimiter2
+func FilterField(field, delimiter, delimiter2 string) string {
+	var sb strings.Builder
+	sb.Grow(len(delimiter) + len(field) + len(delimiter2))
+	sb.WriteString(delimiter)
+	sb.WriteString(field)
+	sb.WriteString(delimiter2)
+	return sb.String()
+	//return delimiter + field + delimiter2
 }
 
 func InArrayWithoutEmpty(arr []string, str string) bool {
@@ -37,7 +50,7 @@ func InArrayWithoutEmpty(arr []string, str string) bool {
 }
 
 func RemoveBlankFromArray(s []string) []string {
-	var r []string
+	r := make([]string, 0, len(s))
 	for _, str := range s {
 		if str != "" {
 			r = append(r, str)
@@ -58,13 +71,12 @@ func SetDefault(source, def string) string {
 	return source
 }
 
-func GetPage(page string) (pageInt int) {
+func GetPage(page string) int {
 	if page == "" {
-		pageInt = 1
-	} else {
-		pageInt, _ = strconv.Atoi(page)
+		return 1
 	}
-	return
+	pageInt, _ := strconv.Atoi(page)
+	return pageInt
 }
 
 func AorB(condition bool, a, b string) string {

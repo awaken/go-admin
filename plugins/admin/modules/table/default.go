@@ -5,15 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/GoAdminGroup/go-admin/modules/config"
 
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
@@ -111,7 +110,7 @@ func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) 
 	var (
 		data      []map[string]interface{}
 		size      int
-		beginTime = time.Now()
+		benchmark = utils.StartBenchmark()
 	)
 
 	if tb.Info.UpdateParametersFns != nil {
@@ -155,13 +154,9 @@ func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) 
 
 	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, []string{})
 
-	endTime := time.Now()
-
 	extraInfo := ""
-
 	if !tb.Info.IsHideQueryInfo {
-		extraInfo = fmt.Sprintf("<b>" + language.Get("query time") + ": </b>" +
-			fmt.Sprintf("%.3fms", endTime.Sub(beginTime).Seconds()*1000))
+		extraInfo = elapsedQueryTime(benchmark)
 	}
 
 	return PanelInfo{
@@ -222,7 +217,7 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 	var (
 		data      []map[string]interface{}
 		size      int
-		beginTime = time.Now()
+		benchmark = utils.StartBenchmark()
 	)
 
 	if tb.getDataFun != nil {
@@ -235,15 +230,13 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 		return tb.getDataFromDatabase(params)
 	}
 
-	infoList := make([]map[string]types.InfoItem, 0)
+	var infoList []map[string]types.InfoItem
 
 	for i := 0; i < len(data); i++ {
 		infoList = append(infoList, tb.getTempModelData(data[i], params, []string{}))
 	}
 
 	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, []string{})
-
-	endTime := time.Now()
 
 	return PanelInfo{
 		Thead:    thead,
@@ -252,9 +245,7 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 			Size:         size,
 			Param:        params,
 			PageSizeList: tb.Info.GetPageSizeList(),
-		}).
-			SetExtraInfo(template.HTML(fmt.Sprintf("<b>" + language.Get("query time") + ": </b>" +
-				fmt.Sprintf("%.3fms", endTime.Sub(beginTime).Seconds()*1000)))),
+		}).SetExtraInfo(template.HTML(elapsedQueryTime(benchmark))),
 		Title:          tb.Info.Title,
 		FilterFormData: filterForm,
 		Description:    tb.Info.Description,
@@ -267,84 +258,84 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		"__goadmin_delete_params": {},
 		"__goadmin_detail_params": {},
 	}
+	var typeName db.DatabaseType
 	headField := ""
 	editParams := ""
 	deleteParams := ""
 	detailParams := ""
+	noColumns := len(columns) == 0
 
-	primaryKeyValue := db.GetValueFromDatabaseType(tb.PrimaryKey.Type, res[tb.PrimaryKey.Name], len(columns) == 0)
+	primaryKeyValue := db.GetValueFromDatabaseType(tb.PrimaryKey.Type, res[tb.PrimaryKey.Name], noColumns)
 
 	for _, field := range tb.Info.FieldList {
-		headField = field.Field
-
-		if field.Joins.Valid() {
-			headField = field.Joins.Last().GetTableName() + parameter.FilterParamJoinInfix + field.Field
-		}
-
 		if field.Hide {
 			continue
 		}
+
+		validJoin := field.Joins.Valid()
+
+		if validJoin {
+			headField = field.Joins.Last().GetTableName() + parameter.FilterParamJoinInfix + field.Field
+		} else {
+			headField = field.Field
+		}
+
 		if !modules.InArrayWithoutEmpty(params.Columns, headField) {
 			continue
 		}
 
-		typeName := field.TypeName
-
-		if field.Joins.Valid() {
+		if validJoin {
 			typeName = db.Varchar
+		} else {
+			typeName = field.TypeName
 		}
 
-		combineValue := db.GetValueFromDatabaseType(typeName, res[headField], len(columns) == 0).String()
+		combineValue := db.GetValueFromDatabaseType(typeName, res[headField], noColumns).String()
 
-		// TODO: ToDisplay some same logic execute repeatedly, it can be improved.
-		var value interface{}
-		if len(columns) == 0 || modules.InArray(columns, headField) || field.Joins.Valid() {
-			value = field.ToDisplay(types.FieldModel{
-				ID:    primaryKeyValue.String(),
-				Value: combineValue,
-				Row:   res,
-			})
-		} else {
-			value = field.ToDisplay(types.FieldModel{
-				ID:    primaryKeyValue.String(),
-				Value: "",
-				Row:   res,
-			})
+		fieldModel := types.FieldModel{
+			ID:  primaryKeyValue.String(),
+			Row: res,
 		}
-		var valueStr string
-		var ok bool
-		if valueStr, ok = value.(string); ok {
-			tempModelData[headField] = types.InfoItem{
-				Content: template.HTML(valueStr),
-				Value:   combineValue,
-			}
-		} else {
-			valueStr = string(value.(template.HTML))
-			tempModelData[headField] = types.InfoItem{
-				Content: value.(template.HTML),
-				Value:   combineValue,
-			}
+		if noColumns || validJoin || modules.InArray(columns, headField) {
+			fieldModel.Value = combineValue
+		}
+
+		valueStr := ""
+		switch t := field.ToDisplay(fieldModel).(type) {
+		case string       : valueStr = t
+		case template.HTML: valueStr = string(t)
+		}
+
+		tempModelData[headField] = types.InfoItem{
+			Content: template.HTML(valueStr),
+			Value:   combineValue,
 		}
 
 		if field.IsEditParam {
-			editParams += "__goadmin_edit_" + field.Field + "=" + valueStr + "&"
+			editParams += "&__goadmin_edit_" + field.Field + "=" + valueStr
+			//editParams += "__goadmin_edit_" + field.Field + "=" + valueStr + "&"
 		}
 		if field.IsDeleteParam {
-			deleteParams += "__goadmin_delete_" + field.Field + "=" + valueStr + "&"
+			deleteParams += "&__goadmin_delete_" + field.Field + "=" + valueStr
+			//deleteParams += "__goadmin_delete_" + field.Field + "=" + valueStr + "&"
 		}
 		if field.IsDetailParam {
-			detailParams += "__goadmin_detail_" + field.Field + "=" + valueStr + "&"
+			detailParams += "&__goadmin_detail_" + field.Field + "=" + valueStr
+			//detailParams += "__goadmin_detail_" + field.Field + "=" + valueStr + "&"
 		}
 	}
 
 	if editParams != "" {
-		tempModelData["__goadmin_edit_params"] = types.InfoItem{Content: template.HTML("&" + editParams[:len(editParams)-1])}
+		tempModelData["__goadmin_edit_params"] = types.InfoItem{ Content: template.HTML(editParams) }
+		//tempModelData["__goadmin_edit_params"] = types.InfoItem{Content: template.HTML("&" + editParams[:len(editParams)-1])}
 	}
 	if deleteParams != "" {
-		tempModelData["__goadmin_delete_params"] = types.InfoItem{Content: template.HTML("&" + deleteParams[:len(deleteParams)-1])}
+		tempModelData["__goadmin_delete_params"] = types.InfoItem{ Content: template.HTML(deleteParams) }
+		//tempModelData["__goadmin_delete_params"] = types.InfoItem{Content: template.HTML("&" + deleteParams[:len(deleteParams)-1])}
 	}
 	if detailParams != "" {
-		tempModelData["__goadmin_detail_params"] = types.InfoItem{Content: template.HTML("&" + detailParams[:len(detailParams)-1])}
+		tempModelData["__goadmin_detail_params"] = types.InfoItem{ Content: template.HTML(detailParams) }
+		//tempModelData["__goadmin_detail_params"] = types.InfoItem{Content: template.HTML("&" + detailParams[:len(detailParams)-1])}
 	}
 
 	primaryKeyField := tb.Info.FieldList.GetFieldByFieldName(tb.PrimaryKey.Name)
@@ -353,77 +344,94 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		Value: primaryKeyValue.String(),
 		Row:   res,
 	})
-	if valueStr, ok := value.(string); ok {
-		tempModelData[tb.PrimaryKey.Name] = types.InfoItem{
-			Content: template.HTML(valueStr),
-			Value:   primaryKeyValue.String(),
-		}
-	} else {
-		tempModelData[tb.PrimaryKey.Name] = types.InfoItem{
-			Content: value.(template.HTML),
-			Value:   primaryKeyValue.String(),
-		}
+
+	var valueHtml template.HTML
+	switch t := value.(type) {
+	case string       : valueHtml = template.HTML(t)
+	case template.HTML: valueHtml = t
+	}
+
+	tempModelData[tb.PrimaryKey.Name] = types.InfoItem{
+		Content: valueHtml,
+		Value:   primaryKeyValue.String(),
 	}
 
 	return tempModelData
 }
 
 func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (PanelInfo, error) {
-	var (
-		connection     = tb.db()
-		queryStatement = "select %s from %s %s %s %s order by " + modules.Delimiter(connection.GetDelimiter(), connection.GetDelimiter2(), "%s") + " %s"
-	)
+	conn   := tb.db()
+	delim  := conn.GetDelimiter()
+	delim2 := conn.GetDelimiter2()
+
+	var queryStmt strings.Builder
+	queryStmt.Grow(64)
+	queryStmt.WriteString("SELECT %s FROM %s %s %s %s ORDER BY ")
+	queryStmt.WriteString(delim)
+	queryStmt.WriteString("%s")
+	queryStmt.WriteString(delim2)
+	queryStmt.WriteString(" %s")
+	//queryStmt = "select %s from %s %s %s %s order by " + modules.Delimiter(delim, delim2, "%s") + " %s"
 
 	columns, _ := tb.getColumns(tb.Info.Table)
 
 	thead, fields, joins := tb.Info.FieldList.GetThead(types.TableInfo{
 		Table:      tb.Info.Table,
-		Delimiter:  connection.GetDelimiter(),
-		Delimiter2: connection.GetDelimiter2(),
+		Delimiter:  delim,
+		Delimiter2: delim2,
 		Driver:     tb.connectionDriver,
 		PrimaryKey: tb.PrimaryKey.Name,
 	}, params, columns)
 
-	fields += tb.Info.Table + "." + modules.FilterField(tb.PrimaryKey.Name, connection.GetDelimiter(), connection.GetDelimiter2())
-
-	groupBy := ""
-	if joins != "" {
-		groupBy = " GROUP BY " + tb.Info.Table + "." + modules.Delimiter(connection.GetDelimiter(), connection.GetDelimiter2(), tb.PrimaryKey.Name)
+	{
+		var sb strings.Builder
+		sb.Grow(256)
+		sb.WriteString(fields)
+		sb.WriteString(tb.Info.Table)
+		sb.WriteByte('.')
+		sb.WriteString(delim)
+		sb.WriteString(tb.PrimaryKey.Name)
+		sb.WriteString(delim2)
+		fields = sb.String()
+		//fields += tb.Info.Table + "." + modules.FilterField(tb.PrimaryKey.Name, delim, delim2)
 	}
 
-	var (
-		wheres    string
-		whereArgs []interface{}
-		existKeys []string
-	)
+	var groupBy strings.Builder
+	if joins != "" {
+		groupBy.Grow(64)
+		groupBy.WriteString("GROUP BY ")
+		groupBy.WriteString(tb.Info.Table)
+		groupBy.WriteByte('.')
+		groupBy.WriteString(delim)
+		groupBy.WriteString(tb.PrimaryKey.Name)
+		groupBy.WriteString(delim2)
+		//groupBy = " GROUP BY " + tb.Info.Table + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
+	}
 
-	wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, connection.GetDelimiter(), connection.GetDelimiter2(), whereArgs, columns, existKeys,
-		tb.Info.FieldList.GetFieldFilterProcessValue)
-	wheres, whereArgs = tb.Info.Wheres.Statement(wheres, connection.GetDelimiter(), connection.GetDelimiter2(), whereArgs, existKeys, columns)
+	wheres, whereArgs, existKeys := params.Statement("", tb.Info.Table, delim, delim2, nil, columns, nil, tb.Info.FieldList.GetFieldFilterProcessValue)
+	wheres, whereArgs = tb.Info.Wheres.Statement(wheres, delim, delim2, whereArgs, existKeys, columns)
 	wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
 	if wheres != "" {
-		wheres = " where " + wheres
+		wheres = "WHERE " + wheres
 	}
 
 	if !modules.InArray(columns, params.SortField) {
 		params.SortField = tb.PrimaryKey.Name
 	}
 
-	queryCmd := fmt.Sprintf(queryStatement, fields, tb.Info.Table, joins, wheres, groupBy, params.SortField, params.SortType)
+	queryCmd := fmt.Sprintf(queryStmt.String(), fields, tb.Info.Table, joins, wheres, groupBy.String(), params.SortField, params.SortType)
+	logger.LogSQL(queryCmd, nil)
 
-	logger.LogSQL(queryCmd, []interface{}{})
-
-	res, err := connection.QueryWithConnection(tb.connection, queryCmd, whereArgs...)
+	res, err := conn.QueryWithConnection(tb.connection, queryCmd, whereArgs...)
 
 	if err != nil {
 		return PanelInfo{}, err
 	}
 
-	infoList := make([]map[string]types.InfoItem, 0)
-
-	for i := 0; i < len(res); i++ {
-		infoList = append(infoList, tb.getTempModelData(res[i], params, columns))
+	infoList := make([]map[string]types.InfoItem, 0, len(res))
+	for i, e := range res {
+		infoList[i] = tb.getTempModelData(e, params, columns)
 	}
 
 	return PanelInfo{
@@ -437,40 +445,40 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 // TODO: refactor
 func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelInfo, error) {
 	var (
-		connection     = tb.db()
-		delimiter      = connection.GetDelimiter()
-		delimiter2     = connection.GetDelimiter2()
-		placeholder    = modules.Delimiter(delimiter, delimiter2, "%s")
-		queryStatement string
-		countStatement string
-		ids            = params.PKs()
-		table          = modules.Delimiter(delimiter, delimiter2, tb.Info.Table)
-		pk             = table + "." + modules.Delimiter(delimiter, delimiter2, tb.PrimaryKey.Name)
+		conn        = tb.db()
+		delim       = conn.GetDelimiter()
+		delim2      = conn.GetDelimiter2()
+		placeholder = modules.Delimiter(delim, delim2, "%s")
+		queryStmt   string
+		countStmt   string
+		ids         = params.PKs()
+		table       = modules.Delimiter(delim, delim2, tb.Info.Table)
+		pk          = table + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
 	)
 
-	beginTime := time.Now()
+	benchmark := utils.StartBenchmark()
 
 	if len(ids) > 0 {
 		countExtra := ""
-		if connection.Name() == db.DriverMssql {
+		if conn.Name() == db.DriverMssql {
 			countExtra = "as [size]"
 		}
 		// %s means: fields, table, join table, pk values, group by, order by field,  order by type
-		queryStatement = "select %s from " + placeholder + " %s where " + pk + " in (%s) %s ORDER BY %s." + placeholder + " %s"
+		queryStmt = "select %s from " + placeholder + " %s where " + pk + " in (%s) %s ORDER BY %s." + placeholder + " %s"
 		// %s means: table, join table, pk values
-		countStatement = "select count(*) " + countExtra + " from " + placeholder + " %s where " + pk + " in (%s)"
+		countStmt = "select count(*) " + countExtra + " from " + placeholder + " %s where " + pk + " in (%s)"
 	} else {
-		if connection.Name() == db.DriverMssql {
+		if conn.Name() == db.DriverMssql {
 			// %s means: order by field, order by type, fields, table, join table, wheres, group by
-			queryStatement = "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s." + placeholder + " %s) as ROWNUMBER_, %s from " +
+			queryStmt = "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s." + placeholder + " %s) as ROWNUMBER_, %s from " +
 				placeholder + "%s %s %s ) as TMP_ WHERE TMP_.ROWNUMBER_ > ? AND TMP_.ROWNUMBER_ <= ?"
 			// %s means: table, join table, wheres
-			countStatement = "select count(*) as [size] from (select count(*) as [size] from " + placeholder + " %s %s %s) src"
+			countStmt = "select count(*) as [size] from (select count(*) as [size] from " + placeholder + " %s %s %s) src"
 		} else {
 			// %s means: fields, table, join table, wheres, group by, order by field, order by type
-			queryStatement = "select %s from " + placeholder + "%s %s %s order by " + placeholder + "." + placeholder + " %s LIMIT ? OFFSET ?"
+			queryStmt = "select %s from " + placeholder + "%s %s %s order by " + placeholder + "." + placeholder + " %s LIMIT ? OFFSET ?"
 			// %s means: table, join table, wheres
-			countStatement = "select count(*) from (select " + pk + " from " + placeholder + " %s %s %s) src"
+			countStmt = "select count(*) from (select " + pk + " from " + placeholder + " %s %s %s) src"
 		}
 	}
 
@@ -484,13 +492,13 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	if joinFields != "" {
 		allFields += "," + joinFields[:len(joinFields)-1]
-		if connection.Name() == db.DriverMssql {
+		if conn.Name() == db.DriverMssql {
 			for _, field := range tb.Info.FieldList {
 				if field.TypeName == db.Text || field.TypeName == db.Longtext {
-					f := modules.Delimiter(connection.GetDelimiter(), connection.GetDelimiter2(), field.Field)
+					f := modules.Delimiter(conn.GetDelimiter(), conn.GetDelimiter2(), field.Field)
 					headField := table + "." + f
-					allFields = strings.ReplaceAll(allFields, headField, "CAST("+headField+" AS NVARCHAR(MAX)) as "+f)
-					groupFields = strings.ReplaceAll(groupFields, headField, "CAST("+headField+" AS NVARCHAR(MAX))")
+					allFields = strings.ReplaceAll(allFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX)) as " + f)
+					groupFields = strings.ReplaceAll(groupFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX))")
 				}
 			}
 		}
@@ -502,78 +510,89 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	var (
 		wheres    = ""
-		whereArgs = make([]interface{}, 0)
-		args      = make([]interface{}, 0)
-		existKeys = make([]string, 0)
+		whereArgs []interface{}
+		args      []interface{}
+		existKeys []string
 	)
 
 	if len(ids) > 0 {
+		var sb strings.Builder
+		sb.Grow(64)
 		for _, value := range ids {
 			if value != "" {
-				wheres += "?,"
+				if sb.Len() == 0 {
+					sb.WriteByte('?')
+				} else {
+					sb.WriteString(",?")
+				}
+				//wheres += "?,"
 				args = append(args, value)
 			}
 		}
-		wheres = wheres[:len(wheres)-1]
+		wheres = sb.String()
+		//wheres = wheres[:len(wheres)-1]
 	} else {
 		// parameter
-		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, connection.GetDelimiter(), connection.GetDelimiter2(), whereArgs, columns, existKeys,
+		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, conn.GetDelimiter(), conn.GetDelimiter2(), whereArgs, columns, existKeys,
 			tb.Info.FieldList.GetFieldFilterProcessValue)
 		// pre query
-		wheres, whereArgs = tb.Info.Wheres.Statement(wheres, connection.GetDelimiter(), connection.GetDelimiter2(), whereArgs, existKeys, columns)
+		wheres, whereArgs = tb.Info.Wheres.Statement(wheres, conn.GetDelimiter(), conn.GetDelimiter2(), whereArgs, existKeys, columns)
 		wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
 		if wheres != "" {
 			wheres = " where " + wheres
 		}
 
-		if connection.Name() == db.DriverMssql {
-			args = append(whereArgs, (params.PageInt-1)*params.PageSizeInt, params.PageInt*params.PageSizeInt)
+		if conn.Name() == db.DriverMssql {
+			args = append(whereArgs, (params.PageInt - 1) * params.PageSizeInt, params.PageInt * params.PageSizeInt)
 		} else {
-			args = append(whereArgs, params.PageSizeInt, (params.PageInt-1)*params.PageSizeInt)
+			args = append(whereArgs, params.PageSizeInt, (params.PageInt - 1) * params.PageSizeInt)
 		}
 	}
 
 	groupBy := ""
 	if len(joinTables) > 0 {
-		if connection.Name() == db.DriverMssql {
-			groupBy = " GROUP BY " + groupFields
+		var sb strings.Builder
+		sb.Grow(64)
+		sb.WriteString("GROUP BY ")
+		if conn.Name() == db.DriverMssql {
+			sb.WriteString(groupFields)
+			//groupBy = " GROUP BY " + groupFields
 		} else {
-			groupBy = " GROUP BY " + pk
+			sb.WriteString(pk)
+			//groupBy = " GROUP BY " + pk
 		}
+		groupBy = sb.String()
 	}
 
 	queryCmd := ""
-	if connection.Name() == db.DriverMssql && len(ids) == 0 {
-		queryCmd = fmt.Sprintf(queryStatement, tb.Info.Table, params.SortField, params.SortType,
+	if conn.Name() == db.DriverMssql && len(ids) == 0 {
+		queryCmd = fmt.Sprintf(queryStmt, tb.Info.Table, params.SortField, params.SortType,
 			allFields, tb.Info.Table, joins, wheres, groupBy)
 	} else {
-		queryCmd = fmt.Sprintf(queryStatement, allFields, tb.Info.Table, joins, wheres, groupBy,
+		queryCmd = fmt.Sprintf(queryStmt, allFields, tb.Info.Table, joins, wheres, groupBy,
 			tb.Info.Table, params.SortField, params.SortType)
 	}
 
 	logger.LogSQL(queryCmd, args)
-
-	res, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
+	res, err := conn.QueryWithConnection(tb.connection, queryCmd, args...)
 
 	if err != nil {
 		return PanelInfo{}, err
 	}
 
-	infoList := make([]map[string]types.InfoItem, 0)
-
-	for i := 0; i < len(res); i++ {
-		infoList = append(infoList, tb.getTempModelData(res[i], params, columns))
+	infoList := make([]map[string]types.InfoItem, len(res))
+	for i, e := range res {
+		infoList[i] = tb.getTempModelData(e, params, columns)
 	}
 
 	// TODO: use the dialect
 	var size int
 
 	if len(ids) == 0 {
-		countCmd := fmt.Sprintf(countStatement, tb.Info.Table, joins, wheres, groupBy)
+		countCmd := fmt.Sprintf(countStmt, tb.Info.Table, joins, wheres, groupBy)
 
-		total, err := connection.QueryWithConnection(tb.connection, countCmd, whereArgs...)
-
+		total, err := conn.QueryWithConnection(tb.connection, countCmd, whereArgs...)
 		if err != nil {
 			return PanelInfo{}, err
 		}
@@ -595,18 +614,27 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 	}
 
-	endTime := time.Now()
+	qt := elapsedQueryTime(benchmark)
 
 	return PanelInfo{
-		Thead:    thead,
-		InfoList: infoList,
-		Paginator: tb.GetPaginator(size, params,
-			template.HTML(fmt.Sprintf("<b>"+language.Get("query time")+": </b>"+
-				fmt.Sprintf("%.3fms", endTime.Sub(beginTime).Seconds()*1000)))),
+		Thead:          thead,
+		InfoList:       infoList,
+		Paginator:      tb.GetPaginator(size, params, template.HTML(qt)),
 		Title:          tb.Info.Title,
 		FilterFormData: filterForm,
 		Description:    tb.Info.Description,
 	}, nil
+}
+
+func elapsedQueryTime(benchmark utils.Benchmark) string {
+	elapsed := benchmark.ElapsedMillis()
+	var sb strings.Builder
+	sb.Grow(64)
+	sb.WriteString("<b>")
+	sb.WriteString(language.Get("query time"))
+	sb.WriteString("</b>: ")
+	_, _ = fmt.Fprintf(&sb, "%.3fms", elapsed)
+	return sb.String()
 }
 
 func getDataRes(list []map[string]interface{}, _ int) map[string]interface{} {
@@ -634,72 +662,151 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		res = getDataRes(tb.Info.GetDataFn(param))
 	} else {
 		columns, _ = tb.getColumns(tb.Form.Table)
-
 		var (
-			fields, joinFields, joins, groupBy = "", "", "", ""
-			err            error
-			joinTables     = make([]string, 0)
-			args           = []interface{}{id}
-			connection     = tb.db()
-			delimiter      = connection.GetDelimiter()
-			delimiter2     = connection.GetDelimiter2()
-			tableName      = modules.Delimiter(delimiter, delimiter2, tb.GetForm().Table)
-			pk             = tableName + "." + modules.Delimiter(delimiter, delimiter2, tb.PrimaryKey.Name)
-			queryStatement = "select %s from %s %s where " + pk + " = ? %s "
+			queryStmt, fields, joins, joinFields, groupBy strings.Builder
+			pk         string
+			err        error
+			joinTabMap map[string]struct{}
+			args       = []interface{}{ id }
+			conn       = tb.db()
+			delim      = conn.GetDelimiter()
+			delim2     = conn.GetDelimiter2()
+			tableName  = modules.Delimiter(delim, delim2, tb.GetForm().Table)
 		)
+		{
+			var sb strings.Builder
+			sb.Grow(64)
+			sb.WriteString(tableName)
+			sb.WriteByte('.')
+			sb.WriteString(delim)
+			sb.WriteString(tb.PrimaryKey.Name)
+			sb.WriteString(delim2)
+			pk = sb.String()
+			//pk = tableName + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
+		}
+		queryStmt.Grow(64)
+		queryStmt.WriteString("SELECT %s FROM %s %s WHERE ")
+		queryStmt.WriteString(pk)
+		queryStmt.WriteString(" = ? %s")
+		//queryStmt = "SELECT %s FROM %s %s WHERE " + pk + " = ? %s "
 
-		for i := 0; i < len(tb.Form.FieldList); i++ {
-			if tb.Form.FieldList[i].Field != pk && modules.InArray(columns, tb.Form.FieldList[i].Field) &&
-				!tb.Form.FieldList[i].Joins.Valid() {
-				fields += tableName + "." + modules.FilterField(tb.Form.FieldList[i].Field, delimiter, delimiter2) + ","
+		fields.Grow(256)
+
+		for _, formField := range tb.Form.FieldList {
+			validJoin := formField.Joins.Valid()
+
+			if formField.Field != pk && modules.InArray(columns, formField.Field) && !validJoin {
+				if fields.Len() > 0 { fields.WriteByte(',') }
+				fields.WriteString(tableName)
+				fields.WriteByte('.')
+				fields.WriteString(delim)
+				fields.WriteString(formField.Field)
+				fields.WriteString(delim2)
+				//fields += tableName + "." + modules.FilterField(formField.Field, delim, delim2) + ","
 			}
 
-			if tb.Form.FieldList[i].Joins.Valid() {
-				headField := tb.Form.FieldList[i].Joins.Last().GetTableName() + parameter.FilterParamJoinInfix + tb.Form.FieldList[i].Field
-				joinFields += db.GetAggregationExpression(connection.Name(), tb.Form.FieldList[i].Joins.Last().GetTableName(delimiter, delimiter2)+"."+
-					modules.FilterField(tb.Form.FieldList[i].Field, delimiter, delimiter2), headField, types.JoinFieldValueDelimiter) + ","
-				for _, join := range tb.Form.FieldList[i].Joins {
-					if !modules.InArray(joinTables, join.GetTableName(delimiter, delimiter2)) {
-						joinTables = append(joinTables, join.GetTableName(delimiter, delimiter2))
+			if validJoin {
+				var sbField, sbHeadField strings.Builder
+				sbField.Grow(64)
+				sbField.WriteString(formField.Joins.Last().GetTableName(delim, delim2))
+				sbField.WriteByte('.')
+				sbField.WriteString(delim)
+				sbField.WriteString(formField.Field)
+				sbField.WriteString(delim2)
+				sbHeadField.Grow(64)
+				sbHeadField.WriteString(formField.Joins.Last().GetTableName())
+				sbHeadField.WriteString(parameter.FilterParamJoinInfix)
+				sbHeadField.WriteString(formField.Field)
+				if joinFields.Cap() == 0 {
+					joinFields.Grow(256)
+					joins.Grow(256)
+				}
+				joinFields.WriteByte(',')
+				joinFields.WriteString(db.GetAggregationExpression(conn.Name(), sbField.String(), sbHeadField.String(), types.JoinFieldValueDelimiter))
+				//headField := formField.Joins.Last().GetTableName() + parameter.FilterParamJoinInfix + formField.Field
+				//joinFields += db.GetAggregationExpression(conn.Name(), formField.Joins.Last().GetTableName(delim, delim2) + "." +
+				//	modules.FilterField(formField.Field, delim, delim2), headField, types.JoinFieldValueDelimiter) + ","
+				for _, join := range formField.Joins {
+					joinTableName := join.GetTableName(delim, delim2)
+					if _, ok := joinTabMap[joinTableName]; !ok {
+						if joinTabMap == nil { joinTabMap = map[string]struct{}{} }
+						joinTabMap[joinTableName] = struct{}{}
 						if join.BaseTable == "" {
 							join.BaseTable = tableName
 						}
-						joins += " left join " + modules.FilterField(join.Table, delimiter, delimiter2) + " " + join.TableAlias + " on " +
-							join.GetTableName(delimiter, delimiter2) + "." + modules.FilterField(join.JoinField, delimiter, delimiter2) + " = " +
-							join.BaseTable + "." + modules.FilterField(join.Field, delimiter, delimiter2)
+						joins.WriteString(" LEFT JOIN ")
+						joins.WriteString(delim)
+						joins.WriteString(join.Table)
+						joins.WriteString(delim2)
+						joins.WriteByte(' ')
+						joins.WriteString(join.TableAlias)
+						joins.WriteString(" ON ")
+						joins.WriteString(joinTableName)
+						joins.WriteByte('.')
+						joins.WriteString(delim)
+						joins.WriteString(join.JoinField)
+						joins.WriteString(delim2)
+						joins.WriteString(" = ")
+						joins.WriteString(join.BaseTable)
+						joins.WriteByte('.')
+						joins.WriteString(delim)
+						joins.WriteString(join.Field)
+						joins.WriteString(delim2)
+						//joins += " LEFT JOIN " + modules.FilterField(join.Table, delim, delim2) + " " + join.TableAlias + " ON " +
+						//	joinTableName + "." + modules.FilterField(join.JoinField, delim, delim2) + " = " +
+						//	join.BaseTable + "." + modules.FilterField(join.Field, delim, delim2)
 					}
 				}
 			}
 		}
 
-		fields += pk
-		groupFields := fields
+		if fields.Len() > 0 { fields.WriteByte(',') }
+		fields.WriteString(pk)
+		//fields += pk
 
-		if joinFields != "" {
-			fields += "," + joinFields[:len(joinFields)-1]
-			if connection.Name() == db.DriverMssql {
-				for i := 0; i < len(tb.Form.FieldList); i++ {
-					if tb.Form.FieldList[i].TypeName == db.Text || tb.Form.FieldList[i].TypeName == db.Longtext {
-						f := modules.Delimiter(connection.GetDelimiter(), connection.GetDelimiter2(), tb.Form.FieldList[i].Field)
+		useMssql := conn.Name() == db.DriverMssql
+		useGroupFields := useMssql && len(joinTabMap) > 0
+		var groupFields string
+		if useGroupFields {
+			groupFields = fields.String()
+		}
+
+		//if joinFields != "" {
+		if joinFields.Len() > 0 {
+			fields.WriteString(joinFields.String())
+			//fields += joinFields.String()
+			//fields += "," + joinFields[:len(joinFields)-1]
+			if useMssql {
+				strFields := fields.String()
+				for _, formField := range tb.Form.FieldList {
+					if formField.TypeName == db.Text || formField.TypeName == db.Longtext {
+						f := modules.Delimiter(delim, delim2, formField.Field)
 						headField := tb.Info.Table + "." + f
-						fields = strings.ReplaceAll(fields, headField, "CAST("+headField+" AS NVARCHAR(MAX)) as "+f)
-						groupFields = strings.ReplaceAll(groupFields, headField, "CAST("+headField+" AS NVARCHAR(MAX))")
+						strFields = strings.ReplaceAll(strFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX)) as " + f)
+						if useGroupFields {
+							groupFields = strings.ReplaceAll(groupFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX))")
+						}
 					}
 				}
+				fields.Reset()
+				fields.Grow(len(strFields))
+				fields.WriteString(strFields)
 			}
 		}
 
-		if len(joinTables) > 0 {
-			if connection.Name() == db.DriverMssql {
-				groupBy = " GROUP BY " + groupFields
+		if len(joinTabMap) > 0 {
+			groupBy.Grow(64)
+			groupBy.WriteString("GROUP BY ")
+			if useGroupFields {
+				groupBy.WriteString(groupFields)
 			} else {
-				groupBy = " GROUP BY " + pk
+				groupBy.WriteString(pk)
 			}
 		}
 
-		queryCmd := fmt.Sprintf(queryStatement, fields, tableName, joins, groupBy)
+		queryCmd := fmt.Sprintf(queryStmt.String(), fields.String(), tableName, joins.String(), groupBy.String())
 		logger.LogSQL(queryCmd, args)
-		result, err := connection.QueryWithConnection(tb.connection, queryCmd, args...)
+		result, err := conn.QueryWithConnection(tb.connection, queryCmd, args...)
 
 		if err != nil {
 			return FormInfo{Title: tb.Form.Title, Description: tb.Form.Description}, err
@@ -713,8 +820,8 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 	}
 
 	var (
-		groupFormList = make([]types.FormFields, 0)
-		groupHeaders  = make([]string, 0)
+		groupFormList []types.FormFields
+		groupHeaders  []string
 	)
 
 	if len(tb.Form.TabGroups) > 0 {
@@ -728,10 +835,8 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		}, nil
 	}
 
-	var fieldList = tb.Form.FieldsWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sqlObjOrNil)
-
 	return FormInfo{
-		FieldList:         fieldList,
+		FieldList:         tb.Form.FieldsWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sqlObjOrNil),
 		GroupFieldList:    groupFormList,
 		GroupFieldHeaders: groupHeaders,
 		Title:             tb.Form.Title,
@@ -877,27 +982,27 @@ func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) e
 
 func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ types.PostType) dialect.H {
 	var (
+		exceptString  map[string]struct{}
 		value         = make(dialect.H)
-		exceptString  = make([]string, 0)
 		columns, auto = tb.getColumns(tb.Form.Table)
-
-		fun types.PostFieldFilterFn
+		fun           types.PostFieldFilterFn
 	)
 
-	// If a key is a auto increment primary key, it can`t be insert or update.
+	// If a key is auto increment primary key, it cannot be inserted nor updated.
 	if auto {
-		exceptString = []string{tb.PrimaryKey.Name, form.PreviousKey, form.MethodKey, form.TokenKey,
-			constant.IframeKey, constant.IframeIDKey}
+		exceptString = map[string]struct{}{
+			tb.PrimaryKey.Name: {}, form.PreviousKey: {}, form.MethodKey: {}, form.TokenKey: {}, constant.IframeKey: {}, constant.IframeIDKey: {},
+		}
 	} else {
-		exceptString = []string{form.PreviousKey, form.MethodKey, form.TokenKey,
-			constant.IframeKey, constant.IframeIDKey}
+		exceptString = utils.DefaultExceptMap
 	}
 
 	if !dataList.IsSingleUpdatePost() {
-		for i := 0; i < len(tb.Form.FieldList); i++ {
-			if tb.Form.FieldList[i].FormType.IsMultiSelect() {
-				if _, ok := dataList[tb.Form.FieldList[i].Field+"[]"]; !ok {
-					dataList[tb.Form.FieldList[i].Field+"[]"] = []string{""}
+		for _, field := range tb.Form.FieldList {
+			if field.FormType.IsMultiSelect() {
+				key := field.Field + "[]"
+				if _, ok := dataList[key]; !ok {
+					dataList[key] = []string{ "" }
 				}
 			}
 		}
@@ -907,13 +1012,13 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 
 	for k, v := range dataList {
 		k = strings.ReplaceAll(k, "[]", "")
-		if !modules.InArray(exceptString, k) {
+		if _, ok := exceptString[k]; !ok {
 			if modules.InArray(columns, k) {
 				field := tb.Form.FieldList.FindByFieldName(k)
-				delimiter := ","
+				delim := ","
 				if field != nil {
-					fun = field.PostFilterFn
-					delimiter = modules.SetDefault(field.DefaultOptionDelimiter, ",")
+					fun   = field.PostFilterFn
+					delim = modules.SetDefault(field.DefaultOptionDelimiter, ",")
 				}
 				vv := modules.RemoveBlankFromArray(v)
 				if fun != nil {
@@ -924,13 +1029,18 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 						PostType: typ,
 					})
 				} else {
-					if len(vv) > 1 {
-						value[k] = strings.Join(vv, delimiter)
+					switch len(vv) {
+					case 0 : value[k] = ""
+					case 1 : value[k] = vv[0]
+					default: value[k] = strings.Join(vv, delim)
+					}
+					/*if len(vv) > 1 {
+						value[k] = strings.Join(vv, delim)
 					} else if len(vv) > 0 {
 						value[k] = vv[0]
 					} else {
 						value[k] = ""
-					}
+					}*/
 				}
 			} else {
 				field := tb.Form.FieldList.FindByFieldName(k)
@@ -948,30 +1058,20 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 	return value
 }
 
-var exceptStringMap = map[string]struct{}{
-	form.PreviousKey    : {},
-	form.MethodKey      : {},
-	form.TokenKey       : {},
-	constant.IframeKey  : {},
-	constant.IframeIDKey: {},
-}
-
 func (tb *DefaultTable) PreProcessValue(dataList form.Values, typ types.PostType) form.Values {
 	dataList = dataList.RemoveRemark()
 	var fun types.PostFieldFilterFn
 	for k, v := range dataList {
 		k = strings.ReplaceAll(k, "[]", "")
-		//if !modules.InArray(exceptString, k) {
-		if _, ok := exceptStringMap[k]; !ok {
+		if _, ok := utils.DefaultExceptMap[k]; !ok {
 			field := tb.Form.FieldList.FindByFieldName(k)
 			if field != nil {
 				fun = field.PostFilterFn
 			}
-			vv := modules.RemoveBlankFromArray(v)
 			if fun != nil {
 				dataList.Add(k, fmt.Sprintf("%s", fun(types.PostFieldModel{
 					ID:       dataList.Get(tb.PrimaryKey.Name),
-					Value:    vv,
+					Value:    modules.RemoveBlankFromArray(v),
 					Row:      dataList.ToMap(),
 					PostType: typ,
 				})))
@@ -1121,39 +1221,86 @@ func (tb *DefaultTable) getColumns(table string) (Columns, bool) {
 	switch tb.connectionDriver {
 	case db.DriverPostgresql:
 		auto := false
-		for key, model := range columnsModel {
-			columns[key] = model["column_name"].(string)
-			if !auto && columns[key] == tb.PrimaryKey.Name {
-				if v, ok := model["column_default"].(string); ok {
-					if strings.Contains(v, "nextval") {
-						auto = true
-					}
+		for i, model := range columnsModel {
+			col := model["column_name"].(string)
+			columns[i] = col
+			if !auto && col == tb.PrimaryKey.Name {
+				v, _ := model["column_default"].(string)
+				if strings.Contains(v, "nextval") {
+					auto = true
 				}
 			}
 		}
 		return columns, auto
 	case db.DriverMysql:
 		auto := false
-		for key, model := range columnsModel {
-			columns[key] = model["Field"].(string)
-			if !auto && columns[key] == tb.PrimaryKey.Name {
-				if v, ok := model["Extra"].(string); ok {
-					if v == "auto_increment" {
-						auto = true
-					}
+		for i, model := range columnsModel {
+			col := model["Field"].(string)
+			columns[i] = col
+			if !auto && col == tb.PrimaryKey.Name {
+				v, _ := model["Extra"].(string)
+				if v == "auto_increment" {
+					auto = true
 				}
 			}
 		}
 		return columns, auto
 	case db.DriverSqlite:
-		for key, model := range columnsModel {
-			columns[key] = string(model["name"].(string))
+		for i, model := range columnsModel {
+			columns[i] = model["name"].(string)
 		}
 		num, _ := tb.sql().Table("sqlite_sequence").Where("name", "=", tb.GetForm().Table).Count()
 		return columns, num > 0
 	case db.DriverMssql:
-		for key, model := range columnsModel {
-			columns[key] = string(model["column_name"].(string))
+		for i, model := range columnsModel {
+			columns[i] = model["column_name"].(string)
+		}
+		return columns, true
+	default:
+		panic("wrong driver")
+	}
+}
+
+func (tb *DefaultTable) getColumnMap(table string) (map[string]struct{}, bool) {
+	columnsModel, _ := tb.sql().Table(table).ShowColumns()
+	columns := make(map[string]struct{}, len(columnsModel))
+
+	switch tb.connectionDriver {
+	case db.DriverPostgresql:
+		auto := false
+		for _, model := range columnsModel {
+			col := model["column_name"].(string)
+			columns[col] = struct{}{}
+			if !auto && col == tb.PrimaryKey.Name {
+				v, _ := model["column_default"].(string)
+				if strings.Contains(v, "nextval") {
+					auto = true
+				}
+			}
+		}
+		return columns, auto
+	case db.DriverMysql:
+		auto := false
+		for _, model := range columnsModel {
+			col := model["Field"].(string)
+			columns[col] = struct{}{}
+			if !auto && col == tb.PrimaryKey.Name {
+				v, _ := model["Extra"].(string)
+				if v == "auto_increment" {
+					auto = true
+				}
+			}
+		}
+		return columns, auto
+	case db.DriverSqlite:
+		for _, model := range columnsModel {
+			columns[model["name"].(string)] = struct{}{}
+		}
+		num, _ := tb.sql().Table("sqlite_sequence").Where("name", "=", tb.GetForm().Table).Count()
+		return columns, num > 0
+	case db.DriverMssql:
+		for _, model := range columnsModel {
+			columns[model["column_name"].(string)] = struct{}{}
 		}
 		return columns, true
 	default:

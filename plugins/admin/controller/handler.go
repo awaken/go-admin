@@ -2,7 +2,6 @@ package controller
 
 import (
 	template2 "html/template"
-	"runtime/debug"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -28,7 +27,7 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 
 	if err := recover(); err != nil {
 		logger.Error(err)
-		logger.Error(string(debug.Stack()))		// TODO: keep commented in prod??? (uncomment only for debugging)
+		//logger.Error(string(debug.Stack()))		// TODO: keep commented in prod??? (uncomment only for debugging)
 
 		var (
 			errMsg string
@@ -107,7 +106,7 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 				form.TokenKey:    h.authSrv().AddToken(),
 				form.PreviousKey: h.config.Url("/info/" + prefix + queryParam),
 			}).
-			SetUrl(h.config.Url("/"+kind+"/"+prefix)).
+			SetUrl(h.config.Url("/" + kind + "/" + prefix)).
 			SetOperationFooter(formFooter(kind, f.IsHideContinueEditCheckBox, f.IsHideContinueNewCheckBox,
 				f.IsHideResetButton, btnWord)).
 			SetHeader(f.HeaderHtml).
@@ -118,5 +117,5 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 		Title:       template2.HTML(formInfo.Title),
 	})
 
-	ctx.AddHeader(constant.PjaxUrlHeader, h.config.Url("/info/"+prefix+"/"+kind+queryParam))
+	ctx.AddHeader(constant.PjaxUrlHeader, h.config.Url("/info/" + prefix + "/" + kind + queryParam))
 }

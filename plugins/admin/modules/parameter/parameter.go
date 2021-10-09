@@ -11,18 +11,17 @@ import (
 )
 
 type Parameters struct {
-	Page         string
-	PageInt      int
-	PageSize     string
-	PageSizeInt  int
-	SortField    string
-	Columns      []string
-	SortType     string
-	Animation    bool
-	URLPath      string
-	Fields       map[string][]string
-	OrConditions map[string]string
-
+	Page          string
+	PageInt       int
+	PageSize      string
+	PageSizeInt   int
+	SortField     string
+	Columns       []string
+	SortType      string
+	Animation     bool
+	URLPath       string
+	Fields        map[string][]string
+	OrConditions  map[string]string
 	cacheFixedStr url.Values
 }
 
@@ -360,29 +359,39 @@ func (param Parameters) GetFixedParamStrWithoutSort() string {
 	return "&" + p.Encode()
 }
 
-func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, whereArgs []interface{}, columns, existKeys []string,
-	filterProcess func(string, string, string) string) (string, []interface{}, []string) {
-	multiKey := make(map[string]uint8)
+func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, whereArgs []interface{}, columns, existKeys []string, filterProcess func(string, string, string) string) (string, []interface{}, []string) {
+	var multiKey map[string]struct{}
+	var sbWhr strings.Builder
+	sbWhr.Grow(len(wheres) + 128)
+	sbWhr.WriteString(wheres)
 
 	for key, value := range param.Fields {
 		keyIndexSuffix := ""
-		keyArr := strings.Split(key, FilterParamCountInfix)
-
-		if len(keyArr) > 1 {
-			key = keyArr[0]
-			keyIndexSuffix = FilterParamCountInfix + keyArr[1]
-			multiKey[key] = 0
+		if p := strings.Index(key, FilterParamCountInfix); p >= 0 {
+			keyIndexSuffix = FilterParamCountInfix + key[p + len(FilterParamCountInfix):]
+			key = key[:p]
+			if multiKey == nil { multiKey = make(map[string]struct{}) }
+			multiKey[key] = struct{}{}
 		} else if _, ok := multiKey[key]; !ok && modules.InArray(existKeys, key) {
 			continue
 		}
 
+		/*keyArr := strings.Split(key, FilterParamCountInfix)
+		if len(keyArr) > 1 {
+			key = keyArr[0]
+			keyIndexSuffix = FilterParamCountInfix + keyArr[1]
+			multiKey[key] = struct{}{}
+		} else if _, ok := multiKey[key]; !ok && modules.InArray(existKeys, key) {
+			continue
+		}*/
+
 		var op string
 		if strings.Contains(key, FilterRangeParamEndSuffix) {
 			key = strings.ReplaceAll(key, FilterRangeParamEndSuffix, "")
-			op = "<="
+			op  = "<="
 		} else if strings.Contains(key, FilterRangeParamStartSuffix) {
 			key = strings.ReplaceAll(key, FilterRangeParamStartSuffix, "")
-			op = ">="
+			op  = ">="
 		} else if len(value) > 1 {
 			op = "in"
 		} else if !strings.Contains(key, FilterParamOperatorSuffix) {
@@ -391,16 +400,31 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			continue
 		}
 
-		if strings.Contains(key, FilterParamJoinInfix) {
-			keys := strings.Split(key, FilterParamJoinInfix)
-			val := filterProcess(key, value[0], keyIndexSuffix)
+		if p := strings.Index(key, FilterParamJoinInfix); p >= 0 {
+			if sbWhr.Len() > 0 { sbWhr.WriteString(" AND ") }
+			sbWhr.WriteString(key[:p])
+			sbWhr.WriteByte('.')
+			sbWhr.WriteString(delimiter)
+			sbWhr.WriteString(key[p+1:])
+			sbWhr.WriteString(delimiter2)
+			sbWhr.WriteByte(' ')
+			sbWhr.WriteString(op)
+			//keys := strings.Split(key, FilterParamJoinInfix)
+			//wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op
 			if op == "in" {
-				qmark := ""
-				for range value { qmark += "?," }
-				wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op + " (" + qmark[:len(qmark)-1] + ") and "
+				sbWhr.WriteString(" (?")
+				for n := len(value); n > 1; n-- {
+					sbWhr.WriteString(",?")
+				}
+				sbWhr.WriteByte(')')
+				//qmark := ""
+				//for range value { qmark += "?," }
+				//wheres += " (" + qmark[:len(qmark)-1] + ") and "
 			} else {
-				wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op + " ? and "
+				sbWhr.WriteString(" ?")
+				//wheres += " ? and "
 			}
+			val := filterProcess(key, value[0], keyIndexSuffix)
 			if op == "like" && !strings.Contains(val, "%") {
 				whereArgs = append(whereArgs, "%" + val + "%")
 			} else {
@@ -408,33 +432,46 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
 				}
 			}
-		} else {
-			if modules.InArray(columns, key) {
-				if op == "in" {
-					qmark := ""
-					for range value { qmark += "?," }
-					wheres += table + "." + modules.FilterField(key, delimiter, delimiter2) + " " + op + " (" + qmark[:len(qmark)-1] + ") and "
-				} else {
-					wheres += table + "." + modules.FilterField(key, delimiter, delimiter2) + " " + op + " ? and "
+		} else if modules.InArray(columns, key) {
+			if sbWhr.Len() > 0 { sbWhr.WriteString(" AND ") }
+			sbWhr.WriteString(table)
+			sbWhr.WriteByte('.')
+			sbWhr.WriteString(delimiter)
+			sbWhr.WriteString(key)
+			sbWhr.WriteString(delimiter2)
+			sbWhr.WriteByte(' ')
+			sbWhr.WriteString(op)
+			//wheres += table + "." + modules.FilterField(key, delimiter, delimiter2) + " " + op
+			if op == "in" {
+				sbWhr.WriteString(" (?")
+				for n := len(value); n > 1; n-- {
+					sbWhr.WriteString(",?")
 				}
-				if op == "like" && !strings.Contains(value[0], "%") {
-					whereArgs = append(whereArgs, "%" + filterProcess(key, value[0], keyIndexSuffix) + "%")
-				} else {
-					for _, v := range value {
-						whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
-					}
-				}
+				sbWhr.WriteByte(')')
+				//qmark := ""
+				//for range value { qmark += "?," }
+				//wheres += " (" + qmark[:len(qmark)-1] + ") and "
 			} else {
-				continue
+				sbWhr.WriteString(" ?")
+				//wheres += " ? and "
 			}
+			if op == "like" && !strings.Contains(value[0], "%") {
+				whereArgs = append(whereArgs, "%" + filterProcess(key, value[0], keyIndexSuffix) + "%")
+			} else {
+				for _, v := range value {
+					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
+				}
+			}
+		} else {
+			continue
 		}
 
 		existKeys = append(existKeys, key)
 	}
 
-	if len(wheres) > 3 {
-		wheres = wheres[:len(wheres)-4]
-	}
+	//if len(wheres) > 3 {
+	//	wheres = wheres[:len(wheres)-4]
+	//}
 
 	for key, value := range param.OrConditions {
 		columns = strings.Split(key, ",")
@@ -442,23 +479,40 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 		if strings.Contains(value, "%") {
 			op = "like"
 		}
-		if len(wheres) > 0 {
-			wheres += " and "
+		if sbWhr.Len() > 0 {
+			sbWhr.WriteString(" AND (")
+		} else {
+			sbWhr.WriteByte('(')
 		}
-		wheres += "("
-		for _, column := range columns {
-			keys := strings.Split(column, FilterParamJoinInfix)
-			if len(keys) > 1 {
-				wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op + " ? or "
-			} else {
-				wheres += modules.FilterField(column, delimiter, delimiter2) + " " + op + " ? or "
+		//if len(wheres) > 0 {
+		//	wheres += " and "
+		//}
+		//wheres += "("
+		for i, column := range columns {
+			if i > 0 { sbWhr.WriteString(" OR ") }
+			if p := strings.Index(column, FilterParamJoinInfix); p >= 0 {
+				sbWhr.WriteString(column[:p])
+				sbWhr.WriteByte('.')
 			}
+			//keys := strings.Split(column, FilterParamJoinInfix)
+			//if len(keys) > 1 {
+			//	wheres += keys[0] + "."
+			//}
+			sbWhr.WriteString(delimiter)
+			sbWhr.WriteString(column)
+			sbWhr.WriteString(delimiter2)
+			sbWhr.WriteByte(' ')
+			sbWhr.WriteString(op)
+			sbWhr.WriteString(" ?")
+			//wheres += modules.FilterField(column, delimiter, delimiter2) + " " + op + " ? or "
 			whereArgs = append(whereArgs, value)
 		}
-		wheres = strings.TrimSuffix(wheres, "or ") + ")"
+		sbWhr.WriteByte(')')
+		//wheres = strings.TrimSuffix(wheres, "or ") + ")"
 	}
 
-	return wheres, whereArgs, existKeys
+	return sbWhr.String(), whereArgs, existKeys
+	//return wheres, whereArgs, existKeys
 }
 
 func getDefault(values url.Values, key, def string) string {

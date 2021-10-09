@@ -226,10 +226,8 @@ func OpenSQLLog() {
 
 // Debug print the debug message.
 func Debug(info ...interface{}) {
-	if !logger.infoLogOff {
-		if logger.Level <= zapcore.DebugLevel {
-			logger.sugaredLogger.Info(info...)
-		}
+	if !logger.infoLogOff && logger.Level <= zapcore.DebugLevel {
+		logger.sugaredLogger.Info(info...)
 	}
 }
 
@@ -328,9 +326,13 @@ func Access(ctx *context.Context) {
 
 // LogSQL print the sql info message.
 func LogSQL(statement string, args []interface{}) {
-	if !logger.infoLogOff && logger.sqlLogOpen && statement != "" {
+	if logger.sqlLogOpen && statement != "" {
 		if logger.Level <= zapcore.InfoLevel {
-			logger.sugaredLogger.With("statement", statement, "args", args)
+			if len(args) > 0 {
+				logger.sugaredLogger.With("statement", statement, "args", args)
+			} else {
+				logger.sugaredLogger.With("statement", statement)
+			}
 		}
 	}
 }

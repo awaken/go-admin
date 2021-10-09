@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"regexp"
 	"strings"
 	"time"
@@ -17,6 +18,8 @@ var (
 	PkReplacer, TableFormReplacer, JsonTmplReplacer, JumpTmplReplacer *strings.Replacer
 
 	logoutUrl string
+
+	DefaultExceptMap map[string]struct{}
 )
 
 func IsLogoutUrl(s string) bool {
@@ -79,6 +82,10 @@ func InitUtils(cacheSize int, urler func(string) string) {
 	TableFormReplacer  = strings.NewReplacer("table/", "", "form/", "")
 	JsonTmplReplacer   = strings.NewReplacer(`"{%id}"`, "{{.Id}}", `"{%ids}"`, "{{.Ids}}", `"{{.Ids}}"`, "{{.Ids}}", `"{{.Id}}"`, "{{.Id}}")
 	JumpTmplReplacer   = strings.NewReplacer("{%id}", "{{.Id}}", "{%ids}", "{{.Ids}}")
+
+	DefaultExceptMap = map[string]struct{}{
+		form.PreviousKey: {}, form.MethodKey: {}, form.TokenKey: {}, constant.IframeKey: {}, constant.IframeIDKey: {},
+	}
 
 	logoutUrl = urler("/logout")
 }
