@@ -103,30 +103,35 @@ type NewPageParam struct {
 }
 
 func (param *NewPageParam) NavButtonsAndJS() (template.HTML, template.HTML) {
-	navBtnFooter := template.HTML("")
-	navBtn := template.HTML("")
-	btnJS := template.JS("")
+	const bLen = 1024
+	var navBtnFooter, navBtn, btnJS strings.Builder
+	navBtnFooter.Grow(bLen)
+	navBtn      .Grow(bLen)
+	btnJS       .Grow(bLen)
+
+	btnJS.WriteString(`<script>`)
 
 	for _, btn := range param.Buttons {
 		if btn.IsType(ButtonTypeNavDropDown) {
 			content, js := btn.Content()
-			navBtn += content
-			btnJS += js
+			navBtn.WriteString(string(content))
+			btnJS.WriteString(string(js))
 			for _, item := range btn.(*NavDropDownButton).Items {
-				navBtnFooter += item.GetAction().FooterContent()
+				navBtnFooter.WriteString(string(item.GetAction().FooterContent()))
 				_, js := item.Content()
-				btnJS += js
+				btnJS.WriteString(string(js))
 			}
 		} else {
-			navBtnFooter += btn.GetAction().FooterContent()
+			navBtnFooter.WriteString(string(btn.GetAction().FooterContent()))
 			content, js := btn.Content()
-			navBtn += content
-			btnJS += js
+			navBtn.WriteString(string(content))
+			btnJS.WriteString(string(js))
 		}
 	}
 
-	return template.HTML(ParseTableDataTmpl(navBtn)),
-		navBtnFooter + template.HTML(ParseTableDataTmpl(`<script>`+btnJS+`</script>`))
+	btnJS.WriteString(`</script>`)
+
+	return template.HTML(ParseTableDataTmpl(navBtn)), template.HTML(navBtnFooter.String() + ParseTableDataTmpl(btnJS.String()))
 }
 
 func NewPage(param *NewPageParam) *Page {
@@ -264,55 +269,49 @@ func (p Panel) AddJS(js template.JS) Panel {
 }
 
 func (p Panel) GetContent(params ...bool) Panel {
-
-	compress := false
-
-	if len(params) > 0 {
-		compress = params[0]
-	}
-
 	var (
-		animation, style, remove = template.HTML(""), template.HTML(""), template.HTML("")
-		ani                      = config.GetAnimation()
+		animation, style, remove = "", "", ""
+		ani = config.GetAnimation()
 	)
 
 	if ani.Type != "" && (len(params) < 2 || params[1]) {
-		animation = template.HTML(` class='pjax-container-content animated ` + ani.Type + `'`)
+		animation = utils.StrConcat(` class='pjax-container-content animated `, ani.Type, `'`)
 		if ani.Delay != 0 {
-			style = template.HTML(fmt.Sprintf(`animation-delay: %fs;-webkit-animation-delay: %fs;`, ani.Delay, ani.Delay))
+			style = fmt.Sprintf(`animation-delay: %fs;-webkit-animation-delay: %fs;`, ani.Delay, ani.Delay)
 		}
 		if ani.Duration != 0 {
-			style = template.HTML(fmt.Sprintf(`animation-duration: %fs;-webkit-animation-duration: %fs;`, ani.Duration, ani.Duration))
+			style = fmt.Sprintf(`animation-duration: %fs;-webkit-animation-duration: %fs;`, ani.Duration, ani.Duration)
 		}
 		if style != "" {
-			style = ` style="` + style + `"`
+			style = utils.StrConcat(` style="`, style, `"`)
 		}
-		remove = template.HTML(`<script>
+		remove = utils.StrConcat(`<script>
 		$('.pjax-container-content .modal.fade').on('show.bs.modal', function (event) {
             // Fix Animate.css
-			$('.pjax-container-content').removeClass('` + ani.Type + `');
+			$('.pjax-container-content').removeClass('`, ani.Type, `');
         });
 		</script>`)
 	}
 
-	p.Content = `<div` + animation + style + ">" + p.Content + "</div>" + remove
+	var ms, ar string
 	if p.MiniSidebar {
-		p.Content += `<script>$("body").addClass("sidebar-collapse")</script>`
+		ms = `<script>$("body").addClass("sidebar-collapse")</script>`
 	}
 	if p.AutoRefresh {
 		refreshTime := 60
 		if len(p.RefreshInterval) > 0 {
 			refreshTime = p.RefreshInterval[0]
 		}
-
-		p.Content += `<script>
+		ar = utils.StrConcat(`<script>
 window.setTimeout(function(){
 	$.pjax.reload('#pjax-container');
-}, ` + template.HTML(strconv.Itoa(refreshTime*1000)) + `);
-</script>`
+}, `, strconv.Itoa(refreshTime * 1000), `);
+</script>`)
 	}
 
-	if compress {
+	p.Content = template.HTML(utils.StrConcat(`<div`, animation, style, ">", string(p.Content), "</div>", remove, ms, ar))
+
+	if len(params) > 0 && params[0] {
 		utils.CompressedContent(&p.Content)
 	}
 

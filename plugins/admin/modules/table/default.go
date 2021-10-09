@@ -7,13 +7,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"html/template"
-	"io/ioutil"
-	"net/http"
-	"runtime/debug"
-	"strconv"
-	"strings"
-
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	errs "github.com/GoAdminGroup/go-admin/modules/errors"
@@ -25,6 +18,11 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/paginator"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/template/types"
+	"html/template"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
 // DefaultTable is an implementation of table.Table
@@ -146,13 +144,12 @@ func (tb *DefaultTable) GetData(params parameter.Parameters) (PanelInfo, error) 
 		return tb.getDataFromDatabase(params)
 	}
 
-	infoList := make(types.InfoList, 0)
-
-	for i := 0; i < len(data); i++ {
-		infoList = append(infoList, tb.getTempModelData(data[i], params, []string{}))
+	infoList := make(types.InfoList, len(data))
+	for i, d := range data {
+		infoList[i] = tb.getTempModelData(d, params, nil)
 	}
 
-	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, []string{})
+	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, nil)
 
 	extraInfo := ""
 	if !tb.Info.IsHideQueryInfo {
@@ -180,23 +177,20 @@ type GetDataFromURLRes struct {
 
 func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[string]interface{}, int) {
 	u := ""
-	if strings.Contains(tb.sourceURL, "?") {
-		u = tb.sourceURL + "&" + params.Join()
+	if strings.ContainsRune(tb.sourceURL, '?') {
+		u = utils.StrConcat(tb.sourceURL, "&", params.Join())
 	} else {
-		u = tb.sourceURL + "?" + params.Join()
+		u = utils.StrConcat(tb.sourceURL, "?", params.Join())
 	}
-	res, err := http.Get(u + "&pk=" + strings.Join(params.PKs(), ","))
 
+	res, err := http.Get(utils.StrConcat(u, "&pk=", strings.Join(params.PKs(), ",")))
 	if err != nil {
 		return []map[string]interface{}{}, 0
 	}
 
-	defer func() {
-		_ = res.Body.Close()
-	}()
+	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
-
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return []map[string]interface{}{}, 0
 	}
@@ -204,7 +198,6 @@ func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[strin
 	var data GetDataFromURLRes
 
 	err = json.Unmarshal(body, &data)
-
 	if err != nil {
 		return []map[string]interface{}{}, 0
 	}
@@ -275,7 +268,7 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		validJoin := field.Joins.Valid()
 
 		if validJoin {
-			headField = field.Joins.Last().GetTableName() + parameter.FilterParamJoinInfix + field.Field
+			headField = utils.StrConcat(field.Joins.Last().GetTableName(), parameter.FilterParamJoinInfix, field.Field)
 		} else {
 			headField = field.Field
 		}
@@ -312,15 +305,15 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		}
 
 		if field.IsEditParam {
-			editParams += "&__goadmin_edit_" + field.Field + "=" + valueStr
+			editParams = utils.StrConcat(editParams, "&__goadmin_edit_", field.Field, "=", valueStr)
 			//editParams += "__goadmin_edit_" + field.Field + "=" + valueStr + "&"
 		}
 		if field.IsDeleteParam {
-			deleteParams += "&__goadmin_delete_" + field.Field + "=" + valueStr
+			deleteParams = utils.StrConcat(deleteParams, "&__goadmin_delete_", field.Field, "=", valueStr)
 			//deleteParams += "__goadmin_delete_" + field.Field + "=" + valueStr + "&"
 		}
 		if field.IsDetailParam {
-			detailParams += "&__goadmin_detail_" + field.Field + "=" + valueStr
+			detailParams = utils.StrConcat(detailParams, "&__goadmin_detail_", field.Field, "=", valueStr)
 			//detailParams += "__goadmin_detail_" + field.Field + "=" + valueStr + "&"
 		}
 	}
@@ -453,32 +446,31 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		countStmt   string
 		ids         = params.PKs()
 		table       = modules.Delimiter(delim, delim2, tb.Info.Table)
-		pk          = table + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
+		pk          = utils.StrConcat(table, ".", modules.Delimiter(delim, delim2, tb.PrimaryKey.Name))
+		isMssql     = conn.Name() == db.DriverMssql
 	)
 
 	benchmark := utils.StartBenchmark()
 
 	if len(ids) > 0 {
 		countExtra := ""
-		if conn.Name() == db.DriverMssql {
-			countExtra = "as [size]"
-		}
+		if isMssql { countExtra = "as [size]" }
 		// %s means: fields, table, join table, pk values, group by, order by field,  order by type
-		queryStmt = "select %s from " + placeholder + " %s where " + pk + " in (%s) %s ORDER BY %s." + placeholder + " %s"
+		queryStmt = utils.StrConcat("select %s from ", placeholder, " %s where ", pk, " in (%s) %s ORDER BY %s.", placeholder, " %s")
 		// %s means: table, join table, pk values
-		countStmt = "select count(*) " + countExtra + " from " + placeholder + " %s where " + pk + " in (%s)"
+		countStmt = utils.StrConcat("select count(*) ", countExtra, " from ", placeholder, " %s where ", pk, " in (%s)")
 	} else {
-		if conn.Name() == db.DriverMssql {
+		if isMssql {
 			// %s means: order by field, order by type, fields, table, join table, wheres, group by
-			queryStmt = "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s." + placeholder + " %s) as ROWNUMBER_, %s from " +
-				placeholder + "%s %s %s ) as TMP_ WHERE TMP_.ROWNUMBER_ > ? AND TMP_.ROWNUMBER_ <= ?"
+			queryStmt = utils.StrConcat("SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s.", placeholder, " %s) as ROWNUMBER_, %s from ",
+				placeholder, "%s %s %s ) as TMP_ WHERE TMP_.ROWNUMBER_ > ? AND TMP_.ROWNUMBER_ <= ?")
 			// %s means: table, join table, wheres
-			countStmt = "select count(*) as [size] from (select count(*) as [size] from " + placeholder + " %s %s %s) src"
+			countStmt = utils.StrConcat("select count(*) as [size] from (select count(*) as [size] from ", placeholder, " %s %s %s) src")
 		} else {
 			// %s means: fields, table, join table, wheres, group by, order by field, order by type
-			queryStmt = "select %s from " + placeholder + "%s %s %s order by " + placeholder + "." + placeholder + " %s LIMIT ? OFFSET ?"
+			queryStmt = utils.StrConcat("select %s from ", placeholder, "%s %s %s order by ", placeholder, ".", placeholder, " %s LIMIT ? OFFSET ?")
 			// %s means: table, join table, wheres
-			countStmt = "select count(*) from (select " + pk + " from " + placeholder + " %s %s %s) src"
+			countStmt = utils.StrConcat("select count(*) from (select ", pk, " from ", placeholder, " %s %s %s) src")
 		}
 	}
 
@@ -491,14 +483,15 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	groupFields := fields
 
 	if joinFields != "" {
-		allFields += "," + joinFields[:len(joinFields)-1]
-		if conn.Name() == db.DriverMssql {
+		allFields = utils.StrConcat(allFields, ",", joinFields[:len(joinFields)-1])
+		if isMssql {
 			for _, field := range tb.Info.FieldList {
 				if field.TypeName == db.Text || field.TypeName == db.Longtext {
-					f := modules.Delimiter(conn.GetDelimiter(), conn.GetDelimiter2(), field.Field)
-					headField := table + "." + f
-					allFields = strings.ReplaceAll(allFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX)) as " + f)
-					groupFields = strings.ReplaceAll(groupFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX))")
+					f := modules.Delimiter(delim, delim2, field.Field)
+					headField  := utils.StrConcat(table, ".", f)
+					casting    := utils.StrConcat("CAST(", headField, " AS NVARCHAR(MAX))")
+					allFields   = strings.ReplaceAll(allFields, headField, utils.StrConcat(casting, " as ", f))
+					groupFields = strings.ReplaceAll(groupFields, headField, casting)
 				}
 			}
 		}
@@ -540,10 +533,10 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
 		if wheres != "" {
-			wheres = " where " + wheres
+			wheres = "WHERE " + wheres
 		}
 
-		if conn.Name() == db.DriverMssql {
+		if isMssql {
 			args = append(whereArgs, (params.PageInt - 1) * params.PageSizeInt, params.PageInt * params.PageSizeInt)
 		} else {
 			args = append(whereArgs, params.PageSizeInt, (params.PageInt - 1) * params.PageSizeInt)
@@ -555,7 +548,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		var sb strings.Builder
 		sb.Grow(64)
 		sb.WriteString("GROUP BY ")
-		if conn.Name() == db.DriverMssql {
+		if isMssql {
 			sb.WriteString(groupFields)
 			//groupBy = " GROUP BY " + groupFields
 		} else {
@@ -566,7 +559,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	}
 
 	queryCmd := ""
-	if conn.Name() == db.DriverMssql && len(ids) == 0 {
+	if isMssql && len(ids) == 0 {
 		queryCmd = fmt.Sprintf(queryStmt, tb.Info.Table, params.SortField, params.SortType,
 			allFields, tb.Info.Table, joins, wheres, groupBy)
 	} else {
@@ -614,12 +607,10 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 	}
 
-	qt := elapsedQueryTime(benchmark)
-
 	return PanelInfo{
 		Thead:          thead,
 		InfoList:       infoList,
-		Paginator:      tb.GetPaginator(size, params, template.HTML(qt)),
+		Paginator:      tb.GetPaginator(size, params, template.HTML(elapsedQueryTime(benchmark))),
 		Title:          tb.Info.Title,
 		FilterFormData: filterForm,
 		Description:    tb.Info.Description,
@@ -764,8 +755,8 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		fields.WriteString(pk)
 		//fields += pk
 
-		useMssql := conn.Name() == db.DriverMssql
-		useGroupFields := useMssql && len(joinTabMap) > 0
+		isMssql := conn.Name() == db.DriverMssql
+		useGroupFields := isMssql && len(joinTabMap) > 0
 		var groupFields string
 		if useGroupFields {
 			groupFields = fields.String()
@@ -776,15 +767,15 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 			fields.WriteString(joinFields.String())
 			//fields += joinFields.String()
 			//fields += "," + joinFields[:len(joinFields)-1]
-			if useMssql {
+			if isMssql {
 				strFields := fields.String()
 				for _, formField := range tb.Form.FieldList {
 					if formField.TypeName == db.Text || formField.TypeName == db.Longtext {
 						f := modules.Delimiter(delim, delim2, formField.Field)
-						headField := tb.Info.Table + "." + f
-						strFields = strings.ReplaceAll(strFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX)) as " + f)
+						headField := utils.StrConcat(tb.Info.Table, ".", f)
+						strFields = strings.ReplaceAll(strFields, headField, utils.StrConcat("CAST(", headField, " AS NVARCHAR(MAX)) as ", f))
 						if useGroupFields {
-							groupFields = strings.ReplaceAll(groupFields, headField, "CAST(" + headField + " AS NVARCHAR(MAX))")
+							groupFields = strings.ReplaceAll(groupFields, headField, utils.StrConcat("CAST(", headField, " AS NVARCHAR(MAX))"))
 						}
 					}
 				}
@@ -861,7 +852,7 @@ func (tb *DefaultTable) UpdateData(ctx *context.Context, dataList form.Values) e
 				defer func() {
 					if err := recover(); err != nil {
 						logger.Error(err)
-						logger.Error(string(debug.Stack()))
+						//logger.Error(string(debug.Stack()))
 					}
 				}()
 
@@ -933,7 +924,7 @@ func (tb *DefaultTable) InsertData(ctx *context.Context, dataList form.Values) e
 				defer func() {
 					if err := recover(); err != nil {
 						logger.Error(err)
-						logger.Error(string(debug.Stack()))
+						//logger.Error(string(debug.Stack()))
 					}
 				}()
 
@@ -1094,7 +1085,7 @@ func (tb *DefaultTable) DeleteData(ctx *context.Context, id string) error {
 				defer func() {
 					if r := recover(); r != nil {
 						logger.Error(r)
-						logger.Error(string(debug.Stack()))
+						//logger.Error(string(debug.Stack()))
 					}
 				}()
 
@@ -1111,7 +1102,7 @@ func (tb *DefaultTable) DeleteData(ctx *context.Context, id string) error {
 				defer func() {
 					if r := recover(); r != nil {
 						logger.Error(r)
-						logger.Error(string(debug.Stack()))
+						//logger.Error(string(debug.Stack()))
 					}
 				}()
 
