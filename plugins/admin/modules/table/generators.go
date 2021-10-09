@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/collection"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
@@ -22,7 +23,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/types/action"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
 	"github.com/GoAdminGroup/html"
-	"golang.org/x/crypto/bcrypt"
 	tmpl "html/template"
 	"net/url"
 	"strconv"
@@ -1782,14 +1782,6 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 // helper functions
 // -------------------------
 
-func encodePassword(pwd []byte) string {
-	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
-	if err != nil {
-		return ""
-	}
-	return string(hash)
-}
-
 func label() types.LabelAttribute {
 	return template.Get(config.GetTheme()).Label().SetType("success")
 }
@@ -1941,7 +1933,7 @@ func passwordFromValues(values form2.Values) (string, error) {
 	if password == "" {
 		return "", nil
 	}
-	return encodePassword([]byte(password)), nil
+	return auth.EncodePassword([]byte(password)), nil
 }
 
 func boolFieldDisplay(model types.FieldModel) interface{} {

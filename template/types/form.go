@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/GoAdminGroup/go-admin/context"
@@ -313,13 +312,13 @@ func (f *FormField) fillCustom(src string) string {
 		logger.Error(err)
 		return ""
 	}
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, f)
+	var sb strings.Builder
+	err = t.Execute(&sb, f)
 	if err != nil {
 		logger.Error(err)
 		return ""
 	}
-	return buf.String()
+	return sb.String()
 }
 
 // FormPanel

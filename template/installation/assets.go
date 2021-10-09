@@ -23,8 +23,8 @@ func bindataRead(data []byte, name string) ([]byte, error) {
 		return nil, fmt.Errorf("Read %q: %v", name, err)
 	}
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, gz)
+	var sb strings.Builder
+	_, err = io.Copy(&sb, gz)
 	clErr := gz.Close()
 
 	if err != nil {
@@ -34,7 +34,7 @@ func bindataRead(data []byte, name string) ([]byte, error) {
 		return nil, err
 	}
 
-	return buf.Bytes(), nil
+	return []byte(sb.String()), nil
 }
 
 type asset struct {

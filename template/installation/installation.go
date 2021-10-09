@@ -1,7 +1,6 @@
 package login
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"strings"
@@ -61,11 +60,11 @@ func (i *Installation) IsAPage() bool                        { return true }
 func (i *Installation) GetName() string                      { return "login" }
 
 func (i *Installation) GetContent() template.HTML {
-	buffer := new(bytes.Buffer)
+	var sb strings.Builder
 	tmpl, defineName := i.GetTemplate()
-	err := tmpl.ExecuteTemplate(buffer, defineName, i)
+	err := tmpl.ExecuteTemplate(&sb, defineName, i)
 	if err != nil {
 		fmt.Println("ComposeHtml Error:", err)
 	}
-	return template.HTML(buffer.String())
+	return template.HTML(sb.String())
 }

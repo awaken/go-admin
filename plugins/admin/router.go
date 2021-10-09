@@ -18,10 +18,6 @@ func (admin *Admin) initRouter() *Admin {
 	route.GET(config.GetLoginUrl(), admin.handler.ShowLogin)
 	route.POST("/signin", admin.handler.Auth)
 
-	// auto install
-	//route.GET("/install", admin.handler.ShowInstall)
-	//route.POST("/install/database/check", admin.handler.CheckDatabase)
-
 	checkRepeatedPath := make(map[string]struct{}, 32)
 	for _, themeName := range template.Themes() {
 		for _, path := range template.Get(themeName).GetAssetList() {

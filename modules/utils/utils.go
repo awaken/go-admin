@@ -111,16 +111,10 @@ func ParseBool(s string) bool {
 	return b1
 }
 
-func ReplaceAll(s string, oldnew ...string) string {
-	repl := strings.NewReplacer(oldnew...)
-	return repl.Replace(s)
-}
-
 func PackageName(v interface{}) string {
 	if v == nil {
 		return ""
 	}
-
 	val := reflect.ValueOf(v)
 	if val.Kind() == reflect.Ptr {
 		return val.Elem().Type().PkgPath()
@@ -169,7 +163,7 @@ func CopyMap(m map[string]string) map[string]string {
 }
 
 func ParseTime(stringTime string) time.Time {
-	loc, _ := time.LoadLocation("Local")
+	loc, _ := time.LoadLocation("UTC")
 	theTime, _ := time.ParseInLocation("2006-01-02 15:04:05", stringTime, loc)
 	return theTime
 }
@@ -181,13 +175,13 @@ func ParseHTML(name, tmpl string, param interface{}) template.HTML {
 		fmt.Println("utils parseHTML error", err)
 		return ""
 	}
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, param)
+	var sb strings.Builder
+	err = t.Execute(&sb, param)
 	if err != nil {
 		fmt.Println("utils parseHTML error", err)
 		return ""
 	}
-	return template.HTML(buf.String())
+	return template.HTML(sb.String())
 }
 
 func ParseText(name, tmpl string, param interface{}) string {
@@ -197,13 +191,13 @@ func ParseText(name, tmpl string, param interface{}) string {
 		fmt.Println("utils parseHTML error", err)
 		return ""
 	}
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, param)
+	var sb strings.Builder
+	err = t.Execute(&sb, param)
 	if err != nil {
 		fmt.Println("utils parseHTML error", err)
 		return ""
 	}
-	return buf.String()
+	return sb.String()
 }
 
 func CompareVersion(src, toCompare string) bool {

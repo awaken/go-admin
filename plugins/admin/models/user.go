@@ -7,7 +7,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"net/url"
 	"strconv"
 	"strings"
@@ -132,11 +131,12 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 		path = path[:len(path)-1]
 	}
 
-	path = utils.ReplaceAll(path, constant.EditPKKey, "id", constant.DetailPKKey, "id")
+	path = utils.PkReplacer.Replace(path)
 
 	path, params := getParam(path)
 	for key, value := range formParams {
 		if len(value) > 0 {
+			if params == nil { params = make(url.Values) }
 			params.Add(key, value[0])
 		}
 	}
@@ -146,16 +146,13 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 	//}
 
 	for _, v := range t.Permissions {
-
 		if v.HttpMethod[0] == "" || inMethodArr(v.HttpMethod, method) {
-
 			if v.HttpPath[0] == "*" {
 				return true
 			}
 
-			for i := 0; i < len(v.HttpPath); i++ {
-
-				matchPath := config.Url(t.Template(t.patchPathParams(v.HttpPath[i])))
+			for _, httpPath := range v.HttpPath {
+				matchPath := config.Url(t.Template(t.patchPathParams(httpPath)))
 				matchPath, matchParam := getParam(matchPath)
 
 				if matchPath == path {
@@ -165,7 +162,6 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 				}
 
 				reg, err := utils.CachedRex(normMatchPath(matchPath))
-
 				if err != nil {
 					logger.Error("CheckPermissions error: ", err)
 					continue
@@ -184,14 +180,14 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 }
 
 func getParam(u string) (string, url.Values) {
-	m := make(url.Values)
 	if p := strings.IndexByte(u, '?'); p >= 0 {
+		var m url.Values
 		if p < len(u) - 1 {
 			m, _ = url.ParseQuery(u[p+1:])
 		}
 		return u[:p], m
 	}
-	return u, m
+	return u, nil
 	/*m := make(url.Values)
 	urr := strings.Split(u, "?")
 	if len(urr) > 1 {
@@ -208,8 +204,8 @@ func (t UserModel) checkParam(src, comp url.Values) bool {
 		return false
 	}
 	for key, value := range comp {
-		v, find := src[key]
-		if !find {
+		v, ok := src[key]
+		if !ok {
 			return false
 		}
 		if len(value) == 0 {
@@ -218,10 +214,8 @@ func (t UserModel) checkParam(src, comp url.Values) bool {
 		if len(v) == 0 {
 			return false
 		}
-		for i := 0; i < len(v); i++ {
-			if v[i] == t.Template(value[i]) {
-				continue
-			} else {
+		for i, e := range v {
+			if e != t.Template(value[i]) {
 				return false
 			}
 		}
@@ -230,8 +224,8 @@ func (t UserModel) checkParam(src, comp url.Values) bool {
 }
 
 func inMethodArr(arr []string, str string) bool {
-	for i := 0; i < len(arr); i++ {
-		if strings.EqualFold(arr[i], str) {
+	for _, method := range arr {
+		if strings.EqualFold(method, str) {
 			return true
 		}
 	}
@@ -271,20 +265,16 @@ func (t UserModel) WithRoles() UserModel {
 }
 
 func (t UserModel) GetAllRoleId() []interface{} {
-
 	var ids = make([]interface{}, len(t.Roles))
-
-	for key, role := range t.Roles {
-		ids[key] = role.Id
+	for i, role := range t.Roles {
+		ids[i] = role.Id
 	}
-
 	return ids
 }
 
 // WithPermissions query the permission info of the user.
 func (t UserModel) WithPermissions() UserModel {
-
-	var permissions = make([]map[string]interface{}, 0)
+	var permissions []map[string]interface{}
 
 	roleIds := t.GetAllRoleId()
 
@@ -308,18 +298,17 @@ func (t UserModel) WithPermissions() UserModel {
 
 	permissions = append(permissions, userPermissions...)
 
-	for i := 0; i < len(permissions); i++ {
-		exist := false
-		for j := 0; j < len(t.Permissions); j++ {
-			if t.Permissions[j].Id == permissions[i]["id"] {
+	for _, perm := range permissions {
+		permId := perm["id"]
+		exist  := false
+		for _, p := range t.Permissions {
+			if p.Id == permId {
 				exist = true
 				break
 			}
 		}
-		if exist {
-			continue
-		}
-		t.Permissions = append(t.Permissions, Permission().MapToModel(permissions[i]))
+		if exist { continue }
+		t.Permissions = append(t.Permissions, Permission().MapToModel(perm))
 	}
 
 	return t
@@ -327,7 +316,6 @@ func (t UserModel) WithPermissions() UserModel {
 
 // WithMenus query the menu info of the user.
 func (t UserModel) WithMenus() UserModel {
-
 	var menuIdsModel []map[string]interface{}
 
 	if t.IsSuperAdmin() {
@@ -349,9 +337,9 @@ func (t UserModel) WithMenus() UserModel {
 	var menuIds []int64
 
 	for _, mid := range menuIdsModel {
-		if parentId, ok := mid["parent_id"].(int64); ok && parentId != 0 {
+		if parentId, _ := mid["parent_id"].(int64); parentId != 0 {
 			for _, mid2 := range menuIdsModel {
-				if mid2["menu_id"].(int64) == mid["parent_id"].(int64) {
+				if mid2["menu_id"].(int64) == parentId {
 					menuIds = append(menuIds, mid["menu_id"].(int64))
 					break
 				}

@@ -2,6 +2,7 @@ package action
 
 import (
 	"html/template"
+	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
@@ -16,7 +17,7 @@ type JumpAction struct {
 }
 
 func Jump(url string, ext ...template.HTML) *JumpAction {
-	url = utils.ReplaceAll(url, "{%id}", "{{.Id}}", "{%ids}", "{{.Ids}}")
+	url = utils.JumpTmplReplacer.Replace(url)
 	if len(ext) > 0 {
 		return &JumpAction{Url: url, Ext: ext[0]}
 	}
@@ -24,7 +25,7 @@ func Jump(url string, ext ...template.HTML) *JumpAction {
 }
 
 func JumpInNewTab(url, title string, ext ...template.HTML) *JumpAction {
-	url = utils.ReplaceAll(url, "{%id}", "{{.Id}}", "{%ids}", "{{.Ids}}")
+	url = utils.JumpTmplReplacer.Replace(url)
 	if len(ext) > 0 {
 		return &JumpAction{Url: url, NewTabTitle: title, Ext: ext[0]}
 	}
@@ -32,7 +33,7 @@ func JumpInNewTab(url, title string, ext ...template.HTML) *JumpAction {
 }
 
 func JumpWithTarget(url, target string, ext ...template.HTML) *JumpAction {
-	url = utils.ReplaceAll(url, "{%id}", "{{.Id}}", "{%ids}", "{{.Ids}}")
+	url = utils.JumpTmplReplacer.Replace(url)
 	if len(ext) > 0 {
 		return &JumpAction{Url: url, Target: target, Ext: ext[0]}
 	}
@@ -44,14 +45,30 @@ func (jump *JumpAction) GetCallbacks() context.Node {
 }
 
 func (jump *JumpAction) BtnAttribute() template.HTML {
-	html := template.HTML(`href="` + jump.Url + `"`)
+	var sb strings.Builder
+	sb.Grow(256)
+	sb.WriteString(`href="`)
+	sb.WriteString(jump.Url)
+	sb.WriteByte('"')
+	if jump.NewTabTitle != "" {
+		sb.WriteString(` data-title="`)
+		sb.WriteString(jump.NewTabTitle)
+		sb.WriteByte('"')
+	}
+	if jump.Target != "" {
+		sb.WriteString(` target="`)
+		sb.WriteString(jump.Target)
+		sb.WriteByte('"')
+	}
+	return template.HTML(sb.String())
+	/*html := template.HTML(`href="` + jump.Url + `"`)
 	if jump.NewTabTitle != "" {
 		html += template.HTML(` data-title="` + jump.NewTabTitle + `"`)
 	}
 	if jump.Target != "" {
 		html += template.HTML(` target="` + jump.Target + `"`)
 	}
-	return html
+	return html*/
 }
 
 func (jump *JumpAction) BtnClass() template.HTML {

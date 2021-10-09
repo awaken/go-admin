@@ -82,15 +82,15 @@ const (
 )
 
 func GetPageTypeFromPageError(err errors2.PageError) PageType {
-	if err == nil {
+	switch err {
+	case nil:
 		return NormalPage
-	} else if err == errors2.PageError403 {
+	case errors2.PageError403:
 		return NoPermission403Page
-	} else if err == errors2.PageError404 {
+	case errors2.PageError404:
 		return Missing404Page
-	} else {
-		return Error500Page
 	}
+	return Error500Page
 }
 
 const (
@@ -231,7 +231,6 @@ func Themes() []string {
 }
 
 func AddFromPlugin(name string, mod string) {
-
 	plug, err := plugin.Open(mod)
 	if err != nil {
 		logger.Error("AddFromPlugin err", err)
@@ -300,7 +299,7 @@ func GetComp(name string) Component {
 }
 
 func GetComponentAsset() []string {
-	assets := make([]string, 0)
+	var assets []string
 	for _, comp := range compMap {
 		assets = append(assets, comp.GetAssetList()...)
 	}
@@ -308,7 +307,7 @@ func GetComponentAsset() []string {
 }
 
 func GetComponentAssetWithinPage() []string {
-	assets := make([]string, 0)
+	var assets []string
 	for _, comp := range compMap {
 		if !comp.IsAPage() {
 			assets = append(assets, comp.GetAssetList()...)
@@ -329,9 +328,9 @@ func GetComponentAssetImportHTML() (res template.HTML) {
 func getHTMLFromAssetUrl(s string) template.HTML {
 	switch path.Ext(s) {
 	case ".css":
-		return template.HTML(`<link rel="stylesheet" href="` + c.GetAssetUrl() + c.Url("/assets"+s) + `">`)
+		return template.HTML(utils.StrConcat(`<link rel="stylesheet" href="`, c.GetAssetUrl(), c.Url("/assets" + s), `">`))
 	case ".js":
-		return template.HTML(`<script src="` + c.GetAssetUrl() + c.Url("/assets"+s) + `"></script>`)
+		return template.HTML(utils.StrConcat(`<script src="`, c.GetAssetUrl(), c.Url("/assets" + s), `"></script>`))
 	default:
 		return ""
 	}
@@ -402,9 +401,7 @@ func updateNavAndLogoJS(logo template.HTML) template.JS {
 	if logo == "" {
 		return ""
 	}
-	return `$(function () {
-	$(".logo-lg").html("` + template.JS(logo) + `");
-});`
+	return template.JS(utils.StrConcat(`$(function(){$(".logo-lg").html("`, string(logo), `")});`))
 }
 
 func updateNavJS(isPjax bool) template.JS {
@@ -437,7 +434,6 @@ func GetExecuteOptions(options []ExecuteOptions) ExecuteOptions {
 }
 
 func Execute(param *ExecuteParam) *bytes.Buffer {
-
 	buf := new(bytes.Buffer)
 	err := param.Tmpl.ExecuteTemplate(buf, param.TmplName,
 		types.NewPage(&types.NewPageParam{
@@ -555,20 +551,22 @@ func (b *BaseComponent) GetAsset(name string) ([]byte, error) { return nil, nil 
 func (b *BaseComponent) GetJS() template.JS                   { return b.JS }
 func (b *BaseComponent) GetCSS() template.CSS                 { return b.CSS }
 func (b *BaseComponent) GetCallbacks() types.Callbacks        { return b.Callbacks }
+
 func (b *BaseComponent) BindActionTo(action types.Action, id string) {
 	action.SetBtnId(id)
 	b.JS += action.Js()
 	b.HTMLData += string(action.ExtContent())
 	b.Callbacks = append(b.Callbacks, action.GetCallbacks())
 }
+
 func (b *BaseComponent) GetContentWithData(obj interface{}) template.HTML {
-	buffer := new(bytes.Buffer)
+	var sb strings.Builder
 	tmpl, defineName := b.GetTemplate()
-	err := tmpl.ExecuteTemplate(buffer, defineName, obj)
+	err := tmpl.ExecuteTemplate(&sb, defineName, obj)
 	if err != nil {
-		logger.Error(b.Name+" GetContent error:", err)
+		logger.Error(b.Name + " GetContent error:", err)
 	}
-	return template.HTML(buffer.String())
+	return template.HTML(sb.String())
 }
 
 func (b *BaseComponent) GetTemplate() (*template.Template, string) {
@@ -577,7 +575,7 @@ func (b *BaseComponent) GetTemplate() (*template.Template, string) {
 		Parse(b.HTMLData)
 
 	if err != nil {
-		logger.Error(b.Name+" GetTemplate Error: ", err)
+		logger.Error(b.Name + " GetTemplate Error: ", err)
 	}
 
 	return tmpl, b.Name

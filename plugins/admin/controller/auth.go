@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"bytes"
 	template2 "html/template"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
@@ -91,8 +91,9 @@ func (h *Handler) ShowLogin(ctx *context.Context) {
 	}
 
 	tmpl, name := template.GetComp("login").GetTemplate()
-	buf := new(bytes.Buffer)
-	err := tmpl.ExecuteTemplate(buf, name, struct {
+	var sb strings.Builder
+
+	err := tmpl.ExecuteTemplate(&sb, name, struct {
 		UrlPrefix string
 		Title     string
 		Logo      template2.HTML
@@ -107,7 +108,7 @@ func (h *Handler) ShowLogin(ctx *context.Context) {
 	})
 
 	if err == nil {
-		ctx.HTML(http.StatusOK, buf.String())
+		ctx.HTML(http.StatusOK, sb.String())
 	} else {
 		logger.Error(err)
 		ctx.HTML(http.StatusOK, "error: cannot parse login template")

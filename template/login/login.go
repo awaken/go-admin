@@ -1,7 +1,6 @@
 package login
 
 import (
-	"bytes"
 	"html/template"
 	"strings"
 
@@ -62,13 +61,13 @@ func (l *Login) IsAPage() bool                        { return true }
 func (l *Login) GetName() string                      { return "login" }
 
 func (l *Login) GetContent() template.HTML {
-	buffer := new(bytes.Buffer)
+	var sb strings.Builder
 	tmpl, defineName := l.GetTemplate()
-	err := tmpl.ExecuteTemplate(buffer, defineName, l)
+	err := tmpl.ExecuteTemplate(&sb, defineName, l)
 	if err != nil {
 		logger.Error("login ComposeHtml Error:", err)
 	}
-	return template.HTML(buffer.String())
+	return template.HTML(sb.String())
 }
 
 func (l *Login) GetJS() template.JS            { return "" }

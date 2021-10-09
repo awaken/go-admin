@@ -11,6 +11,7 @@ import (
 	template2 "html/template"
 	"net/http"
 	"plugin"
+	"strings"
 	"time"
 
 	"github.com/GoAdminGroup/go-admin/template/icon"
@@ -178,19 +179,18 @@ func (b *Base) HTMLMenuWithBtns(ctx *context.Context, panel types.Panel, menu *m
 }
 
 func (b *Base) HTMLFile(ctx *context.Context, path string, data map[string]interface{}, options ...template.ExecuteOptions) {
-
-	buf := new(bytes.Buffer)
+	var sb strings.Builder
 	var panel types.Panel
 
 	t, err := template2.ParseFiles(path)
 	if err != nil {
 		panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 	} else {
-		if err := t.Execute(buf, data); err != nil {
+		if err := t.Execute(&sb, data); err != nil {
 			panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 		} else {
 			panel = types.Panel{
-				Content: template.HTML(buf.String()),
+				Content: template.HTML(sb.String()),
 			}
 		}
 	}
@@ -199,18 +199,18 @@ func (b *Base) HTMLFile(ctx *context.Context, path string, data map[string]inter
 }
 
 func (b *Base) HTMLFiles(ctx *context.Context, data map[string]interface{}, files []string, options ...template.ExecuteOptions) {
-	buf := new(bytes.Buffer)
+	var sb strings.Builder
 	var panel types.Panel
 
 	t, err := template2.ParseFiles(files...)
 	if err != nil {
 		panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 	} else {
-		if err := t.Execute(buf, data); err != nil {
+		if err := t.Execute(&sb, data); err != nil {
 			panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 		} else {
 			panel = types.Panel{
-				Content: template.HTML(buf.String()),
+				Content: template.HTML(sb.String()),
 			}
 		}
 	}
@@ -273,8 +273,7 @@ func LoadFromPlugin(mod string) Plugin {
 // GetHandler is a help method for Plugin GetHandler.
 func GetHandler(app *context.App) context.HandlerMap { return app.Handlers }
 
-func Execute(ctx *context.Context, conn db.Connection, navButtons types.Buttons, user models.UserModel,
-	panel types.Panel, options template.ExecuteOptions) *bytes.Buffer {
+func Execute(ctx *context.Context, conn db.Connection, navButtons types.Buttons, user models.UserModel, panel types.Panel, options template.ExecuteOptions) *bytes.Buffer {
 	tmpl, tmplName := template.Get(config.GetTheme()).GetTemplate(ctx.IsPjax())
 
 	return template.Execute(&template.ExecuteParam{

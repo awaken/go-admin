@@ -5,7 +5,7 @@
 package page
 
 import (
-	"bytes"
+	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -31,9 +31,9 @@ func SetPageContent(ctx *context.Context, user models.UserModel, c func(ctx inte
 
 	ctx.AddHeader("Content-Type", "text/html; charset=utf-8")
 
-	buf := new(bytes.Buffer)
+	var sb strings.Builder
 
-	err = tmpl.ExecuteTemplate(buf, tmplName, types.NewPage(&types.NewPageParam{
+	err = tmpl.ExecuteTemplate(&sb, tmplName, types.NewPage(&types.NewPageParam{
 		User:         user,
 		Menu:         menu.GetGlobalMenu(user, conn, ctx.Lang()).SetActiveClass(config.URLRemovePrefix(ctx.Path())),
 		Panel:        panel.GetContent(config.IsProductionEnvironment()),
@@ -45,5 +45,5 @@ func SetPageContent(ctx *context.Context, user models.UserModel, c func(ctx inte
 	if err != nil {
 		logger.Error("SetPageContent", err)
 	}
-	ctx.WriteString(buf.String())
+	ctx.WriteString(sb.String())
 }

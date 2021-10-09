@@ -1,10 +1,10 @@
 package chartjs
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"strings"
 
 	template2 "github.com/GoAdminGroup/go-admin/template"
 )
@@ -496,7 +496,7 @@ func (l *LineChart) DSYAxisID(yAxisID string) *LineChart {
 }
 
 func (l *LineChart) GetContent() template.HTML {
-	buffer := new(bytes.Buffer)
+	var sb strings.Builder
 	tmpl, defineName := l.GetTemplate()
 
 	if l.JsContentOptions != nil {
@@ -506,9 +506,9 @@ func (l *LineChart) GetContent() template.HTML {
 	jsonByte, _ := json.Marshal(l.JsContent)
 	l.Js = template.JS(string(jsonByte))
 
-	err := tmpl.ExecuteTemplate(buffer, defineName, l)
+	err := tmpl.ExecuteTemplate(&sb, defineName, l)
 	if err != nil {
 		fmt.Println("ComposeHtml Error:", err)
 	}
-	return template.HTML(buffer.String())
+	return template.HTML(sb.String())
 }

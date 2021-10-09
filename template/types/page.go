@@ -5,10 +5,10 @@
 package types
 
 import (
-	"bytes"
 	"fmt"
 	"html/template"
 	"strconv"
+	"strings"
 	textTmpl "text/template"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -195,38 +195,31 @@ type TableRowData struct {
 }
 
 func ParseTableDataTmpl(content interface{}) string {
-	var (
-		c  string
-		ok bool
-	)
-	if c, ok = content.(string); !ok {
-		if cc, ok := content.(template.HTML); ok {
-			c = string(cc)
-		} else {
-			c = string(content.(template.JS))
-		}
+	var c  string
+	switch t := content.(type) {
+	case string       : c = t
+	case template.HTML: c = string(t)
+	case template.JS  : c = string(t)
 	}
-	t := template.New("row_data_tmpl")
-	t, _ = t.Parse(c)
-	buf := new(bytes.Buffer)
-	_ = t.Execute(buf, TableRowData{Ids: `typeof(selectedRows)==="function" ? selectedRows().join() : ""`})
-	return buf.String()
+	t, _ := template.New("row_data_tmpl").Parse(c)
+	var sb strings.Builder
+	_ = t.Execute(&sb, TableRowData{Ids: `typeof(selectedRows)==="function" ? selectedRows().join() : ""`})
+	return sb.String()
 }
 
 func ParseTableDataTmplWithID(id template.HTML, content string, value ...map[string]InfoItem) string {
-	t := textTmpl.New("row_data_tmpl")
-	t, _ = t.Parse(content)
-	buf := new(bytes.Buffer)
-	v := make(map[string]InfoItem)
+	t, _ := textTmpl.New("row_data_tmpl").Parse(content)
+	var sb strings.Builder
+	var v map[string]InfoItem
 	if len(value) > 0 {
 		v = value[0]
 	}
-	_ = t.Execute(buf, TableRowData{
+	_ = t.Execute(&sb, TableRowData{
 		Id:    id,
 		Ids:   `typeof(selectedRows)==="function" ? selectedRows().join() : ""`,
 		Value: v,
 	})
-	return buf.String()
+	return sb.String()
 }
 
 // Panel contains the main content of the template which used as pjax.

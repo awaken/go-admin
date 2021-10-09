@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"bytes"
 	"html/template"
+	"strings"
 
 	"github.com/GoAdminGroup/go-admin/modules/remote_server"
 
@@ -20,13 +20,13 @@ func GetPluginsPageJS(data PluginsPageJSData) template.JS {
 		logger.Error(err)
 		return ""
 	}
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, data)
+	var sb strings.Builder
+	err = t.Execute(&sb, data)
 	if err != nil {
 		logger.Error(err)
 		return ""
 	}
-	return template.JS(buf.String())
+	return template.JS(sb.String())
 
 }
 

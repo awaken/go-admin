@@ -5,9 +5,9 @@
 package adapter
 
 import (
-	"bytes"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
@@ -167,8 +167,9 @@ func (base *BaseAdapter) GetContent(ctx interface{}, getPanelFn types.GetPanelFn
 
 	tmpl, tmplName := template.Default().GetTemplate(newBase.IsPjax())
 
-	buf := new(bytes.Buffer)
-	hasError = tmpl.ExecuteTemplate(buf, tmplName, types.NewPage(&types.NewPageParam{
+	var sb strings.Builder
+
+	hasError = tmpl.ExecuteTemplate(&sb, tmplName, types.NewPage(&types.NewPageParam{
 		User:         user,
 		Menu:         menu.GetGlobalMenu(user, wf.GetConnection(), newBase.Lang()).SetActiveClass(config.URLRemovePrefix(newBase.Path())),
 		Panel:        panel.GetContent(config.IsProductionEnvironment()),
@@ -184,5 +185,5 @@ func (base *BaseAdapter) GetContent(ctx interface{}, getPanelFn types.GetPanelFn
 	}
 
 	newBase.SetContentType()
-	newBase.Write(buf.Bytes())
+	newBase.Write([]byte(sb.String()))
 }

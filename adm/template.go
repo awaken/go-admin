@@ -4,17 +4,13 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 func getThemeTemplate(moduleName, themeName string) {
-
 	downloadTo("http://file.go-admin.cn/go_admin/template/template.zip", "tmp.zip")
 
 	checkError(unzipDir("tmp.zip", "."))
@@ -116,19 +112,19 @@ func unzipDir(src, dest string) error {
 }
 
 func replaceContents(fileDir, moduleName, themeName string) {
-	files, err := ioutil.ReadDir(fileDir)
+	files, err := os.ReadDir(fileDir)
 	checkError(err)
 	for _, file := range files {
 		path := fileDir + "/" + file.Name()
 		if !file.IsDir() {
-			buf, err := ioutil.ReadFile(path)
+			buf, err := os.ReadFile(path)
 			checkError(err)
 			content := string(buf)
 
-			newContent := utils.ReplaceAll(content, "github.com/GoAdminGroup/themes/adminlte", moduleName,
-				"adminlte", themeName, "Adminlte", strings.Title(themeName))
+			newContent := strings.NewReplacer("github.com/GoAdminGroup/themes/adminlte", moduleName,
+				"adminlte", themeName, "Adminlte", strings.Title(themeName)).Replace(content)
 
-			checkError(ioutil.WriteFile(path, []byte(newContent), 0))
+			checkError(os.WriteFile(path, []byte(newContent), 0))
 		}
 	}
 }

@@ -1,8 +1,8 @@
 package components
 
 import (
-	"bytes"
 	"html/template"
+	"strings"
 
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
@@ -11,43 +11,41 @@ import (
 )
 
 func ComposeHtml(temList map[string]string, separation bool, compo interface{}, templateName ...string) template.HTML {
-
 	tmplName := ""
 	if len(templateName) > 0 {
 		tmplName = templateName[0] + " "
 	}
 
-	var (
-		tmpl *template.Template
-		err  error
-	)
+	var err  error
+	tmpl := template.New("comp").Funcs(template2.DefaultFuncMap)
 
 	if separation {
-		files := make([]string, 0)
+		files := make([]string, len(templateName))
 		root := config.GetAssetRootPath() + "pages/"
-		for _, v := range templateName {
-			files = append(files, root+temList["components/"+v]+".tmpl")
+		for i, v := range templateName {
+			files[i] = root + temList["components/" + v] + ".tmpl"
 		}
-		tmpl, err = template.New("comp").Funcs(template2.DefaultFuncMap).ParseFiles(files...)
+		tmpl, err = tmpl.ParseFiles(files...)
 	} else {
-		var text = ""
+		var sb strings.Builder
+		sb.Grow(1024)
 		for _, v := range templateName {
-			text += temList["components/"+v]
+			sb.WriteString(temList["components/" + v])
 		}
-		tmpl, err = template.New("comp").Funcs(template2.DefaultFuncMap).Parse(text)
+		tmpl, err = tmpl.Parse(sb.String())
 	}
 
 	if err != nil {
 		logger.Panic(tmplName + "ComposeHtml Error:" + err.Error())
 		return ""
 	}
-	buf := new(bytes.Buffer)
 
-	defineName := utils.ReplaceAll(templateName[0], "table/", "", "form/", "")
+	var sb strings.Builder
+	defineName := utils.TableFormReplacer.Replace(templateName[0])
 
-	err = tmpl.ExecuteTemplate(buf, defineName, compo)
+	err = tmpl.ExecuteTemplate(&sb, defineName, compo)
 	if err != nil {
 		logger.Error(tmplName+" ComposeHtml Error:", err)
 	}
-	return template.HTML(buf.String())
+	return template.HTML(sb.String())
 }

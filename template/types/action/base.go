@@ -25,10 +25,7 @@ func (a AjaxData) Add(m map[string]interface{}) AjaxData {
 
 func (a AjaxData) JSON() string {
 	b, _ := json.Marshal(a)
-	return utils.ReplaceAll(string(b), `"{%id}"`, "{{.Id}}",
-		`"{%ids}"`, "{{.Ids}}",
-		`"{{.Ids}}"`, "{{.Ids}}",
-		`"{{.Id}}"`, "{{.Id}}")
+	return utils.JsonTmplReplacer.Replace(string(b))
 }
 
 type BaseAction struct {
@@ -38,12 +35,19 @@ type BaseAction struct {
 }
 
 func (base *BaseAction) SetBtnId(btnId string) {
-	if btnId[0] != '.' && btnId[0] != '#' {
+	switch btnId[0] {
+	case '.', '#':
+		base.BtnId = btnId
+	default:
+		base.BtnId = "." + btnId
+	}
+	/*if btnId[0] != '.' && btnId[0] != '#' {
 		base.BtnId = "." + btnId
 	} else {
 		base.BtnId = btnId
-	}
+	}*/
 }
+
 func (base *BaseAction) Js() template.JS              { return base.JS }
 func (base *BaseAction) BtnClass() template.HTML      { return "" }
 func (base *BaseAction) BtnAttribute() template.HTML  { return "" }

@@ -10,9 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
-
 	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 )
@@ -42,17 +41,16 @@ func (menu *Menu) GetUpdateJS(updateFlag bool) template.JS {
 	if !updateFlag {
 		return ""
 	}
-
 	forceUpdate := "false"
 	if menu.ForceUpdate {
 		forceUpdate = "true"
 	}
-	return template.JS(`$(function () {
+	return template.JS(utils.StrConcat(`$(function () {
 	let curMenuPlug = $(".main-sidebar section.sidebar ul.sidebar-menu").attr("data-plug");
-    if (curMenuPlug !== '` + menu.PluginName + `' || ` + forceUpdate + `) {
-        $(".main-sidebar section.sidebar").html($("#sidebar-menu-tmpl").html())
-    }
-});`)
+	if(curMenuPlug !== '`, menu.PluginName, `' || `, forceUpdate, `) {
+		$(".main-sidebar section.sidebar").html($("#sidebar-menu-tmpl").html())
+	}
+});`))
 }
 
 // SetMaxOrder set the max order of menu.
@@ -69,25 +67,30 @@ func (menu *Menu) AddMaxOrder() {
 func (menu *Menu) SetActiveClass(path string) *Menu {
 	path = utils.RexMenuActiveClass.ReplaceAllString(path, "")
 
-	for i := 0; i < len(menu.List); i++ {
-		menu.List[i].Active = ""
+	for i, item := range menu.List {
+		item.Active = ""
+		for j, child := range item.ChildrenList {
+			child.Active = ""
+			item.ChildrenList[j] = child
+		}
+		menu.List[i] = item
 	}
 
-	for i := 0; i < len(menu.List); i++ {
-		if menu.List[i].Url == path && len(menu.List[i].ChildrenList) == 0 {
-			menu.List[i].Active = "active"
-			return menu
+	for i, item := range menu.List {
+		if item.Url == path && len(item.ChildrenList) == 0 {
+			item.Active  = "active"
+			menu.List[i] = item
+			break
 		}
 
-		for j := 0; j < len(menu.List[i].ChildrenList); j++ {
-			if menu.List[i].ChildrenList[j].Url == path {
-				menu.List[i].Active = "active"
-				menu.List[i].ChildrenList[j].Active = "active"
+		for j, child := range item.ChildrenList {
+			if child.Url == path {
+				item.Active = "active"
+				child.Active = "active"
+				item.ChildrenList[j] = child
+				menu.List[i] = item
 				return menu
 			}
-
-			menu.List[i].Active = ""
-			menu.List[i].ChildrenList[j].Active = ""
 		}
 	}
 
@@ -96,25 +99,40 @@ func (menu *Menu) SetActiveClass(path string) *Menu {
 
 // FormatPath get template.HTML for front-end.
 func (menu Menu) FormatPath() template.HTML {
-	res := template.HTML(``)
-	for i := 0; i < len(menu.List); i++ {
-		if menu.List[i].Active != "" {
-			if menu.List[i].Url != "#" && menu.List[i].Url != "" && len(menu.List[i].ChildrenList) > 0 {
-				res += template.HTML(`<li><a href="` + menu.List[i].Url + `">` + menu.List[i].Name + `</a></li>`)
+	var sb strings.Builder
+	sb.Grow(1024)
+	//res := template.HTML(``)
+	for _, l := range menu.List {
+		if l.Active != "" {
+			if l.Url != "#" && l.Url != "" && len(l.ChildrenList) > 0 {
+				sb.WriteString(`<li><a href="`)
+				sb.WriteString(l.Url)
+				sb.WriteString(`">`)
+				sb.WriteString(l.Name)
+				sb.WriteString(`</a></li>`)
+				//res += template.HTML(`<li><a href="` + l.Url + `">` + l.Name + `</a></li>`)
 			} else {
-				res += template.HTML(`<li>` + menu.List[i].Name + `</li>`)
-				if len(menu.List[i].ChildrenList) == 0 {
-					return res
+				sb.WriteString(`<li>`)
+				sb.WriteString(l.Name)
+				sb.WriteString(`</li>`)
+				//res += template.HTML(`<li>` + l.Name + `</li>`)
+				if len(l.ChildrenList) == 0 {
+					break
 				}
 			}
-			for j := 0; j < len(menu.List[i].ChildrenList); j++ {
-				if menu.List[i].ChildrenList[j].Active != "" {
-					return res + template.HTML(`<li>`+menu.List[i].ChildrenList[j].Name+`</li>`)
+			for _, c := range l.ChildrenList {
+				if c.Active != "" {
+					sb.WriteString(`<li>`)
+					sb.WriteString(c.Name)
+					sb.WriteString(`</li>`)
+					return template.HTML(sb.String())
+					//return res + template.HTML(`<li>`+c.Name+`</li>`)
 				}
 			}
 		}
 	}
-	return res
+	return template.HTML(sb.String())
+	//return res
 }
 
 // GetEditMenuList return menu items list.
@@ -165,11 +183,9 @@ func NewMenu(conn db.Connection, data NewMenuData) (int64, error) {
 
 // GetGlobalMenu return Menu of given user model.
 func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, pluginNames ...string) *Menu {
-
 	var (
-		menus      []map[string]interface{}
-		menuOption = make([]map[string]string, 0)
-		plugName   = ""
+		menus    []map[string]interface{}
+		plugName string
 	)
 
 	if len(pluginNames) > 0 {
@@ -185,12 +201,10 @@ func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, plugi
 			OrderBy("order", "asc").
 			All()
 	} else {
-
-		var ids []interface{}
-		for i := 0; i < len(user.MenuIds); i++ {
-			ids = append(ids, user.MenuIds[i])
+		ids := make([]interface{}, len(user.MenuIds))
+		for i, id := range user.MenuIds {
+			ids[i] = id
 		}
-
 		menus, _ = db.WithDriver(conn).Table("goadmin_menu").
 			WhereIn("id", ids).
 			Where("plugin_name", "=", plugName).
@@ -198,16 +212,18 @@ func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, plugi
 			All()
 	}
 
-	var title string
-	for i := 0; i < len(menus); i++ {
+	menuOptions := make([]map[string]string, len(menus))
 
-		title = language.GetWithLang(menus[i]["title"].(string), lang)
-		menuOption = append(menuOption, map[string]string{
-			"id":    strconv.FormatInt(menus[i]["id"].(int64), 10),
-			"title": title,
-		})
+	for i, menu := range menus {
+		menuOptions[i] = map[string]string{
+			"id":    strconv.Itoa(int(menu["id"].(int64))),
+			"title": language.GetWithLang(menu["title"].(string), lang),
+		}
 	}
 
+	if lang != "" {
+		lang = "__ga_lang=" + lang
+	}
 	menuList := constructMenuTree(menus, 0, lang)
 	maxOrder := int64(0)
 	if len(menus) > 0 {
@@ -216,48 +232,49 @@ func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, plugi
 
 	return &Menu{
 		List:       menuList,
-		Options:    menuOption,
+		Options:    menuOptions,
 		MaxOrder:   maxOrder,
 		PluginName: plugName,
 	}
 }
 
-func constructMenuTree(menus []map[string]interface{}, parentID int64, lang string) []Item {
-
-	branch := make([]Item, 0)
-
+func constructMenuTree(menus []map[string]interface{}, parentID int64, langParam string) []Item {
+	var branch []Item
 	var title string
-	for j := 0; j < len(menus); j++ {
-		if parentID == menus[j]["parent_id"].(int64) {
-			if menus[j]["type"].(int64) == 1 {
-				title = language.Get(menus[j]["title"].(string))
+
+	for _, menu := range menus {
+		if parentID == menu["parent_id"].(int64) {
+			if menu["type"].(int64) == 1 {
+				title = language.Get(menu["title"].(string))
 			} else {
-				title = menus[j]["title"].(string)
+				title = menu["title"].(string)
 			}
 
-			header, _ := menus[j]["header"].(string)
+			menuId := menu["id"].(int64)
+			header, _ := menu["header"].(string)
+			uri := menu["uri"].(string)
 
-			uri := menus[j]["uri"].(string)
-
-			if lang != "" {
-				if strings.Contains(uri, "?") {
-					uri += "&__ga_lang=" + lang
+			if langParam != "" {
+				var sb strings.Builder
+				sb.Grow(len(uri) + 1 + len(langParam))
+				sb.WriteString(uri)
+				if strings.ContainsRune(uri, '?') {
+					sb.WriteByte('&')
 				} else {
-					uri += "?__ga_lang=" + lang
+					sb.WriteByte('?')
 				}
+				sb.WriteString(langParam)
+				uri = sb.String()
 			}
 
-			child := Item{
+			branch = append(branch, Item{
 				Name:         title,
-				ID:           strconv.FormatInt(menus[j]["id"].(int64), 10),
+				ID:           strconv.Itoa(int(menuId)),
 				Url:          uri,
-				Icon:         menus[j]["icon"].(string),
+				Icon:         menu["icon"].(string),
 				Header:       header,
-				Active:       "",
-				ChildrenList: constructMenuTree(menus, menus[j]["id"].(int64), lang),
-			}
-
-			branch = append(branch, child)
+				ChildrenList: constructMenuTree(menus, menuId, langParam),
+			})
 		}
 	}
 
