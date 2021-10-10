@@ -16,7 +16,7 @@ type Service struct {
 const ServiceKey = "ui"
 
 func (s *Service) Name() string {
-	return "ui"
+	return ServiceKey
 }
 
 func GetService(srv service.List) *Service {
