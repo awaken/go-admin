@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"strings"
 
@@ -70,18 +72,26 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 		panel    = h.table(prefix, ctx)
 		btnWord  template2.HTML
 		f        *types.FormPanel
+		info     *types.InfoPanel
 	)
 
 	if kind == "edit" {
 		f = panel.GetForm()
 		id := ctx.Query("id")
 		if id == "" {
-			id = ctx.Request.MultipartForm.Value[panel.GetPrimaryKey().Name][0]
+			pk := panel.GetPrimaryKey()
+			pname := pk.Name
+			req := ctx.Request
+			println(fmt.Sprintf("%# v", req))
+			mform := req.MultipartForm
+			val := mform.Value
+			list := val[pname]
+			id = list[0]
+			//id = ctx.Request.MultipartForm.Value[panel.GetPrimaryKey().Name][0]
 		}
+		info = panel.GetInfo()
 		formInfo, _ = panel.GetDataWithId(parameter.GetParam(ctx.Request.URL,
-			panel.GetInfo().DefaultPageSize,
-			panel.GetInfo().SortField,
-			panel.GetInfo().GetSort()).WithPKs(id))
+			info.DefaultPageSize, info.SortField, info.GetSort()).WithPKs(id))
 		btnWord = f.FormEditBtnWord
 	} else {
 		f = panel.GetActualNewForm()
@@ -89,10 +99,11 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 		formInfo.Title = f.Title
 		formInfo.Description = f.Description
 		btnWord = f.FormNewBtnWord
+		info = panel.GetInfo()
 	}
 
-	queryParam := parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize,
-		panel.GetInfo().SortField, panel.GetInfo().GetSort()).GetRouteParamStr()
+	queryParam := parameter.GetParam(ctx.Request.URL, info.DefaultPageSize,
+		info.SortField, info.GetSort()).GetRouteParamStr()
 
 	h.HTML(ctx, auth.Auth(ctx), types.Panel{
 		Content: aAlert().Warning(errMsg) + formContent(aForm().
@@ -104,9 +115,9 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 			SetPrefix(h.config.PrefixFixSlash()).
 			SetHiddenFields(map[string]string{
 				form.TokenKey:    h.authSrv().AddToken(),
-				form.PreviousKey: h.config.Url("/info/" + prefix + queryParam),
+				form.PreviousKey: h.config.Url(utils.StrConcat("/info/", prefix, queryParam)),
 			}).
-			SetUrl(h.config.Url("/" + kind + "/" + prefix)).
+			SetUrl(h.config.Url(utils.StrConcat("/", kind, "/", prefix))).
 			SetOperationFooter(formFooter(kind, f.IsHideContinueEditCheckBox, f.IsHideContinueNewCheckBox,
 				f.IsHideResetButton, btnWord)).
 			SetHeader(f.HeaderHtml).
@@ -117,5 +128,5 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 		Title:       template2.HTML(formInfo.Title),
 	})
 
-	ctx.AddHeader(constant.PjaxUrlHeader, h.config.Url("/info/" + prefix + "/" + kind + queryParam))
+	ctx.AddHeader(constant.PjaxUrlHeader, h.config.Url(utils.StrConcat("/info/", prefix, "/", kind, queryParam)))
 }

@@ -15,7 +15,7 @@ var (
 
 	RexCommonQuery, RexSqlSelect, RexMenuActiveClass *regexp.Regexp
 
-	PkReplacer, TableFormReplacer, JsonTmplReplacer, JumpTmplReplacer *strings.Replacer
+	PkReplacer, TableFormReplacer, JsonTmplReplacer, JumpTmplReplacer, XssJsReplacer *strings.Replacer
 
 	logoutUrl string
 
@@ -82,6 +82,7 @@ func InitUtils(cacheSize int, urler func(string) string) {
 	TableFormReplacer  = strings.NewReplacer("table/", "", "form/", "")
 	JsonTmplReplacer   = strings.NewReplacer(`"{%id}"`, "{{.Id}}", `"{%ids}"`, "{{.Ids}}", `"{{.Ids}}"`, "{{.Ids}}", `"{{.Id}}"`, "{{.Id}}")
 	JumpTmplReplacer   = strings.NewReplacer("{%id}", "{{.Id}}", "{%ids}", "{{.Ids}}")
+	XssJsReplacer      = strings.NewReplacer("<script>", "&lt;script&gt;", "</script>", "&lt;/script&gt;")
 
 	DefaultExceptMap = map[string]struct{}{
 		form.PreviousKey: {}, form.MethodKey: {}, form.TokenKey: {}, constant.IframeKey: {}, constant.IframeIDKey: {},

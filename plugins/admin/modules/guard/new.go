@@ -98,14 +98,14 @@ func (g *Guard) NewForm(ctx *context.Context) {
 
 	fromList  := utils.IsInfoUrl(previous)
 	infoPanel := panel.GetInfo()
-	param := parameter.GetParamFromURL(previous, infoPanel.DefaultPageSize,
-		infoPanel.GetSort(), panel.GetPrimaryKey().Name)
+	param := parameter.GetParamFromURL(previous, infoPanel.DefaultPageSize, infoPanel.GetSort(), panel.GetPrimaryKey().Name)
 
 	if fromList {
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
 	}
 
-	values := ctx.Request.MultipartForm.Value
+	multiForm := ctx.Request.MultipartForm
+	values := multiForm.Value
 
 	ctx.SetUserValue(newFormParamKey, &NewFormParam{
 		Panel:        panel,
@@ -115,7 +115,7 @@ func (g *Guard) NewForm(ctx *context.Context) {
 		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true",
 		IframeID:     form.Values(values).Get(constant.IframeIDKey),
 		Path:         strings.Split(previous, "?")[0],
-		MultiForm:    ctx.Request.MultipartForm,
+		MultiForm:    multiForm,
 		PreviousPath: previous,
 		FromList:     fromList,
 	})

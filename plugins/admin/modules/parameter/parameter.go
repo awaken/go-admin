@@ -1,6 +1,7 @@
 package parameter
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"net/url"
 	"strconv"
 	"strings"
@@ -144,7 +145,7 @@ func GetParamFromURL(urlStr string, defaultPageSize int, defaultSortType, primar
 }
 
 func (param Parameters) WithPKs(id ...string) Parameters {
-	param.Fields[PrimaryKey] = []string{strings.Join(id, ",")}
+	param.Fields[PrimaryKey] = []string{ strings.Join(id, ",") }
 	return param
 }
 
@@ -207,7 +208,7 @@ func (param Parameters) GetFieldValue(field string) string {
 }
 
 func (param Parameters) AddField(field, value string) Parameters {
-	param.Fields[field] = []string{value}
+	param.Fields[field] = []string{ value }
 	return param
 }
 
@@ -368,14 +369,13 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 	for key, value := range param.Fields {
 		keyIndexSuffix := ""
 		if p := strings.Index(key, FilterParamCountInfix); p >= 0 {
-			keyIndexSuffix = FilterParamCountInfix + key[p + len(FilterParamCountInfix):]
 			key = key[:p]
+			keyIndexSuffix = key[p:]
 			if multiKey == nil { multiKey = make(map[string]struct{}) }
 			multiKey[key] = struct{}{}
 		} else if _, ok := multiKey[key]; !ok && modules.InArray(existKeys, key) {
 			continue
 		}
-
 		/*keyArr := strings.Split(key, FilterParamCountInfix)
 		if len(keyArr) > 1 {
 			key = keyArr[0]
@@ -405,7 +405,7 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			sbWhr.WriteString(key[:p])
 			sbWhr.WriteByte('.')
 			sbWhr.WriteString(delimiter)
-			sbWhr.WriteString(key[p+1:])
+			sbWhr.WriteString(key[p + len(FilterParamJoinInfix):])
 			sbWhr.WriteString(delimiter2)
 			sbWhr.WriteByte(' ')
 			sbWhr.WriteString(op)
@@ -425,8 +425,8 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 				//wheres += " ? and "
 			}
 			val := filterProcess(key, value[0], keyIndexSuffix)
-			if op == "like" && !strings.Contains(val, "%") {
-				whereArgs = append(whereArgs, "%" + val + "%")
+			if op == "like" && !strings.ContainsRune(val, '%') {
+				whereArgs = append(whereArgs, utils.StrConcat("%", val, "%"))
 			} else {
 				for _, v := range value {
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
@@ -455,8 +455,8 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 				sbWhr.WriteString(" ?")
 				//wheres += " ? and "
 			}
-			if op == "like" && !strings.Contains(value[0], "%") {
-				whereArgs = append(whereArgs, "%" + filterProcess(key, value[0], keyIndexSuffix) + "%")
+			if op == "like" && !strings.ContainsRune(value[0], '%') {
+				whereArgs = append(whereArgs, utils.StrConcat("%", filterProcess(key, value[0], keyIndexSuffix), "%"))
 			} else {
 				for _, v := range value {
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
@@ -476,7 +476,7 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 	for key, value := range param.OrConditions {
 		columns = strings.Split(key, ",")
 		op := "="
-		if strings.Contains(value, "%") {
+		if strings.ContainsRune(value, '%') {
 			op = "like"
 		}
 		if sbWhr.Len() > 0 {

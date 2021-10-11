@@ -437,23 +437,19 @@ func (sql *SQL) First() (map[string]interface{}, error) {
 // All query all the result and return.
 func (sql *SQL) All() ([]map[string]interface{}, error) {
 	defer RecycleSQL(sql)
-
 	sql.dialect.Select(&sql.SQLComponent)
-
 	return sql.diver.QueryWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
 }
 
 // ShowColumns show columns info.
 func (sql *SQL) ShowColumns() ([]map[string]interface{}, error) {
 	defer RecycleSQL(sql)
-
 	return sql.diver.QueryWithConnection(sql.conn, sql.dialect.ShowColumns(sql.TableName))
 }
 
 // ShowTables show table info.
 func (sql *SQL) ShowTables() ([]string, error) {
 	defer RecycleSQL(sql)
-
 	models, err := sql.diver.QueryWithConnection(sql.conn, sql.dialect.ShowTables())
 
 	if err != nil {

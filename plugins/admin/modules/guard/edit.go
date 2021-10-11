@@ -1,24 +1,23 @@
 package guard
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	tmpl "html/template"
 	"mime/multipart"
 	"strings"
-
-	"github.com/GoAdminGroup/go-admin/template/types"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/errors"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
 type ShowFormParam struct {
@@ -29,7 +28,6 @@ type ShowFormParam struct {
 }
 
 func (g *Guard) ShowForm(ctx *context.Context) {
-
 	panel, prefix := g.table(ctx)
 
 	if !panel.GetEditable() {
@@ -57,17 +55,16 @@ func (g *Guard) ShowForm(ctx *context.Context) {
 	}
 
 	id := ctx.Query(constant.EditPKKey)
-
 	if id == "" {
 		id = "1"
 	}
+	info := panel.GetInfo()
 
 	ctx.SetUserValue(showFormParamKey, &ShowFormParam{
 		Panel:  panel,
 		Id:     id,
 		Prefix: prefix,
-		Param: parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize, panel.GetInfo().SortField,
-			panel.GetInfo().GetSort()).WithPKs(id),
+		Param:  parameter.GetParam(ctx.Request.URL, info.DefaultPageSize, info.SortField, info.GetSort()).WithPKs(id),
 	})
 	ctx.Next()
 }
@@ -95,7 +92,6 @@ func (e EditFormParam) Value() form.Values {
 }
 
 func (g *Guard) EditForm(ctx *context.Context) {
-
 	panel, prefix := g.table(ctx)
 
 	if !panel.GetEditable() {
@@ -111,29 +107,26 @@ func (g *Guard) EditForm(ctx *context.Context) {
 		return
 	}
 
-	var (
-		previous = ctx.FormValue(form.PreviousKey)
-		fromList = utils.IsInfoUrl(previous)
-		param    = parameter.GetParamFromURL(previous, panel.GetInfo().DefaultPageSize,
-			panel.GetInfo().GetSort(), panel.GetPrimaryKey().Name)
-	)
+	previous := ctx.FormValue(form.PreviousKey)
+	fromList := utils.IsInfoUrl(previous)
+	info     := panel.GetInfo()
+	pk       := panel.GetPrimaryKey()
+	param    := parameter.GetParamFromURL(previous, info.DefaultPageSize, info.GetSort(), pk.Name)
 
 	if fromList {
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
 	}
 
-	var (
-		multiForm = ctx.Request.MultipartForm
-		id        = multiForm.Value[panel.GetPrimaryKey().Name][0]
-		values    = ctx.Request.MultipartForm.Value
-	)
+	multiForm := ctx.Request.MultipartForm
+	values    := multiForm.Value
+	id        := values[pk.Name][0]
 
 	ctx.SetUserValue(editFormParamKey, &EditFormParam{
 		Panel:        panel,
 		Id:           id,
 		Prefix:       prefix,
 		Param:        param.WithPKs(id),
-		Path:         strings.Split(previous, "?")[0],
+		Path:         strings.Split(previous, "?")[0],		// TODO: optimize
 		MultiForm:    multiForm,
 		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true",
 		IframeID:     form.Values(values).Get(constant.IframeIDKey),
@@ -151,7 +144,8 @@ func alert(ctx *context.Context, panel table.Table, msg string, conn db.Connecti
 	if ctx.WantJSON() {
 		response.BadRequest(ctx, msg)
 	} else {
-		response.Alert(ctx, panel.GetInfo().Description, panel.GetInfo().Title, msg, conn, btns)
+		info := panel.GetInfo()
+		response.Alert(ctx, info.Description, info.Title, msg, conn, btns)
 	}
 }
 

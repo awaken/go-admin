@@ -15,7 +15,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	form2 "github.com/GoAdminGroup/go-admin/template/types/form"
-	"html"
 	"html/template"
 	"net/http"
 	"strconv"
@@ -196,7 +195,6 @@ func (f *FormField) UpdateDefaultValue(sql *db.SQL) *FormField {
 
 func (f *FormField) setOptionsFromSQL(sql *db.SQL) {
 	if sql != nil && f.OptionTable.Table != "" && len(f.Options) == 0 {
-
 		sql.Table(f.OptionTable.Table).Select(f.OptionTable.ValueField, f.OptionTable.TextField)
 
 		if f.OptionTable.QueryProcessFn != nil {
@@ -679,7 +677,7 @@ func (f *FormPanel) FieldOptionExt2(m map[string]interface{}) *FormPanel {
 		ss = strings.Replace(ss, "}", "", strings.Count(ss, "}"))
 		ss = strings.TrimRight(ss, " ")
 		ss += ","
-		f.FieldList[f.curFieldListIndex].OptionExt2 = template.JS(ss) + template.JS(strings.Replace(string(s), "{", "", 1))
+		f.FieldList[f.curFieldListIndex].OptionExt2 = template.JS(ss + strings.Replace(string(s), "{", "", 1))
 	} else {
 		f.FieldList[f.curFieldListIndex].OptionExt2 = template.JS(s)
 	}
@@ -719,14 +717,16 @@ func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
 		fileUploadHandler = data[1].(context.Handler)
 	} else {
 		fileUploadHandler = func(ctx *context.Context) {
-			if len(ctx.Request.MultipartForm.File) == 0 {
+			multiForm := ctx.Request.MultipartForm
+
+			if len(multiForm.File) == 0 {
 				ctx.JSON(http.StatusOK, map[string]interface{}{
 					"errno": 400,
 				})
 				return
 			}
 
-			err := file.GetFileEngine(config.GetFileUploadEngine().Name).Upload(ctx.Request.MultipartForm)
+			err := file.GetFileEngine(config.GetFileUploadEngine().Name).Upload(multiForm)
 			if err != nil {
 				ctx.JSON(http.StatusOK, map[string]interface{}{
 					"errno": 500,
@@ -734,9 +734,11 @@ func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
 				return
 			}
 
-			var imgPath = make([]string, len(ctx.Request.MultipartForm.Value["file"]))
-			for i, path := range ctx.Request.MultipartForm.Value["file"] {
-				imgPath[i] = config.GetStore().URL(path)
+			fileValue := multiForm.Value["file"]
+			store     := config.GetStore()
+			imgPath   := make([]string, len(fileValue))
+			for i, path := range fileValue {
+				imgPath[i] = store.URL(path)
 			}
 
 			ctx.JSON(http.StatusOK, map[string]interface{}{
@@ -749,7 +751,7 @@ func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
 	f.Callbacks = f.Callbacks.AddCallback(context.Node{
 		Path:     url,
 		Method:   "post",
-		Value:    map[string]interface{}{constant.ContextNodeNeedAuth: 1},
+		Value:    map[string]interface{}{ constant.ContextNodeNeedAuth: 1 },
 		Handlers: []context.Handler{fileUploadHandler},
 	})
 
@@ -914,9 +916,7 @@ func (f *FormPanel) FieldToLower() *FormPanel {
 
 func (f *FormPanel) FieldXssFilter() *FormPanel {
 	f.FieldList[f.curFieldListIndex].DisplayProcessChains = f.FieldList[f.curFieldListIndex].DisplayProcessChains.
-		Add(func(value FieldModel) interface{} {
-			return html.EscapeString(value.Value)
-		})
+		Add(xssFilter)
 	return f
 }
 
@@ -1039,8 +1039,8 @@ func searchJS(ext template.JS, url string, handler Handler, delay ...int) (templ
 	}`)), context.Node{
 			Path:     url,
 			Method:   "get",
-			Handlers: context.Handlers{handler.Wrap()},
-			Value:    map[string]interface{}{constant.ContextNodeNeedAuth: 1},
+			Handlers: context.Handlers{ handler.Wrap() },
+			Value:    map[string]interface{}{ constant.ContextNodeNeedAuth: 1 },
 		}
 }
 
@@ -1048,7 +1048,10 @@ func chooseCustomJS(field string, js template.HTML) template.HTML {
 	return utils.ParseHTML("choose_custom", tmpls["choose_custom"], struct {
 		Field template.JS
 		JS    template.JS
-	}{Field: template.JS(field), JS: template.JS(js)})
+	}{
+		Field: template.JS(field),
+		JS:    template.JS(js),
+	})
 }
 
 func chooseMapJS(field string, m map[string]LinkField) template.HTML {
@@ -1437,20 +1440,28 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 
 func (f *FormPanel) EnableAjax(msgs ...string) *FormPanel {
 	var data AjaxData
-	if len(msgs) > 0 && msgs[0] != "" {
-		data.SuccessTitle = msgs[0]
-	}
-	if len(msgs) > 1 && msgs[1] != "" {
-		data.ErrorTitle = msgs[1]
-	}
-	if len(msgs) > 2 && msgs[2] != "" {
-		data.SuccessJumpURL = msgs[2]
-	}
-	if len(msgs) > 3 && msgs[3] != "" {
-		data.SuccessText = msgs[3]
-	}
-	if len(msgs) > 4 && msgs[4] != "" {
-		data.ErrorText = msgs[4]
+	if n := len(msgs); n > 0 {
+		if msgs[0] != "" {
+			data.SuccessTitle = msgs[0]
+		}
+		if n > 1 {
+			if msgs[1] != "" {
+				data.ErrorTitle = msgs[1]
+			}
+			if n > 2 {
+				if msgs[2] != "" {
+					data.SuccessJumpURL = msgs[2]
+				}
+				if n > 3 {
+					if msgs[3] != "" {
+						data.SuccessText = msgs[3]
+					}
+					if n > 4 && msgs[4] != "" {
+						data.ErrorText = msgs[4]
+					}
+				}
+			}
+		}
 	}
 	return f.EnableAjaxData(data)
 }
@@ -1484,59 +1495,56 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 	var (
 		groupFormList []FormFields
 		groupHeaders  []string
-		hasPK         = false
 		existField    []string
+		hasPK         = false
 	)
 
-	if len(f.TabGroups) > 0 {
-		for i, group := range f.TabGroups {
-			var list FormFields
-			for j, fieldName := range group {
-				label := "_ga_group_" + strconv.Itoa(j)
-				field := f.FieldList.FindByFieldName(fieldName)
-				if field != nil && field.isNotBelongToATable() && !field.NotAllowEdit {
-					if !field.Hide {
-						field.Hide = field.EditHide
-					}
-					if field.FormType.IsTable() {
-						for z, tf := range field.TableFields {
-							rowValue := tf.GetRawValue(columns, res[tf.Field])
-							if tf.Field == pk {
-								hasPK = true
-							}
-							field.TableFields[z] = *(tf.UpdateValue(id, rowValue, res, sql()))
-						}
-						if utils.InArray(existField, field.Field) {
-							field.Field += label
-						}
-						list = append(list, *field)
-					} else {
-						if field.Field == pk {
+	for i, group := range f.TabGroups {
+		var list FormFields
+		for j, fieldName := range group {
+			field := f.FieldList.FindByFieldName(fieldName)
+			if field != nil && field.isNotBelongToATable() && !field.NotAllowEdit {
+				if !field.Hide {
+					field.Hide = field.EditHide
+				}
+				if field.FormType.IsTable() {
+					for z, tf := range field.TableFields {
+						rowValue := tf.GetRawValue(columns, res[tf.Field])
+						if tf.Field == pk {
 							hasPK = true
 						}
-						rowValue := field.GetRawValue(columns, res[field.Field])
-						if utils.InArray(existField, field.Field) {
-							field.Field += label
-						}
-						list = append(list, *(field.UpdateValue(id, rowValue, res, sql())))
+						field.TableFields[z] = *(tf.UpdateValue(id, rowValue, res, sql()))
 					}
-					existField = append(existField, field.Field)
+					if utils.InArray(existField, field.Field) {
+						field.Field += "_ga_group_" + strconv.Itoa(j)
+					}
+					list = append(list, *field)
+				} else {
+					if field.Field == pk {
+						hasPK = true
+					}
+					rowValue := field.GetRawValue(columns, res[field.Field])
+					if utils.InArray(existField, field.Field) {
+						field.Field += "_ga_group_" + strconv.Itoa(j)
+					}
+					list = append(list, *(field.UpdateValue(id, rowValue, res, sql())))
 				}
+				existField = append(existField, field.Field)
 			}
-
-			groupFormList = append(groupFormList, list.FillCustomContent())
-			groupHeaders  = append(groupHeaders, f.TabHeaders[i])
 		}
 
-		if len(groupFormList) > 0 && !hasPK {
-			groupFormList[len(groupFormList)-1] = groupFormList[len(groupFormList)-1].Add(&FormField{
-				Head:       pk,
-				FieldClass: pk,
-				Field:      pk,
-				Value:      template.HTML(id),
-				Hide:       true,
-			})
-		}
+		groupFormList = append(groupFormList, list.FillCustomContent())
+		groupHeaders  = append(groupHeaders, f.TabHeaders[i])
+	}
+
+	if len(groupFormList) > 0 && !hasPK {
+		groupFormList[len(groupFormList)-1] = groupFormList[len(groupFormList)-1].Add(&FormField{
+			Head:       pk,
+			FieldClass: pk,
+			Field:      pk,
+			Value:      template.HTML(id),
+			Hide:       true,
+		})
 	}
 
 	return groupFormList, groupHeaders

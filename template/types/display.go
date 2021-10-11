@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
@@ -18,7 +19,7 @@ type DisplayFnGenerator interface {
 
 type BaseDisplayFnGenerator struct{}
 
-func (base *BaseDisplayFnGenerator) JS() template.HTML   { return "" }
+func (base *BaseDisplayFnGenerator) JS  () template.HTML { return "" }
 func (base *BaseDisplayFnGenerator) HTML() template.HTML { return "" }
 
 var displayFnGens = make(map[string]DisplayFnGenerator)
@@ -37,7 +38,6 @@ type FieldDisplay struct {
 
 func (f FieldDisplay) ToDisplay(value FieldModel) interface{} {
 	val := f.Display(value)
-
 	if len(f.DisplayProcessChains) > 0 && f.IsNotSelectRes(val) {
 		valStr := fmt.Sprintf("%v", val)
 		for _, process := range f.DisplayProcessChains {
@@ -49,26 +49,35 @@ func (f FieldDisplay) ToDisplay(value FieldModel) interface{} {
 		}
 		return valStr
 	}
-
 	return val
 }
 
 func (f FieldDisplay) IsNotSelectRes(v interface{}) bool {
 	switch v.(type) {
-	case template.HTML:
-		return false
-	case []string:
-		return false
-	case [][]string:
-		return false
-	default:
-		return true
+	case template.HTML: return false
+	case []string     : return false
+	case [][]string   : return false
+	default           : return true
 	}
 }
 
 func (f FieldDisplay) ToDisplayHTML(value FieldModel) template.HTML {
 	v := f.ToDisplay(value)
-	if h, ok := v.(template.HTML); ok {
+	switch t := v.(type) {
+	case template.HTML:
+		return t
+	case string:
+		return template.HTML(t)
+	case []string:
+		if len(t) > 0 { return template.HTML(t[0]) }
+	case []template.HTML:
+		if len(t) > 0 { return t[0] }
+	case nil:
+	default:
+		return template.HTML(fmt.Sprintf("%v", v))
+	}
+	return ""
+	/*if h, ok := v.(template.HTML); ok {
 		return h
 	} else if s, ok := v.(string); ok {
 		return template.HTML(s)
@@ -80,12 +89,26 @@ func (f FieldDisplay) ToDisplayHTML(value FieldModel) template.HTML {
 		return template.HTML(fmt.Sprintf("%v", v))
 	} else {
 		return ""
-	}
+	}*/
 }
 
 func (f FieldDisplay) ToDisplayString(value FieldModel) string {
 	v := f.ToDisplay(value)
-	if h, ok := v.(template.HTML); ok {
+	switch t := v.(type) {
+	case template.HTML:
+		return string(t)
+	case string:
+		return t
+	case []string:
+		if len(t) > 0 { return t[0] }
+	case []template.HTML:
+		if len(t) > 0 { return string(t[0]) }
+	case nil:
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+	return ""
+	/*if h, ok := v.(template.HTML); ok {
 		return string(h)
 	} else if s, ok := v.(string); ok {
 		return s
@@ -97,12 +120,30 @@ func (f FieldDisplay) ToDisplayString(value FieldModel) string {
 		return fmt.Sprintf("%v", v)
 	} else {
 		return ""
-	}
+	}*/
 }
 
 func (f FieldDisplay) ToDisplayStringArray(value FieldModel) []string {
 	v := f.ToDisplay(value)
-	if h, ok := v.(template.HTML); ok {
+	switch t := v.(type) {
+	case template.HTML:
+		return []string{ string(t) }
+	case string:
+		return []string{ t }
+	case []string:
+		return t
+	case []template.HTML:
+		ss := make([]string, len(t))
+		for i, s := range t {
+			ss[i] = string(s)
+		}
+		return ss
+	case nil:
+	default:
+		return []string{ fmt.Sprintf("%v", v) }
+	}
+	return nil
+	/*if h, ok := v.(template.HTML); ok {
 		return []string{string(h)}
 	} else if s, ok := v.(string); ok {
 		return []string{s}
@@ -118,12 +159,30 @@ func (f FieldDisplay) ToDisplayStringArray(value FieldModel) []string {
 		return []string{fmt.Sprintf("%v", v)}
 	} else {
 		return []string{}
-	}
+	}*/
 }
 
 func (f FieldDisplay) ToDisplayStringArrayArray(value FieldModel) [][]string {
 	v := f.ToDisplay(value)
-	if h, ok := v.(template.HTML); ok {
+	switch t := v.(type) {
+	case template.HTML:
+		return [][]string{{ string(t) }}
+	case string:
+		return [][]string{{ t }}
+	case []string:
+		return [][]string{ t }
+	case []template.HTML:
+		ss := make([]string, len(t))
+		for i, s := range t {
+			ss[i] = string(s)
+		}
+		return [][]string{ ss }
+	case nil:
+	default:
+		return [][]string{{ fmt.Sprintf("%v", v) }}
+	}
+	return nil
+	/*if h, ok := v.(template.HTML); ok {
 		return [][]string{{string(h)}}
 	} else if s, ok := v.(string); ok {
 		return [][]string{{s}}
@@ -141,7 +200,7 @@ func (f FieldDisplay) ToDisplayStringArrayArray(value FieldModel) [][]string {
 		return [][]string{{fmt.Sprintf("%v", v)}}
 	} else {
 		return [][]string{}
-	}
+	}*/
 }
 
 func (f FieldDisplay) AddLimit(limit int) DisplayProcessFnChains {
@@ -150,16 +209,13 @@ func (f FieldDisplay) AddLimit(limit int) DisplayProcessFnChains {
 			return value
 		} else if limit < 0 {
 			return ""
-		} else {
-			return value.Value[:limit]
 		}
+		return value.Value[:limit]
 	})
 }
 
 func (f FieldDisplay) AddTrimSpace() DisplayProcessFnChains {
-	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
-		return strings.TrimSpace(value.Value)
-	})
+	return f.DisplayProcessChains.Add(trimSpaceFilter)
 }
 
 func (f FieldDisplay) AddSubstr(start int, end int) DisplayProcessFnChains {
@@ -178,21 +234,15 @@ func (f FieldDisplay) AddSubstr(start int, end int) DisplayProcessFnChains {
 }
 
 func (f FieldDisplay) AddToTitle() DisplayProcessFnChains {
-	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
-		return strings.Title(value.Value)
-	})
+	return f.DisplayProcessChains.Add(toTitleFilter)
 }
 
 func (f FieldDisplay) AddToUpper() DisplayProcessFnChains {
-	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
-		return strings.ToUpper(value.Value)
-	})
+	return f.DisplayProcessChains.Add(toUpperFilter)
 }
 
 func (f FieldDisplay) AddToLower() DisplayProcessFnChains {
-	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
-		return strings.ToLower(value.Value)
-	})
+	return f.DisplayProcessChains.Add(toLowerFilter)
 }
 
 type DisplayProcessFnChains []FieldFilterFn
@@ -211,12 +261,11 @@ func (d DisplayProcessFnChains) Append(f DisplayProcessFnChains) DisplayProcessF
 
 func (d DisplayProcessFnChains) Copy() DisplayProcessFnChains {
 	if len(d) == 0 {
-		return make(DisplayProcessFnChains, 0)
-	} else {
-		var newDisplayProcessFnChains = make(DisplayProcessFnChains, len(d))
-		copy(newDisplayProcessFnChains, d)
-		return newDisplayProcessFnChains
+		return nil
 	}
+	newDisplayProcessFnChains := make(DisplayProcessFnChains, len(d))
+	copy(newDisplayProcessFnChains, d)
+	return newDisplayProcessFnChains
 }
 
 func chooseDisplayProcessChains(internal DisplayProcessFnChains) DisplayProcessFnChains {
@@ -226,7 +275,7 @@ func chooseDisplayProcessChains(internal DisplayProcessFnChains) DisplayProcessF
 	return globalDisplayProcessChains.Copy()
 }
 
-var globalDisplayProcessChains = make(DisplayProcessFnChains, 0)
+var globalDisplayProcessChains DisplayProcessFnChains
 
 func AddGlobalDisplayProcessFn(f FieldFilterFn) {
 	globalDisplayProcessChains = globalDisplayProcessChains.Add(f)
@@ -265,27 +314,26 @@ func AddXssJsFilter() DisplayProcessFnChains {
 }
 
 func addLimit(limit int, chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
+	return chains.Add(func(value FieldModel) interface{} {
 		if limit > len(value.Value) {
 			return value
 		} else if limit < 0 {
 			return ""
-		} else {
-			return value.Value[:limit]
 		}
+		return value.Value[:limit]
 	})
-	return chains
 }
 
 func addTrimSpace(chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
-		return strings.TrimSpace(value.Value)
-	})
-	return chains
+	return chains.Add(trimSpaceFilter)
+}
+
+func trimSpaceFilter(value FieldModel) interface{} {
+	return strings.TrimSpace(value.Value)
 }
 
 func addSubstr(start int, end int, chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
+	return chains.Add(func(value FieldModel) interface{} {
 		if start > end || start > len(value.Value) || end < 0 {
 			return ""
 		}
@@ -297,66 +345,86 @@ func addSubstr(start int, end int, chains DisplayProcessFnChains) DisplayProcess
 		}
 		return value.Value[start:end]
 	})
-	return chains
 }
 
 func addToTitle(chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
-		return strings.Title(value.Value)
-	})
-	return chains
+	return chains.Add(toTitleFilter)
+}
+
+func toTitleFilter(value FieldModel) interface{} {
+	return strings.Title(value.Value)
 }
 
 func addToUpper(chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
-		return strings.ToUpper(value.Value)
-	})
-	return chains
+	return chains.Add(toUpperFilter)
+}
+
+func toUpperFilter(value FieldModel) interface{} {
+	return strings.ToUpper(value.Value)
 }
 
 func addToLower(chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
-		return strings.ToLower(value.Value)
-	})
-	return chains
+	return chains.Add(toLowerFilter)
+}
+
+func toLowerFilter(value FieldModel) interface{} {
+	return strings.ToLower(value.Value)
 }
 
 func addXssFilter(chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
-		return html.EscapeString(value.Value)
-	})
-	return chains
+	return chains.Add(xssFilter)
+}
+
+func xssFilter(value FieldModel) interface{} {
+	return html.EscapeString(value.Value)
 }
 
 func addXssJsFilter(chains DisplayProcessFnChains) DisplayProcessFnChains {
-	chains = chains.Add(func(value FieldModel) interface{} {
-		replacer := strings.NewReplacer("<script>", "&lt;script&gt;", "</script>", "&lt;/script&gt;")
-		return replacer.Replace(value.Value)
-	})
-	return chains
+	return chains.Add(xssJsFilter)
+}
+
+func xssJsFilter(value FieldModel) interface{} {
+	return utils.XssJsReplacer.Replace(value.Value)
 }
 
 func setDefaultDisplayFnOfFormType(f *FormPanel, typ form.Type) {
 	if typ.IsMultiFile() {
-		f.FieldList[f.curFieldListIndex].Display = func(value FieldModel) interface{} {
-			if value.Value == "" {
-				return ""
-			}
-			arr := strings.Split(value.Value, ",")
-			res := "["
-			for i, item := range arr {
-				if i == len(arr)-1 {
-					res += "'" + config.GetStore().URL(item) + "']"
-				} else {
-					res += "'" + config.GetStore().URL(item) + "',"
-				}
-			}
-			return res
-		}
+		f.FieldList[f.curFieldListIndex].Display = multiFileFilter
 	}
 	if typ.IsSelect() {
-		f.FieldList[f.curFieldListIndex].Display = func(value FieldModel) interface{} {
-			return strings.Split(value.Value, ",")
+		f.FieldList[f.curFieldListIndex].Display = splitFilter
+	}
+}
+
+func multiFileFilter(value FieldModel) interface{} {
+	if value.Value == "" {
+		return ""
+	}
+	arr := strings.Split(value.Value, ",")
+	store := config.GetStore()
+	var sb strings.Builder
+	sb.Grow(16 * len(arr))
+	sb.WriteString("['")
+	sb.WriteString(store.URL(arr[0]))
+	if len(arr) > 1 {
+		for _, item := range arr[1:] {
+			sb.WriteString("','")
+			sb.WriteString(store.URL(item))
 		}
 	}
+	sb.WriteString("']")
+	return sb.String()
+	/*res := "["
+	for i, item := range arr {
+		if i == len(arr)-1 {
+			res += "'" + store.URL(item) + "']"
+		} else {
+			res += "'" + store.URL(item) + "',"
+		}
+	}
+	return res*/
+}
+
+func splitFilter(value FieldModel) interface{} {
+	return strings.Split(value.Value, ",")
 }

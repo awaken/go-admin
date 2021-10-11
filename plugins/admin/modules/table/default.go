@@ -265,7 +265,6 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		}
 
 		validJoin := field.Joins.Valid()
-
 		if validJoin {
 			headField = utils.StrConcat(field.Joins.Last().GetTableName(), parameter.FilterParamJoinInfix, field.Field)
 		} else {
@@ -282,14 +281,14 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 			typeName = field.TypeName
 		}
 
-		combineValue := db.GetValueFromDatabaseType(typeName, res[headField], noColumns).String()
+		combinedValue := db.GetValueFromDatabaseType(typeName, res[headField], noColumns).String()
 
 		fieldModel := types.FieldModel{
 			ID:  primaryKeyValue.String(),
 			Row: res,
 		}
 		if noColumns || validJoin || modules.InArray(columns, headField) {
-			fieldModel.Value = combineValue
+			fieldModel.Value = combinedValue
 		}
 
 		valueStr := ""
@@ -300,7 +299,7 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 
 		tempModelData[headField] = types.InfoItem{
 			Content: template.HTML(valueStr),
-			Value:   combineValue,
+			Value:   combinedValue,
 		}
 
 		if field.IsEditParam {
@@ -357,7 +356,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 	delim2 := conn.GetDelimiter2()
 
 	var queryStmt strings.Builder
-	queryStmt.Grow(64)
+	queryStmt.Grow(256)
 	queryStmt.WriteString("SELECT %s FROM %s %s %s %s ORDER BY ")
 	queryStmt.WriteString(delim)
 	queryStmt.WriteString("%s")

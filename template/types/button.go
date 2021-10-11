@@ -159,10 +159,8 @@ func GetActionButton(title template.HTML, action Action, ids ...string) *ActionB
 	} else {
 		id = "action-info-btn-" + utils.Uuid(10)
 	}
-
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()
-
 	return &ActionButton{
 		BaseButton: &BaseButton{
 			Id:     id,
@@ -210,10 +208,8 @@ func GetActionIconButton(icon string, action Action, ids ...string) *ActionIconB
 	} else {
 		id = "action-info-btn-" + utils.Uuid(10)
 	}
-
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()
-
 	return &ActionIconButton{
 		Icon: template.HTML(icon),
 		BaseButton: &BaseButton{
@@ -242,7 +238,8 @@ func (b *ActionIconButton) Content() (template.HTML, template.JS) {
 	/*cls  := b.Action.BtnClass()
 	attr := b.Action.BtnAttribute()
 	ext  := b.Action.ExtContent()
-	h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + c3 + b.Icon + c4 + ext
+	h := `<a data-id="{{.Id}}" class="` + template.HTML(b.Id) + ` ` + cls + `" ` + attr +
+		`><i class="fa ` + b.Icon + `" style="font-size: 16px;"></i></a>` + ext
 	return h, b.Action.Js()*/
 }
 
@@ -335,9 +332,9 @@ func (b Buttons) CheckExist(name string) bool {
 }
 
 func (b Buttons) Callbacks() []context.Node {
-	cbs := make([]context.Node, 0)
-	for _, btn := range b {
-		cbs = append(cbs, btn.GetAction().GetCallbacks())
+	cbs := make([]context.Node, len(b))
+	for i, btn := range b {
+		cbs[i] = btn.GetAction().GetCallbacks()
 	}
 	return cbs
 }
@@ -444,11 +441,9 @@ type NavDropDownItemButton struct {
 func GetDropDownButton(title template.HTML, icon string, items []*NavDropDownItemButton, names ...string) *NavDropDownButton {
 	id := btnUUID()
 	name := ""
-
 	if len(names) > 0 {
 		name = names[0]
 	}
-
 	return &NavDropDownButton{
 		BaseButton: &BaseButton{
 			Id:       id,
@@ -537,11 +532,9 @@ func GetDropDownItemButton(title template.HTML, action Action, names ...string) 
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()
 	name := ""
-
 	if len(names) > 0 {
 		name = names[0]
 	}
-
 	return &NavDropDownItemButton{
 		BaseButton: &BaseButton{
 			Id:       id,
