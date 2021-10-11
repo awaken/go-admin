@@ -155,14 +155,14 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 	formList.AddField(lg("Roles"), "role_id", db.Varchar, form.Select).
 		FieldOptionsFromTable("goadmin_roles", "slug", "id").
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			var roles []string
 			if model.ID == "" {
-				return roles
+				return nil
 			}
 			roleModel, _ := s.table("goadmin_role_users").Select("role_id").
 				Where("user_id", "=", model.ID).All()
-			for _, v := range roleModel {
-				roles = append(roles, strconv.FormatInt(v["role_id"].(int64), 10))
+			roles := make([]string, len(roleModel))
+			for i, v := range roleModel {
+				roles[i] = strconv.FormatInt(v["role_id"].(int64), 10)
 			}
 			return roles
 		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) + " " +
@@ -171,15 +171,14 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 	formList.AddField(lg("Permissions"), "permission_id", db.Varchar, form.Select).
 		FieldOptionsFromTable("goadmin_permissions", "slug", "id").
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			var permissions []string
-
 			if model.ID == "" {
-				return permissions
+				return nil
 			}
 			permissionModel, _ := s.table("goadmin_user_permissions").
 				Select("permission_id").Where("user_id", "=", model.ID).All()
-			for _, v := range permissionModel {
-				permissions = append(permissions, strconv.FormatInt(v["permission_id"].(int64), 10))
+			permissions := make([]string, len(permissionModel))
+			for i, v := range permissionModel {
+				permissions[i] = strconv.FormatInt(v["permission_id"].(int64), 10)
 			}
 			return permissions
 		}).FieldHelpMsg(template.HTML(lg("no corresponding options?")) + " " +
@@ -265,7 +264,6 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 		if err != nil { return err }
 
 		_, txErr := s.connection().WithTransaction(func(tx *sql.Tx) (e error, i map[string]interface{}) {
-
 			user, createUserErr := models.User().WithTx(tx).SetConn(s.conn).New(
 				values.Get("username"),
 				password,
@@ -332,22 +330,23 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 				Where("user_id", "=", model.ID).
 				All()
 
-			labels := template.HTML("")
+			var labels strings.Builder
+			labels.Grow(256)
 			labelTpl := label().SetType("success")
+			last := len(labelModels) - 1
 
 			for key, label := range labelModels {
-				if key == len(labelModels)-1 {
-					labels += labelTpl.SetContent(template.HTML(label["name"].(string))).GetContent()
-				} else {
-					labels += labelTpl.SetContent(template.HTML(label["name"].(string))).GetContent() + "<br><br>"
+				labels.WriteString(string(labelTpl.SetContent(template.HTML(label["name"].(string))).GetContent()))
+				if key != last {
+					labels.WriteString("<br><br>")
 				}
 			}
 
-			if labels == template.HTML("") {
+			if labels.Len() == 0 {
 				return lg("no roles")
 			}
 
-			return labels
+			return labels.String()
 		})
 	detail.AddField(lg("Permissions"), "roles", db.Varchar).
 		FieldDisplay(func(model types.FieldModel) interface{} {
@@ -357,18 +356,19 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) (managerTable Table)
 				Where("user_id", "=", model.ID).
 				All()
 
-			permissions := template.HTML("")
+			var permissions strings.Builder
+			permissions.Grow(256)
 			permissionTpl := label().SetType("success")
+			last := len(permissionModel)-1
 
 			for key, label := range permissionModel {
-				if key == len(permissionModel)-1 {
-					permissions += permissionTpl.SetContent(template.HTML(label["name"].(string))).GetContent()
-				} else {
-					permissions += permissionTpl.SetContent(template.HTML(label["name"].(string))).GetContent() + "<br><br>"
+				permissions.WriteString(string(permissionTpl.SetContent(template.HTML(label["name"].(string))).GetContent()))
+				if key != last {
+					permissions.WriteString("<br><br>")
 				}
 			}
 
-			return permissions
+			return permissions.String()
 		})
 	detail.AddField(lg("Created At"), "created_at", db.Timestamp)
 	detail.AddField(lg("Updated At"), "updated_at", db.Timestamp)

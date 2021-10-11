@@ -38,13 +38,13 @@ type UserModel struct {
 
 // User return a default user model.
 func User() UserModel {
-	return UserModel{Base: Base{TableName: config.GetAuthUserTable()}}
+	return UserModel{ Base: Base{ TableName: config.GetAuthUserTable() }}
 }
 
 // UserWithId return a default user model of given id.
 func UserWithId(id string) UserModel {
-	idInt, _ := strconv.Atoi(id)
-	return UserModel{Base: Base{TableName: config.GetAuthUserTable()}, Id: int64(idInt)}
+	idInt, _ := strconv.ParseInt(id, 10, 64)
+	return UserModel{ Base: Base{ TableName: config.GetAuthUserTable() }, Id: idInt }
 }
 
 func (t UserModel) SetConn(con db.Connection) UserModel {
@@ -71,7 +71,7 @@ func (t UserModel) FindByUserName(username interface{}) UserModel {
 
 // IsEmpty check the user model is empty or not.
 func (t UserModel) IsEmpty() bool {
-	return t.Id == int64(0)
+	return t.Id == 0
 }
 
 // HasMenu check the user has visitable menu or not.
@@ -82,8 +82,8 @@ func (t UserModel) HasMenu() bool {
 // IsSuperAdmin check the user model is super admin or not.
 func (t UserModel) IsSuperAdmin() bool {
 	if t.IsRootAdmin() { return true }
-	for _, per := range t.Permissions {
-		if len(per.HttpPath) > 0 && per.HttpPath[0] == "*" && per.HttpMethod[0] == "" {
+	for _, perm := range t.Permissions {
+		if len(perm.HttpPath) > 0 && perm.HttpPath[0] == "*" && perm.HttpMethod[0] == "" {
 			return true
 		}
 	}
@@ -136,8 +136,11 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 	path, params := getParam(path)
 	for key, value := range formParams {
 		if len(value) > 0 {
-			if params == nil { params = make(url.Values) }
-			params.Add(key, value[0])
+			if params == nil {
+				params = url.Values{ key: []string{ value[0] }}
+			} else {
+				params.Add(key, value[0])
+			}
 		}
 	}
 
@@ -152,23 +155,23 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 			}
 
 			for _, httpPath := range v.HttpPath {
-				matchPath := config.Url(t.Template(t.patchPathParams(httpPath)))
-				matchPath, matchParam := getParam(matchPath)
+				matchPath := config.Url(t.Template(httpPath))
+				matchPath, matchParams := getParam(matchPath)
 
 				if matchPath == path {
-					if t.checkParam(params, matchParam) {
+					if t.checkParam(params, matchParams) {
 						return true
 					}
 				}
 
-				reg, err := utils.CachedRex(normMatchPath(matchPath))
+				rex, err := utils.CachedRex(normMatchPath(matchPath))
 				if err != nil {
 					logger.Error("CheckPermissions error: ", err)
 					continue
 				}
 
-				if reg.FindString(path) == path {
-					if t.checkParam(params, matchParam) {
+				if rex.FindString(path) == path {
+					if t.checkParam(params, matchParams) {
 						return true
 					}
 				}
@@ -183,7 +186,7 @@ func getParam(u string) (string, url.Values) {
 	if p := strings.IndexByte(u, '?'); p >= 0 {
 		var m url.Values
 		if p < len(u) - 1 {
-			m, _ = url.ParseQuery(u[p+1:])
+			m, _ = url.ParseQuery(u[p + 1:])
 		}
 		return u[:p], m
 	}
@@ -248,8 +251,7 @@ func (t UserModel) WithRoles() UserModel {
 	roleModel, _ := t.Table("goadmin_role_users").
 		LeftJoin("goadmin_roles", "goadmin_roles.id", "=", "goadmin_role_users.role_id").
 		Where("user_id", "=", t.Id).
-		Select("goadmin_roles.id", "goadmin_roles.name", "goadmin_roles.slug",
-			"goadmin_roles.created_at", "goadmin_roles.updated_at").
+		Select("goadmin_roles.id", "goadmin_roles.name", "goadmin_roles.slug", "goadmin_roles.created_at", "goadmin_roles.updated_at").
 		All()
 
 	for _, role := range roleModel {
@@ -257,15 +259,16 @@ func (t UserModel) WithRoles() UserModel {
 	}
 
 	if len(t.Roles) > 0 {
-		t.Level = t.Roles[0].Slug
-		t.LevelName = t.Roles[0].Name
+		r := t.Roles[0]
+		t.Level     = r.Slug
+		t.LevelName = r.Name
 	}
 
 	return t
 }
 
 func (t UserModel) GetAllRoleId() []interface{} {
-	var ids = make([]interface{}, len(t.Roles))
+	ids := make([]interface{}, len(t.Roles))
 	for i, role := range t.Roles {
 		ids[i] = role.Id
 	}
@@ -334,7 +337,7 @@ func (t UserModel) WithMenus() UserModel {
 		}
 	}
 
-	var menuIds []int64
+	menuIds := make([]int64, 0, len(menuIdsModel))
 
 	for _, mid := range menuIdsModel {
 		if parentId, _ := mid["parent_id"].(int64); parentId != 0 {
@@ -358,7 +361,7 @@ func (t UserModel) New(username, password, name, email, disabled, root, avatar s
 	disabled = normUserDisabled(disabled)
 	root     = normUserRoot(root)
 
-	id, err := t.WithTx(t.Tx).Table(t.TableName).Insert(dialect.H{
+	id, err := t.Table(t.TableName).Insert(dialect.H{
 		"username" : username,
 		"password" : password,
 		"name"     : name,
@@ -404,7 +407,7 @@ func (t UserModel) Update(username, password, name, email, disabled, root, avata
 	if password != "" {
 		fieldValues["password"] = password
 	}
-	return t.WithTx(t.Tx).Table(t.TableName).
+	return t.Table(t.TableName).
 		Where("id", "=", t.Id).
 		Update(fieldValues)
 }
@@ -438,7 +441,7 @@ func (t UserModel) DeleteRoles() error {
 func (t UserModel) AddRole(roleId string) (int64, error) {
 	if roleId != "" {
 		if !t.CheckRoleId(roleId) {
-			return t.WithTx(t.Tx).Table("goadmin_role_users").
+			return t.Table("goadmin_role_users").
 				Insert(dialect.H{
 					"role_id": roleId,
 					"user_id": t.Id,
@@ -469,8 +472,8 @@ func (t UserModel) CheckPermissionById(permissionId string) bool {
 
 // CheckPermission check the permission of the user.
 func (t UserModel) CheckPermission(permission string) bool {
-	for _, per := range t.Permissions {
-		if per.Slug == permission {
+	for _, perm := range t.Permissions {
+		if perm.Slug == permission {
 			return true
 		}
 	}
@@ -479,7 +482,7 @@ func (t UserModel) CheckPermission(permission string) bool {
 
 // DeletePermissions delete all the permissions of the user model.
 func (t UserModel) DeletePermissions() error {
-	return t.WithTx(t.Tx).Table("goadmin_user_permissions").
+	return t.Table("goadmin_user_permissions").
 		Where("user_id", "=", t.Id).
 		Delete()
 }
@@ -488,7 +491,7 @@ func (t UserModel) DeletePermissions() error {
 func (t UserModel) AddPermission(permissionId string) (int64, error) {
 	if permissionId != "" {
 		if !t.CheckPermissionById(permissionId) {
-			return t.WithTx(t.Tx).Table("goadmin_user_permissions").
+			return t.Table("goadmin_user_permissions").
 				Insert(dialect.H{
 					"permission_id": permissionId,
 					"user_id"      : t.Id,

@@ -7,13 +7,13 @@ package db
 import (
 	dbsql "database/sql"
 	"errors"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 // SQL wraps the Connection and driver dialect methods.
@@ -25,24 +25,13 @@ type SQL struct {
 	tx      *dbsql.Tx
 }
 
+var ErrNoAffectedRows = errors.New("no affected row")
+
 // SQLPool is a object pool of SQL.
 var SQLPool = sync.Pool{
 	New: func() interface{} {
 		return &SQL{
-			SQLComponent: dialect.SQLComponent{
-				Fields:     make([]string, 0),
-				TableName:  "",
-				Args:       make([]interface{}, 0),
-				Wheres:     make([]dialect.Where, 0),
-				Leftjoins:  make([]dialect.Join, 0),
-				UpdateRaws: make([]dialect.RawUpdate, 0),
-				WhereRaws:  "",
-				Order:      "",
-				Group:      "",
-				Limit:      "",
-			},
-			diver:   nil,
-			dialect: nil,
+			SQLComponent: dialect.SQLComponent{},
 		}
 	},
 }
@@ -131,15 +120,42 @@ func (sql *SQL) Select(fields ...string) *SQL {
 
 // OrderBy set order fields.
 func (sql *SQL) OrderBy(fields ...string) *SQL {
-	if len(fields) == 0 {
-		panic("wrong order field")
-	}
-	for i := 0; i < len(fields); i++ {
-		if i == len(fields)-2 {
-			sql.Order += " " + sql.wrap(fields[i]) + " " + fields[i+1]
-			return sql
+	delim, delim2 := sql.diver.GetDelimiter(), sql.diver.GetDelimiter2()
+	switch len(fields) {
+	case 0:
+		panic("missing order fields")
+	case 1:
+		if sql.Order == "" {
+			sql.Order = utils.StrConcat(delim, fields[0], delim2)
+		} else {
+			sql.Order = utils.StrConcat(sql.Order, " ", delim, fields[0], delim2)
 		}
-		sql.Order += " " + sql.wrap(fields[i]) + " and "
+	case 2:
+		if sql.Order == "" {
+			sql.Order = utils.StrConcat(delim, fields[0], delim2, " ", fields[1])
+		} else {
+			sql.Order = utils.StrConcat(sql.Order, " ", delim, fields[0], delim2, " ", fields[1])
+		}
+	default:
+		var sb strings.Builder
+		sb.Grow(64)
+		if sql.Order != "" {
+			sb.WriteString(sql.Order)
+			sb.WriteByte(' ')
+		}
+		last := len(fields) - 2
+		for _, f := range fields[:last] {
+			sb.WriteString(delim)
+			sb.WriteString(f)
+			sb.WriteString(delim2)
+			sb.WriteString(" AND ")
+		}
+		sb.WriteString(delim)
+		sb.WriteString(fields[last])
+		sb.WriteString(delim2)
+		sb.WriteByte(' ')
+		sb.WriteString(fields[last + 1])
+		sql.Order = sb.String()
 	}
 	return sql
 }
@@ -147,21 +163,49 @@ func (sql *SQL) OrderBy(fields ...string) *SQL {
 // OrderByRaw set order by.
 func (sql *SQL) OrderByRaw(order string) *SQL {
 	if order != "" {
-		sql.Order += " " + order
+		if sql.Order == "" {
+			sql.Order = order
+		} else {
+			sql.Order = utils.StrConcat(sql.Order, " ", order)
+		}
 	}
 	return sql
 }
 
 func (sql *SQL) GroupBy(fields ...string) *SQL {
-	if len(fields) == 0 {
-		panic("wrong group by field")
-	}
-	for i := 0; i < len(fields); i++ {
-		if i == len(fields)-1 {
-			sql.Group += " " + sql.wrap(fields[i])
+	delim, delim2 := sql.diver.GetDelimiter(), sql.diver.GetDelimiter2()
+	switch len(fields) {
+	case 0:
+		panic("missing group by fields")
+	case 1:
+		if sql.Group == "" {
+			sql.Group = utils.StrConcat(delim, fields[0], delim2)
 		} else {
-			sql.Group += " " + sql.wrap(fields[i]) + ","
+			sql.Group = utils.StrConcat(sql.Group, " ", delim, fields[0], delim2)
 		}
+	case 2:
+		if sql.Group == "" {
+			sql.Group = utils.StrConcat(delim, fields[0], delim2, ",", delim, fields[1], delim2)
+		} else {
+			sql.Group = utils.StrConcat(sql.Group, " ", delim, fields[0], delim2, ",", delim, fields[1], delim2)
+		}
+	default:
+		var sb strings.Builder
+		sb.Grow(64)
+		if sql.Group != "" {
+			sb.WriteString(sql.Group)
+			sb.WriteByte(' ')
+		}
+		sb.WriteString(delim)
+		sb.WriteString(fields[0])
+		sb.WriteString(delim2)
+		for _, f := range fields[1:] {
+			 sb.WriteByte(',')
+			sb.WriteString(delim)
+			sb.WriteString(f)
+			sb.WriteString(delim2)
+		}
+		sql.Group = sb.String()
 	}
 	return sql
 }
@@ -169,7 +213,11 @@ func (sql *SQL) GroupBy(fields ...string) *SQL {
 // GroupByRaw set group by.
 func (sql *SQL) GroupByRaw(group string) *SQL {
 	if group != "" {
-		sql.Group += " " + group
+		if sql.Group == "" {
+			sql.Group = group
+		} else {
+			sql.Group = utils.StrConcat(sql.Group, " ", group)
+		}
 	}
 	return sql
 }
@@ -232,100 +280,74 @@ func (sql *SQL) Find(arg interface{}) (map[string]interface{}, error) {
 
 // Count query the count of query results.
 func (sql *SQL) Count() (int64, error) {
-	var (
-		res    map[string]interface{}
-		err    error
-		driver = sql.diver.Name()
-	)
-
-	if res, err = sql.Select("count(*)").First(); err != nil {
+	res, err := sql.Select("count(*)").First()
+	if err != nil {
 		return 0, err
 	}
-
-	if driver == DriverPostgresql {
+	switch sql.diver.Name() {
+	case DriverPostgresql:
 		return res["count"].(int64), nil
-	} else if driver == DriverMssql {
+	case DriverMssql:
 		return res[""].(int64), nil
 	}
-
 	return res["count(*)"].(int64), nil
 }
 
 // Sum sum the value of given field.
 func (sql *SQL) Sum(field string) (float64, error) {
-	var (
-		res map[string]interface{}
-		err error
-		key = "sum(" + sql.wrap(field) + ")"
-	)
-	if res, err = sql.Select("sum(" + field + ")").First(); err != nil {
+	res, err := sql.Select("sum(" + field + ")").First()
+	if err != nil {
 		return 0, err
 	}
-
 	if res == nil {
 		return 0, nil
 	}
-
-	if r, ok := res[key].(float64); ok {
-		return r, nil
-	} else if r, ok := res[key].([]uint8); ok {
-		return strconv.ParseFloat(string(r), 64)
-	} else {
-		return 0, nil
+	key := "sum(" + sql.wrap(field) + ")"
+	switch t := res[key].(type) {
+	case float64:
+		return t, nil
+	case []uint8:
+		return strconv.ParseFloat(string(t), 64)
 	}
+	return 0, nil
 }
 
 // Max find the maximal value of given field.
 func (sql *SQL) Max(field string) (interface{}, error) {
-	var (
-		res map[string]interface{}
-		err error
-		key = "max(" + sql.wrap(field) + ")"
-	)
-	if res, err = sql.Select("max(" + field + ")").First(); err != nil {
+	res, err := sql.Select("max(" + field + ")").First()
+	if err != nil {
 		return 0, err
 	}
-
 	if res == nil {
 		return 0, nil
 	}
-
+	key := "max(" + sql.wrap(field) + ")"
 	return res[key], nil
 }
 
 // Min find the minimal value of given field.
 func (sql *SQL) Min(field string) (interface{}, error) {
-	var (
-		res map[string]interface{}
-		err error
-		key = "min(" + sql.wrap(field) + ")"
-	)
-	if res, err = sql.Select("min(" + field + ")").First(); err != nil {
+	res, err := sql.Select("min(" + field + ")").First()
+	if err != nil {
 		return 0, err
 	}
-
 	if res == nil {
 		return 0, nil
 	}
-
+	key := "min(" + sql.wrap(field) + ")"
 	return res[key], nil
 }
 
 // Avg find the average value of given field.
 func (sql *SQL) Avg(field string) (interface{}, error) {
-	var (
-		res map[string]interface{}
-		err error
-		key = "avg(" + sql.wrap(field) + ")"
-	)
-	if res, err = sql.Select("avg(" + field + ")").First(); err != nil {
+	res, err := sql.Select("avg(" + field + ")").First()
+	if err != nil {
 		return 0, err
 	}
-
 	if res == nil {
 		return 0, nil
 	}
-
+	key := "avg(" + sql.wrap(field) + ")"
 	return res[key], nil
 }
 
@@ -423,14 +445,13 @@ func (sql *SQL) First() (map[string]interface{}, error) {
 	sql.dialect.Select(&sql.SQLComponent)
 
 	res, err := sql.diver.QueryWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
-
 	if err != nil {
 		return nil, err
 	}
-
 	if len(res) < 1 {
 		return nil, errors.New("out of index")
 	}
+
 	return res[0], nil
 }
 
@@ -450,33 +471,37 @@ func (sql *SQL) ShowColumns() ([]map[string]interface{}, error) {
 // ShowTables show table info.
 func (sql *SQL) ShowTables() ([]string, error) {
 	defer RecycleSQL(sql)
+
 	models, err := sql.diver.QueryWithConnection(sql.conn, sql.dialect.ShowTables())
-
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
-
-	tables := make([]string, 0)
 	if len(models) == 0 {
-		return tables, nil
+		return nil, nil
 	}
 
-	key := "Tables_in_" + sql.TableName
-	if sql.diver.Name() == DriverPostgresql || sql.diver.Name() == DriverSqlite {
+	var key string
+	switch sql.diver.Name() {
+	case DriverPostgresql, DriverSqlite:
 		key = "tablename"
-	} else if sql.diver.Name() == DriverMssql {
+	case DriverMssql:
 		key = "TABLE_NAME"
-	} else if _, ok := models[0][key].(string); !ok {
-		key = "Tables_in_" + strings.ToLower(sql.TableName)
+	default:
+		key = "Tables_in_" + sql.TableName
+		if _, ok := models[0][key].(string); !ok {
+			key = "Tables_in_" + strings.ToLower(sql.TableName)
+		}
 	}
 
-	for i := 0; i < len(models); i++ {
+	tables := make([]string, 0, len(models))
+
+	for _, model := range models {
+		keyName := model[key].(string)
 		// skip sqlite system tables
-		if sql.diver.Name() == DriverSqlite && models[i][key].(string) == "sqlite_sequence" {
+		if sql.diver.Name() == DriverSqlite && keyName == "sqlite_sequence" {
 			continue
 		}
-
-		tables = append(tables, models[i][key].(string))
+		tables = append(tables, keyName)
 	}
 
 	return tables, nil
@@ -487,17 +512,15 @@ func (sql *SQL) Update(values dialect.H) (int64, error) {
 	defer RecycleSQL(sql)
 
 	sql.Values = values
-
 	sql.dialect.Update(&sql.SQLComponent)
 
 	res, err := sql.diver.ExecWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
-
 	if err != nil {
 		return 0, err
 	}
 
-	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
-		return 0, errors.New("no affect row")
+	if affectedRow, _ := res.RowsAffected(); affectedRow < 1 {
+		return 0, ErrNoAffectedRows
 	}
 
 	return res.LastInsertId()
@@ -510,13 +533,12 @@ func (sql *SQL) Delete() error {
 	sql.dialect.Delete(&sql.SQLComponent)
 
 	res, err := sql.diver.ExecWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
-
 	if err != nil {
 		return err
 	}
 
-	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
-		return errors.New("no affect row")
+	if affectedRow, _ := res.RowsAffected(); affectedRow < 1 {
+		return ErrNoAffectedRows
 	}
 
 	return nil
@@ -529,13 +551,12 @@ func (sql *SQL) Exec() (int64, error) {
 	sql.dialect.Update(&sql.SQLComponent)
 
 	res, err := sql.diver.ExecWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
-
 	if err != nil {
 		return 0, err
 	}
 
-	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
-		return 0, errors.New("no affect row")
+	if affectedRow, _ := res.RowsAffected(); affectedRow < 1 {
+		return 0, ErrNoAffectedRows
 	}
 
 	return res.LastInsertId()
@@ -548,24 +569,19 @@ func (sql *SQL) Insert(values dialect.H) (int64, error) {
 	defer RecycleSQL(sql)
 
 	sql.Values = values
-
 	sql.dialect.Insert(&sql.SQLComponent)
 
 	if sql.diver.Name() == DriverPostgresql && (strings.Contains(postgresInsertCheckTableName, sql.TableName)) {
-
-		resMap, err := sql.diver.QueryWith(sql.tx, sql.conn, sql.Statement+" RETURNING id", sql.Args...)
+		resMap, err := sql.diver.QueryWith(sql.tx, sql.conn, sql.Statement + " RETURNING id", sql.Args...)
 
 		if err != nil {
-
 			// Fixed java h2 database postgresql mode
 			_, err := sql.diver.QueryWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
-
 			if err != nil {
 				return 0, err
 			}
 
-			res, err := sql.diver.QueryWithConnection(sql.conn, `SELECT max("id") as "id" FROM "`+sql.TableName+`"`)
-
+			res, err := sql.diver.QueryWithConnection(sql.conn, utils.StrConcat(`SELECT max("id") as "id" FROM "`, sql.TableName, `"`))
 			if err != nil {
 				return 0, err
 			}
@@ -578,20 +594,19 @@ func (sql *SQL) Insert(values dialect.H) (int64, error) {
 		}
 
 		if len(resMap) == 0 {
-			return 0, errors.New("no affect row")
+			return 0, ErrNoAffectedRows
 		}
 
 		return resMap[0]["id"].(int64), nil
 	}
 
 	res, err := sql.diver.ExecWith(sql.tx, sql.conn, sql.Statement, sql.Args...)
-
 	if err != nil {
 		return 0, err
 	}
 
 	if affectRow, _ := res.RowsAffected(); affectRow < 1 {
-		return 0, errors.New("no affect row")
+		return 0, ErrNoAffectedRows
 	}
 
 	return res.LastInsertId()
@@ -602,32 +617,29 @@ func (sql *SQL) wrap(field string) string {
 }
 
 func (sql *SQL) clean() {
-	sql.Functions = make([]string, 0)
+	sql.Functions = nil
 	sql.Group = ""
-	sql.Values = make(map[string]interface{})
-	sql.Fields = make([]string, 0)
+	sql.Values = nil
+	sql.Fields = nil
 	sql.TableName = ""
-	sql.Wheres = make([]dialect.Where, 0)
-	sql.Leftjoins = make([]dialect.Join, 0)
-	sql.Args = make([]interface{}, 0)
+	sql.Wheres = nil
+	sql.Leftjoins = nil
+	sql.Args = nil
 	sql.Order = ""
 	sql.Offset = ""
 	sql.Limit = ""
 	sql.WhereRaws = ""
-	sql.UpdateRaws = make([]dialect.RawUpdate, 0)
+	sql.UpdateRaws = nil
 	sql.Statement = ""
 }
 
 // RecycleSQL clear the SQL and put into the pool.
 func RecycleSQL(sql *SQL) {
 	logger.LogSQL(sql.Statement, sql.Args)
-
 	sql.clean()
-
 	sql.conn = ""
 	sql.diver = nil
 	sql.tx = nil
 	sql.dialect = nil
-
 	SQLPool.Put(sql)
 }

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"github.com/GoAdminGroup/go-admin/modules/db"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -24,12 +25,18 @@ func (h *Handler) Operation(ctx *context.Context) {
 
 // RecordOperationLog record all operation logs, store into database.
 func (h *Handler) RecordOperationLog(ctx *context.Context) {
+	RecordOperationLog(ctx, h.conn)
+}
+
+func RecordOperationLog(ctx *context.Context, conn db.Connection) {
 	if user, ok := ctx.User().(models.UserModel); ok {
 		var input []byte
 		form := ctx.Request.MultipartForm
 		if form != nil {
-			input, _ = json.Marshal((*form).Value)
+			input, _ = json.Marshal(form.Value)
 		}
-		models.OperationLog().SetConn(h.conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
+		_ = user
+		_ = input
+		//models.OperationLog().SetConn(conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
 	}
 }

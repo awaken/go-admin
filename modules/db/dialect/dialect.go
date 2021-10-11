@@ -5,9 +5,9 @@
 package dialect
 
 import (
-	"strings"
-
 	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+	"strings"
 )
 
 // Dialect is methods set of different driver.
@@ -46,23 +46,15 @@ func GetDialect() Dialect {
 func GetDialectByDriver(driver string) Dialect {
 	switch driver {
 	case "mysql":
-		return mysql{
-			commonDialect: commonDialect{delimiter: "`", delimiter2: "`"},
-		}
+		return mysql{ commonDialect: commonDialect{ delimiter: "`", delimiter2: "`" }}
 	case "mssql":
-		return mssql{
-			commonDialect: commonDialect{delimiter: "[", delimiter2: "]"},
-		}
+		return mssql{ commonDialect: commonDialect{ delimiter: "[", delimiter2: "]" }}
 	case "postgresql":
-		return postgresql{
-			commonDialect: commonDialect{delimiter: `"`, delimiter2: `"`},
-		}
+		return postgresql{ commonDialect: commonDialect{ delimiter: `"`, delimiter2: `"` }}
 	case "sqlite":
-		return sqlite{
-			commonDialect: commonDialect{delimiter: "`", delimiter2: "`"},
-		}
+		return sqlite{ commonDialect: commonDialect{ delimiter: "`", delimiter2: "`" }}
 	default:
-		return commonDialect{delimiter: "`", delimiter2: "`"}
+		return commonDialect{ delimiter: "`", delimiter2: "`" }
 	}
 }
 
@@ -113,52 +105,54 @@ type RawUpdate struct {
 // *******************************
 
 func (sql *SQLComponent) getLimit() string {
-	if sql.Limit == "" {
-		return ""
-	}
-	return " limit " + sql.Limit + " "
+	if sql.Limit == "" { return "" }
+	return utils.StrConcat(" LIMIT ", sql.Limit, " ")
 }
 
 func (sql *SQLComponent) getOffset() string {
-	if sql.Offset == "" {
-		return ""
-	}
-	return " offset " + sql.Offset + " "
+	if sql.Offset == "" { return "" }
+	return utils.StrConcat(" OFFSET ", sql.Offset, " ")
 }
 
 func (sql *SQLComponent) getOrderBy() string {
-	if sql.Order == "" {
-		return ""
-	}
-	return " order by " + sql.Order + " "
+	if sql.Order == "" { return "" }
+	return utils.StrConcat(" ORDER BY ", sql.Order, " ")
 }
 
 func (sql *SQLComponent) getGroupBy() string {
-	if sql.Group == "" {
-		return ""
-	}
-	return " group by " + sql.Group + " "
+	if sql.Group == "" { return "" }
+	return utils.StrConcat(" GROUP BY ", sql.Group, " ")
 }
 
 func (sql *SQLComponent) getJoins(delimiter, delimiter2 string) string {
-	if len(sql.Leftjoins) == 0 {
-		return ""
-	}
-	joins := ""
+	if len(sql.Leftjoins) == 0 { return "" }
+	var joins strings.Builder
+	joins.Grow(256)
 	for _, join := range sql.Leftjoins {
-		joins += " left join " + wrap(delimiter, delimiter2, join.Table) + " on " +
-			sql.processLeftJoinField(join.FieldA, delimiter, delimiter2) + " " + join.Operation + " " +
-			sql.processLeftJoinField(join.FieldB, delimiter, delimiter2) + " "
+		joins.WriteString(" LEFT JOIN ")
+		joins.WriteString(delimiter)
+		joins.WriteString(join.Table)
+		joins.WriteString(delimiter2)
+		joins.WriteString(" ON ")
+		joins.WriteString(sql.processLeftJoinField(join.FieldA, delimiter, delimiter2))
+		joins.WriteByte(' ')
+		joins.WriteString(join.Operation)
+		joins.WriteByte(' ')
+		joins.WriteString(sql.processLeftJoinField(join.FieldB, delimiter, delimiter2))
+		joins.WriteByte(' ')
 	}
-	return joins
+	return joins.String()
 }
 
 func (sql *SQLComponent) processLeftJoinField(field, delimiter, delimiter2 string) string {
-	arr := strings.Split(field, ".")
-	if len(arr) > 0 {
-		return delimiter + arr[0] + delimiter2 + "." + delimiter + arr[1] + delimiter2
+	if field != "" {
+		s1, s2 := utils.StrSplitByte2(field, '.')
+		if s2 != "" {
+			return utils.StrConcat(delimiter, s1, delimiter2, ".", delimiter, s2, delimiter2)
+		}
+		return utils.StrConcat(delimiter, s1, delimiter2)
 	}
-	return field
+	return ""
 }
 
 func (sql *SQLComponent) getFields(delimiter, delimiter2 string) string {
@@ -188,10 +182,8 @@ func (sql *SQLComponent) getFields(delimiter, delimiter2 string) string {
 }
 
 func wrap(delimiter, delimiter2, field string) string {
-	if field == "*" {
-		return "*"
-	}
-	return delimiter + field + delimiter2
+	if field == "*" { return "*" }
+	return utils.StrConcat(delimiter, field, delimiter2)
 }
 
 func (sql *SQLComponent) getWheres(delimiter, delimiter2 string) string {
@@ -211,7 +203,6 @@ func (sql *SQLComponent) getWheres(delimiter, delimiter2 string) string {
 			wheres += wrap(delimiter, delimiter2, where.Field) + " " + where.Operation + " " + where.Qmark + " and "
 		}
 	}
-
 	if sql.WhereRaws != "" {
 		return wheres + sql.WhereRaws
 	}
@@ -220,40 +211,37 @@ func (sql *SQLComponent) getWheres(delimiter, delimiter2 string) string {
 
 func (sql *SQLComponent) prepareUpdate(delimiter, delimiter2 string) {
 	fields := ""
-	args := make([]interface{}, 0)
+	var args []interface{}
 
 	if len(sql.Values) != 0 {
-
 		for key, value := range sql.Values {
 			fields += wrap(delimiter, delimiter2, key) + " = ?, "
 			args = append(args, value)
 		}
-
 		if len(sql.UpdateRaws) == 0 {
 			fields = fields[:len(fields)-2]
 		} else {
-			for i := 0; i < len(sql.UpdateRaws); i++ {
+			for i, u := range sql.UpdateRaws {
 				if i == len(sql.UpdateRaws)-1 {
-					fields += sql.UpdateRaws[i].Expression + " "
+					fields += u.Expression + " "
 				} else {
-					fields += sql.UpdateRaws[i].Expression + ","
+					fields += u.Expression + ","
 				}
-				args = append(args, sql.UpdateRaws[i].Args...)
+				args = append(args, u.Args...)
 			}
 		}
-
 		sql.Args = append(args, sql.Args...)
 	} else {
 		if len(sql.UpdateRaws) == 0 {
-			panic("prepareUpdate: wrong parameter")
+			panic("prepareUpdate: missing parameter")
 		} else {
-			for i := 0; i < len(sql.UpdateRaws); i++ {
+			for i, u := range sql.UpdateRaws {
 				if i == len(sql.UpdateRaws)-1 {
-					fields += sql.UpdateRaws[i].Expression + " "
+					fields += u.Expression + " "
 				} else {
-					fields += sql.UpdateRaws[i].Expression + ","
+					fields += u.Expression + ","
 				}
-				args = append(args, sql.UpdateRaws[i].Args...)
+				args = append(args, u.Args...)
 			}
 		}
 		sql.Args = append(args, sql.Args...)
@@ -263,16 +251,37 @@ func (sql *SQLComponent) prepareUpdate(delimiter, delimiter2 string) {
 }
 
 func (sql *SQLComponent) prepareInsert(delimiter, delimiter2 string) {
-	fields := " ("
-	quesMark := "("
+	var sbStmt, sbQuesMark strings.Builder
+	sbStmt.Grow(512)
+	sbQuesMark.Grow(32)
+
+	sbStmt.WriteString("INSERT INTO ")
+	sbStmt.WriteString(delimiter)
+	sbStmt.WriteString(sql.TableName)
+	sbStmt.WriteString(delimiter2)
+
+	sbStmt.WriteString(" (")
+	sbQuesMark.WriteByte('(')
+	first := true
 
 	for key, value := range sql.Values {
-		fields += wrap(delimiter, delimiter2, key) + ","
-		quesMark += "?,"
+		if first {
+			first = false
+			sbQuesMark.WriteByte('?')
+		} else {
+			sbStmt.WriteByte(',')
+			sbQuesMark.WriteString(",?")
+		}
+		sbStmt.WriteString(delimiter)
+		sbStmt.WriteString(key)
+		sbStmt.WriteString(delimiter2)
 		sql.Args = append(sql.Args, value)
 	}
-	fields = fields[:len(fields)-1] + ")"
-	quesMark = quesMark[:len(quesMark)-1] + ")"
 
-	sql.Statement = "insert into " + delimiter + sql.TableName + delimiter2 + fields + " values " + quesMark
+	sbStmt.WriteByte(')')
+	sbQuesMark.WriteByte(')')
+
+	sbStmt.WriteString(" VALUES ")
+	sbStmt.WriteString(sbQuesMark.String())
+	sql.Statement = sbStmt.String()
 }

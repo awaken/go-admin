@@ -83,13 +83,19 @@ func (gins *Gin) AddHandler(method, path string, handlers context.Handlers) {
 
 	gins.app.Handle(method, path, func(c *gin.Context) {
 		ctx := context.NewContext(c.Request)
-
-		for _, param := range c.Params {
-			if c.Request.URL.RawQuery == "" {
-				c.Request.URL.RawQuery += strings.ReplaceAll(param.Key, ":", "") + "=" + param.Value
-			} else {
-				c.Request.URL.RawQuery += "&" + strings.ReplaceAll(param.Key, ":", "") + "=" + param.Value
+		{
+			var sb strings.Builder
+			sb.Grow(256)
+			sb.WriteString(c.Request.URL.RawQuery)
+			for _, param := range c.Params {
+				if sb.Len() > 0 {
+					sb.WriteByte('&')
+				}
+				sb.WriteString(strings.ReplaceAll(param.Key, ":", ""))
+				sb.WriteByte('=')
+				sb.WriteString(param.Value)
 			}
+			c.Request.URL.RawQuery = sb.String()
 		}
 
 		ctx.SetHandlers(handlers).Next()
@@ -113,16 +119,11 @@ func (gins *Gin) Name() string {
 
 // SetContext implements the method Adapter.SetContext.
 func (gins *Gin) SetContext(contextInterface interface{}) adapter.WebFrameWork {
-	var (
-		ctx *gin.Context
-		ok  bool
-	)
-
-	if ctx, ok = contextInterface.(*gin.Context); !ok {
+	ctx, ok := contextInterface.(*gin.Context)
+	if !ok {
 		panic("gin adapter SetContext: wrong parameter")
 	}
-
-	return &Gin{ctx: ctx}
+	return &Gin{ ctx: ctx }
 }
 
 // Redirect implements the method Adapter.Redirect.

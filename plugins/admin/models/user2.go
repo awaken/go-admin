@@ -12,8 +12,6 @@ const (
 
 	UserDisabledValue = StrTrue
 	UserEnabledValue  = StrFalse
-
-	varUserId = "${uid}"
 )
 
 func normMatchPath(matchPath string) string {
@@ -38,13 +36,6 @@ func normUserRoot(s string) string {
 	return normStrBool(s, StrFalse)
 }
 
-func (t UserModel) patchPathParams(path string) string {
-	if strings.Contains(path, varUserId) {
-		return strings.ReplaceAll(path, varUserId, strconv.Itoa(int(t.Id)))
-	}
-	return path
-}
-
 func (t UserModel) IsDisabled() bool {
 	return t.Disabled == UserDisabledValue
 }
@@ -54,10 +45,10 @@ func (t UserModel) IsRootAdmin() bool {
 }
 
 func (t UserModel) isMySettingRequest(method, path string, params url.Values) bool {
-	return UserIdToEdit(method, path, params) == t.Id
+	return userIdToEdit(method, path, params) == t.Id
 }
 
-func UserIdToEdit(method, path string, params url.Values) int64 {
+func userIdToEdit(method, path string, params url.Values) int64 {
 	const editPath = "/edit/"
 	if strings.EqualFold(method, "POST") {
 		if i := strings.Index(path, editPath); i >= 0 {

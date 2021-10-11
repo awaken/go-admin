@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"strings"
@@ -79,15 +78,23 @@ func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg strin
 		f = panel.GetForm()
 		id := ctx.Query("id")
 		if id == "" {
-			pk := panel.GetPrimaryKey()
+			/*pk := panel.GetPrimaryKey()
 			pname := pk.Name
 			req := ctx.Request
 			println(fmt.Sprintf("%# v", req))
 			mform := req.MultipartForm
 			val := mform.Value
 			list := val[pname]
-			id = list[0]
-			//id = ctx.Request.MultipartForm.Value[panel.GetPrimaryKey().Name][0]
+			id = list[0]*/
+			if ctx.Request.MultipartForm == nil {
+				if err := ctx.Request.ParseForm(); err != nil {
+					logger.Error(err)
+				}
+				if ctx.Request.MultipartForm == nil {
+					logger.Error("FUCK!")
+				}
+			}
+			id = ctx.Request.MultipartForm.Value[panel.GetPrimaryKey().Name][0]
 		}
 		info = panel.GetInfo()
 		formInfo, _ = panel.GetDataWithId(parameter.GetParam(ctx.Request.URL,

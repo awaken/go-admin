@@ -1,20 +1,18 @@
 package guard
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"html/template"
-	"mime/multipart"
-	"strings"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/errors"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
+	"html/template"
+	"mime/multipart"
 )
 
 type ShowNewFormParam struct {
@@ -24,7 +22,6 @@ type ShowNewFormParam struct {
 }
 
 func (g *Guard) ShowNewForm(ctx *context.Context) {
-
 	panel, prefix := g.table(ctx)
 
 	if !panel.GetCanAdd() {
@@ -51,11 +48,12 @@ func (g *Guard) ShowNewForm(ctx *context.Context) {
 		return
 	}
 
+	info := panel.GetInfo()
+
 	ctx.SetUserValue(showNewFormParam, &ShowNewFormParam{
 		Panel:  panel,
 		Prefix: prefix,
-		Param: parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize, panel.GetInfo().SortField,
-			panel.GetInfo().GetSort()),
+		Param: parameter.GetParam(ctx.Request.URL, info.DefaultPageSize, info.SortField, info.GetSort()),
 	})
 	ctx.Next()
 }
@@ -97,8 +95,8 @@ func (g *Guard) NewForm(ctx *context.Context) {
 	}
 
 	fromList  := utils.IsInfoUrl(previous)
-	infoPanel := panel.GetInfo()
-	param := parameter.GetParamFromURL(previous, infoPanel.DefaultPageSize, infoPanel.GetSort(), panel.GetPrimaryKey().Name)
+	info := panel.GetInfo()
+	param := parameter.GetParamFromURL(previous, info.DefaultPageSize, info.GetSort(), panel.GetPrimaryKey().Name)
 
 	if fromList {
 		previous = config.Url("/info/" + prefix + param.GetRouteParamStr())
@@ -114,7 +112,7 @@ func (g *Guard) NewForm(ctx *context.Context) {
 		Param:        param,
 		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true",
 		IframeID:     form.Values(values).Get(constant.IframeIDKey),
-		Path:         strings.Split(previous, "?")[0],
+		Path:         utils.UrlWithoutQuery(previous),
 		MultiForm:    multiForm,
 		PreviousPath: previous,
 		FromList:     fromList,

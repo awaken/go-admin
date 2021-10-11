@@ -1,6 +1,9 @@
 package dialect
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+)
 
 type commonDialect struct {
 	delimiter  string
@@ -13,7 +16,7 @@ func (c commonDialect) Insert(comp *SQLComponent) string {
 }
 
 func (c commonDialect) Delete(comp *SQLComponent) string {
-	comp.Statement = "delete from " + c.WrapTableName(comp) + comp.getWheres(c.delimiter, c.delimiter2)
+	comp.Statement = utils.StrConcat("DELETE FROM ", c.WrapTableName(comp), comp.getWheres(c.delimiter, c.delimiter2))
 	return comp.Statement
 }
 
@@ -28,13 +31,13 @@ func (c commonDialect) Count(comp *SQLComponent) string {
 }
 
 func (c commonDialect) Select(comp *SQLComponent) string {
-	comp.Statement = "select " + comp.getFields(c.delimiter, c.delimiter2) + " from " + c.WrapTableName(comp) + comp.getJoins(c.delimiter, c.delimiter2) +
-		comp.getWheres(c.delimiter, c.delimiter2) + comp.getGroupBy() + comp.getOrderBy() + comp.getLimit() + comp.getOffset()
+	comp.Statement = utils.StrConcat("SELECT ", comp.getFields(c.delimiter, c.delimiter2), " FROM ", c.WrapTableName(comp), comp.getJoins(c.delimiter, c.delimiter2),
+		comp.getWheres(c.delimiter, c.delimiter2), comp.getGroupBy(), comp.getOrderBy(), comp.getLimit(), comp.getOffset())
 	return comp.Statement
 }
 
 func (c commonDialect) ShowColumns(table string) string {
-	return fmt.Sprintf("select * from information_schema.columns where table_name = '%s'", table)
+	return fmt.Sprintf("SELECT * FROM information_schema.columns WHERE table_name='%s'", table)
 }
 
 func (c commonDialect) GetName() string {
@@ -42,11 +45,11 @@ func (c commonDialect) GetName() string {
 }
 
 func (c commonDialect) WrapTableName(comp *SQLComponent) string {
-	return c.delimiter + comp.TableName + c.delimiter2
+	return utils.StrConcat(c.delimiter, comp.TableName, c.delimiter2)
 }
 
 func (c commonDialect) ShowTables() string {
-	return "show tables"
+	return "SHOW TABLES"
 }
 
 func (c commonDialect) GetDelimiter() string {

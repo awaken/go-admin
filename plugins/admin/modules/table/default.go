@@ -673,7 +673,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 			pk = sb.String()
 			//pk = tableName + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
 		}
-		queryStmt.Grow(64)
+		queryStmt.Grow(512)
 		queryStmt.WriteString("SELECT %s FROM %s %s WHERE ")
 		queryStmt.WriteString(pk)
 		queryStmt.WriteString(" = ? %s")
@@ -696,7 +696,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 
 			if validJoin {
 				var sbField, sbHeadField strings.Builder
-				sbField.Grow(64)
+				sbField.Grow(128)
 				sbField.WriteString(formField.Joins.Last().GetTableName(delim, delim2))
 				sbField.WriteByte('.')
 				sbField.WriteString(delim)
@@ -796,13 +796,12 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		queryCmd := fmt.Sprintf(queryStmt.String(), fields.String(), tableName, joins.String(), groupBy.String())
 		logger.LogSQL(queryCmd, args)
 		result, err := conn.QueryWithConnection(tb.connection, queryCmd, args...)
-
 		if err != nil {
-			return FormInfo{Title: tb.Form.Title, Description: tb.Form.Description}, err
+			return FormInfo{ Title: tb.Form.Title, Description: tb.Form.Description }, err
 		}
 
 		if len(result) == 0 {
-			return FormInfo{Title: tb.Form.Title, Description: tb.Form.Description}, errors.New(errs.WrongID)
+			return FormInfo{ Title: tb.Form.Title, Description: tb.Form.Description }, errors.New(errs.WrongID)
 		}
 
 		res = result[0]
@@ -917,7 +916,6 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 			dataList.Add(form.PostTypeKey, "1")
 			dataList.Add(tb.GetPrimaryKey().Name, strconv.Itoa(int(id)))
 			dataList.Add(form.PostResultKey, errMsg)
-
 			go func() {
 				defer func() {
 					if err := recover(); err != nil {
@@ -925,9 +923,7 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 						//logger.Error(string(debug.Stack()))
 					}
 				}()
-
-				err := f.PostHook(dataList)
-				if err != nil {
+				if err := f.PostHook(dataList); err != nil {
 					logger.Error(err)
 				}
 			}()
@@ -935,7 +931,7 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 	}
 
 	if f.Validator != nil {
-		if err := f.Validator(dataList); err != nil {
+		if err = f.Validator(dataList); err != nil {
 			errMsg = "post error: " + err.Error()
 			return err
 		}
@@ -1072,10 +1068,8 @@ func (tb *DefaultTable) PreProcessValue(dataList form.Values, typ types.PostType
 
 // DeleteData delete data.
 func (tb *DefaultTable) DeleteData(id string) error {
-	var (
-		idArr = strings.Split(id, ",")
-		err   error
-	)
+	var err error
+	ids := strings.Split(id, ",")
 
 	if tb.Info.DeleteHook != nil {
 		defer func() {
@@ -1086,8 +1080,7 @@ func (tb *DefaultTable) DeleteData(id string) error {
 						//logger.Error(string(debug.Stack()))
 					}
 				}()
-
-				if hookErr := tb.Info.DeleteHook(idArr); hookErr != nil {
+				if hookErr := tb.Info.DeleteHook(ids); hookErr != nil {
 					logger.Error(hookErr)
 				}
 			}()
@@ -1103,8 +1096,7 @@ func (tb *DefaultTable) DeleteData(id string) error {
 						//logger.Error(string(debug.Stack()))
 					}
 				}()
-
-				if hookErr := tb.Info.DeleteHookWithRes(idArr, err); hookErr != nil {
+				if hookErr := tb.Info.DeleteHookWithRes(ids, err); hookErr != nil {
 					logger.Error(hookErr)
 				}
 			}()
@@ -1112,22 +1104,22 @@ func (tb *DefaultTable) DeleteData(id string) error {
 	}
 
 	if tb.Info.PreDeleteFn != nil {
-		if err = tb.Info.PreDeleteFn(idArr); err != nil {
+		if err = tb.Info.PreDeleteFn(ids); err != nil {
 			return err
 		}
 	}
 
 	if tb.Info.DeleteFn != nil {
-		err = tb.Info.DeleteFn(idArr)
+		err = tb.Info.DeleteFn(ids)
 		return err
 	}
 
-	if len(idArr) == 0 || tb.Info.Table == "" {
-		err = errors.New("delete error: wrong parameter")
+	if len(ids) == 0 || tb.Info.Table == "" {
+		err = errors.New("delete error: missing parameter")
 		return err
 	}
 
-	err = tb.delete(tb.Info.Table, tb.PrimaryKey.Name, idArr)
+	err = tb.delete(tb.Info.Table, tb.PrimaryKey.Name, ids)
 	return err
 }
 

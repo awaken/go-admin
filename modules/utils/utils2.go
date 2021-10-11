@@ -128,9 +128,17 @@ func StrConcat(args ...string) string {
 		sb.WriteString(args[2])
 		sb.WriteString(args[3])
 		sb.WriteString(args[4])
+	case 6:
+		sb.Grow(len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]))
+		sb.WriteString(args[0])
+		sb.WriteString(args[1])
+		sb.WriteString(args[2])
+		sb.WriteString(args[3])
+		sb.WriteString(args[4])
+		sb.WriteString(args[5])
 	default:
-		ss := args[5:]
-		n  := len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4])
+		ss := args[6:]
+		n  := len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5])
 		for _, s := range ss { n += len(s) }
 		sb.Grow(n)
 		sb.WriteString(args[0])
@@ -138,7 +146,29 @@ func StrConcat(args ...string) string {
 		sb.WriteString(args[2])
 		sb.WriteString(args[3])
 		sb.WriteString(args[4])
+		sb.WriteString(args[5])
 		for _, s := range ss { sb.WriteString(s) }
 	}
 	return sb.String()
+}
+
+func UrlWithoutQuery(url string) string {
+	if p := strings.IndexByte(url, '?'); p >= 0 {
+		return url[:p]
+	}
+	return url
+}
+
+func StrSplit2(s, sep string) (string, string) {
+	if p := strings.Index(s, sep); p >= 0 {
+		return s[:p], s[p+1:]
+	}
+	return s, ""
+}
+
+func StrSplitByte2(s string, sep byte) (string, string) {
+	if p := strings.IndexByte(s, sep); p >= 0 {
+		return s[:p], s[p+1:]
+	}
+	return s, ""
 }

@@ -6,9 +6,9 @@ package engine
 
 import (
 	"bytes"
-	"encoding/json"
 	errors2 "errors"
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/controller"
 	template2 "html/template"
 	"net/http"
 	"runtime/debug"
@@ -303,14 +303,7 @@ func (eng *Engine) ClonedBySetter(setter Setter) *Engine {
 func (eng *Engine) deferHandler(conn db.Connection) context.Handler {
 	return func(ctx *context.Context) {
 		defer func(ctx *context.Context) {
-			if user, ok := ctx.UserValue["user"].(models.UserModel); ok {
-				var input []byte
-				form := ctx.Request.MultipartForm
-				if form != nil {
-					input, _ = json.Marshal((*form).Value)
-				}
-				models.OperationLog().SetConn(conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
-			}
+			controller.RecordOperationLog(ctx, conn)
 
 			if err := recover(); err != nil {
 				logger.Error(err)

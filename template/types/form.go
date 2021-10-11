@@ -246,7 +246,6 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 				}
 			} else {
 				f.setOptionsFromSQL(sql)
-
 				if f.FormType.IsSingleSelect() {
 					values := f.ToDisplayStringArray(m)
 					f.OptionsArr = make([]FieldOptions, len(values))
@@ -752,7 +751,7 @@ func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
 		Path:     url,
 		Method:   "post",
 		Value:    map[string]interface{}{ constant.ContextNodeNeedAuth: 1 },
-		Handlers: []context.Handler{fileUploadHandler},
+		Handlers: []context.Handler{ fileUploadHandler },
 	})
 
 	return f
@@ -1104,8 +1103,8 @@ func chooseAjax(field, chooseField, url string, handler Handler, js ...template.
 		}), context.Node{
 			Path:     url,
 			Method:   "post",
-			Handlers: context.Handlers{handler.Wrap()},
-			Value:    map[string]interface{}{constant.ContextNodeNeedAuth: 1},
+			Handlers: context.Handlers{ handler.Wrap() },
+			Value:    map[string]interface{}{ constant.ContextNodeNeedAuth: 1 },
 		}
 }
 
@@ -1365,21 +1364,21 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 		jumpURL := ""
 		if !data.DisableJump {
 			if data.JumpInNewTab != "" {
-				jumpURL = `listenerForAddNavTab(` + jump + `, "` + data.JumpInNewTab + `");`
+				jumpURL = utils.StrConcat(`listenerForAddNavTab(`, jump, `, "`, data.JumpInNewTab + `");`)
 			}
-			jumpURL += `$.pjax({url: ` + jump + `, container: '#pjax-container'});`
+			jumpURL = utils.StrConcat(jumpURL, `$.pjax({url: `, jump, `, container: '#pjax-container'});`)
 		} else {
 			jumpURL = `
-		if (data.data && data.data.token !== "") {
+		if(data.data && data.data.token !== "") {
 			$("input[name='__go_admin_t_']").val(data.data.token)
 		}`
 		}
 		f.AjaxSuccessJS = template.JS(utils.StrConcat(`
-	if (typeof (data) === "string") {
-	    data = JSON.parse(data);
+	if(typeof (data) === "string") {
+		data = JSON.parse(data);
 	}
-	if (data.code === 200) {
-	    swal({
+	if(data.code === 200) {
+		swal({
 			type: "success",
 			title: `, successMsg, `,
 			`, text, `
@@ -1392,7 +1391,7 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 			`, data.SuccessJS, `
         });
 	} else {
-		if (data.data && data.data.token !== "") {
+		if(data.data && data.data.token !== "") {
 			$("input[name='__go_admin_t_']").val(data.data.token);
 		}
 		swal({
@@ -1411,8 +1410,8 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 		error2Msg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "'"+language.Get("error")+"'")
 		wrongText := modules.AorB(data.ErrorText != "", `text:"`+data.ErrorText+`",`, "text:data.msg,")
 		f.AjaxErrorJS = template.JS(utils.StrConcat(`
-	if (data.responseText !== "") {
-		if (data.responseJSON.data && data.responseJSON.data.token !== "") {
+	if(data.responseText !== "") {
+		if(data.responseJSON.data && data.responseJSON.data.token !== "") {
 			$("input[name='__go_admin_t_']").val(data.responseJSON.data.token)
 		}
 		swal({
@@ -1431,7 +1430,7 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 			showCancelButton: false,
 			confirmButtonColor: "#3c8dbc",
 			confirmButtonText: '`, language.Get("got it"), `',
-        })
+		})
 	}
 `))
 	}

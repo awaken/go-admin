@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"github.com/NebulousLabs/fastrand"
 	"html/template"
 	"io"
 	"math"
@@ -13,48 +14,37 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	textTmpl "text/template"
 	"time"
-
-	"github.com/NebulousLabs/fastrand"
 )
 
+var uuidAlphabet = "1234567890abcdefghijvklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 func Uuid(length int64) string {
-	ele := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "v", "k",
-		"l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "Driver", "E", "F", "G",
-		"H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
-	ele, _ = Random(ele)
-	uuid := ""
-	var i int64
-	for i = 0; i < length; i++ {
-		uuid += ele[fastrand.Intn(59)]
+	uuid := Random([]byte(uuidAlphabet))
+	for i := int64(0); i < length; i++ {
+		uuid[i] = uuid[fastrand.Intn(59)]
 	}
-	return uuid
+	return string(uuid)
 }
 
-func Random(strings []string) ([]string, error) {
-	for i := len(strings) - 1; i > 0; i-- {
+func Random(buf []byte) []byte {
+	for i := len(buf) - 1; i > 0; i-- {
 		num := fastrand.Intn(i + 1)
-		strings[i], strings[num] = strings[num], strings[i]
+		buf[i], buf[num] = buf[num], buf[i]
 	}
-
-	str := make([]string, 0)
-	for i := 0; i < len(strings); i++ {
-		str = append(str, strings[i])
-	}
-	return str, nil
+	return buf
 }
 
 func CompressedContent(h *template.HTML) {
 	st := strings.Split(string(*h), "\n")
-	var ss []string
-	for i := 0; i < len(st); i++ {
-		st[i] = strings.TrimSpace(st[i])
-		if st[i] != "" {
-			ss = append(ss, st[i])
+	ss := make([]string, 0, len(st))
+	for _, s := range st {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			ss = append(ss, s)
 		}
 	}
 	*h = template.HTML(strings.Join(ss, "\n"))
@@ -86,7 +76,21 @@ func InArray(arr []string, str string) bool {
 }
 
 func WrapURL(u string) string {
-	uarr := strings.Split(u, "?")
+	if p := strings.IndexByte(u, '?'); p >= 0 && p < len(u) - 1 {
+		v, err := url.ParseQuery(u[p + 1:])
+		if err == nil {
+			u  = url.QueryEscape(strings.ReplaceAll(u[:p], "/", "_"))
+			w := strings.ReplaceAll(v.Encode(), "%7B%7B.Id%7D%7D", "{{.Id}}")
+			var sb strings.Builder
+			sb.Grow(len(u) + 1 + len(w))
+			sb.WriteString(u)
+			sb.WriteByte('?')
+			sb.WriteString(w)
+			return sb.String()
+		}
+	}
+	return url.QueryEscape(strings.ReplaceAll(u, "/", "_"))
+	/*uarr := strings.Split(u, "?")
 	if len(uarr) < 2 {
 		return url.QueryEscape(strings.ReplaceAll(u, "/", "_"))
 	}
@@ -95,7 +99,7 @@ func WrapURL(u string) string {
 		return url.QueryEscape(strings.ReplaceAll(u, "/", "_"))
 	}
 	return url.QueryEscape(strings.ReplaceAll(uarr[0], "/", "_")) + "?" +
-		strings.ReplaceAll(v.Encode(), "%7B%7B.Id%7D%7D", "{{.Id}}")
+		strings.ReplaceAll(v.Encode(), "%7B%7B.Id%7D%7D", "{{.Id}}")*/
 }
 
 func JSON(a interface{}) string {
@@ -109,17 +113,6 @@ func JSON(a interface{}) string {
 func ParseBool(s string) bool {
 	b1, _ := strconv.ParseBool(s)
 	return b1
-}
-
-func PackageName(v interface{}) string {
-	if v == nil {
-		return ""
-	}
-	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Ptr {
-		return val.Elem().Type().PkgPath()
-	}
-	return val.Type().PkgPath()
 }
 
 func ParseFloat32(f string) float32 {
@@ -208,27 +201,36 @@ func CompareVersion(src, toCompare string) bool {
 	src = rexCompareVersion.ReplaceAllString(src, "")
 	toCompare = rexCompareVersion.ReplaceAllString(toCompare, "")
 
-	srcs := strings.Split(src, "v")
+	src0, src1 := StrSplitByte2(src, 'v')
+	srcArr := strings.Split(src1, ".")
+	op := ">"
+	src0 = strings.TrimSpace(src0)
+	switch src0 {
+	case ">=", "<=", "=", ">", "<": op = src0
+	}
+	/*srcs := strings.Split(src, "v")
 	srcArr := strings.Split(srcs[1], ".")
 	op := ">"
 	srcs[0] = strings.TrimSpace(srcs[0])
 	if InArray([]string{">=", "<=", "=", ">", "<"}, srcs[0]) {
 		op = srcs[0]
-	}
+	}*/
 
 	toCompare = strings.ReplaceAll(toCompare, "v", "")
 
 	if op == "=" {
-		return srcs[1] == toCompare
+		return src1 == toCompare
+		//return srcs[1] == toCompare
 	}
 
-	if srcs[1] == toCompare && (op == "<=" || op == ">=") {
+	//if srcs[1] == toCompare && (op == "<=" || op == ">=") {
+	if src1 == toCompare && (op == "<=" || op == ">=") {
 		return true
 	}
 
 	toCompareArr := strings.Split(strings.ReplaceAll(toCompare, "v", ""), ".")
-	for i := 0; i < len(srcArr); i++ {
-		v, err := strconv.Atoi(srcArr[i])
+	for i, s := range srcArr {
+		v, err := strconv.Atoi(s)
 		if err != nil {
 			return false
 		}
@@ -274,7 +276,7 @@ func logn(n, b float64) float64 {
 }
 
 func humanateBytes(s uint64, base float64, sizes []string) string {
-	if s < 10 {
+	if s < 1024 {
 		return fmt.Sprintf("%d B", s)
 	}
 	e := math.Floor(logn(float64(s), base))
@@ -285,13 +287,14 @@ func humanateBytes(s uint64, base float64, sizes []string) string {
 		f = "%.1f"
 	}
 
-	return fmt.Sprintf(f+" %s", val, suffix)
+	return fmt.Sprintf(f + " %s", val, suffix)
 }
+
+var fileSizes = []string{ "B", "KB", "MB", "GB", "TB", "PB", "EB" }
 
 // FileSize calculates the file size and generate user-friendly string.
 func FileSize(s uint64) string {
-	sizes := []string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}
-	return humanateBytes(s, 1024, sizes)
+	return humanateBytes(s, 1024, fileSizes)
 }
 
 func FileExist(path string) bool {
@@ -391,37 +394,35 @@ func computeTimeDiff(diff int64, m map[string]string) (int64, string) {
 	return diff, diffStr
 }
 
-func DownloadTo(url, output string) error {
-
-	req, err := http.NewRequest("GET", url, nil)
-
+func DownloadTo(url, output string) (err error) {
+	var req *http.Request
+	req, err = http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		return
 	}
 
-	res, err := http.DefaultClient.Do(req)
-
+	var res *http.Response
+	res, err = http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return
+	}
+
+	defer res.Body.Close()
+
+	var file *os.File
+	file, err = os.Create(output)
+	if err != nil {
+		return
 	}
 
 	defer func() {
-		_ = res.Body.Close()
+		if e := file.Close(); e != nil && err == nil {
+			err = e
+		}
 	}()
 
-	file, err := os.Create(output)
-
-	if err != nil {
-		return err
-	}
-
 	_, err = io.Copy(file, res.Body)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return
 }
 
 func UnzipDir(src, dest string) error {
@@ -436,7 +437,6 @@ func UnzipDir(src, dest string) error {
 	}()
 
 	err = os.MkdirAll(dest, 0750)
-
 	if err != nil {
 		return err
 	}

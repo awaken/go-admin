@@ -1,10 +1,6 @@
 package guard
 
 import (
-	tmpl "html/template"
-	"mime/multipart"
-	"strings"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -18,6 +14,8 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
+	tmpl "html/template"
+	"mime/multipart"
 )
 
 type ShowFormParam struct {
@@ -126,7 +124,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 		Id:           id,
 		Prefix:       prefix,
 		Param:        param.WithPKs(id),
-		Path:         strings.Split(previous, "?")[0],		// TODO: optimize
+		Path:         utils.UrlWithoutQuery(previous),
 		MultiForm:    multiForm,
 		IsIframe:     form.Values(values).Get(constant.IframeKey) == "true",
 		IframeID:     form.Values(values).Get(constant.IframeIDKey),
