@@ -108,22 +108,17 @@ func (compo *ButtonAttribute) SetType(value string) types.ButtonAttribute {
 }
 
 func (compo *ButtonAttribute) GetContent() template.HTML {
-
 	if compo.MarginLeft != 0 {
 		compo.Style = template.HTMLAttr(fmt.Sprintf(`style="margin-left:%dpx;"`, compo.MarginLeft))
 	}
-
 	if compo.MarginRight != 0 {
 		compo.Style = template.HTMLAttr(fmt.Sprintf(`style="margin-right:%dpx;"`, compo.MarginRight))
 	}
-
 	if compo.LoadingText == "" {
 		compo.LoadingText = icon.Icon(icon.Spinner, 1) + language.GetFromHtml(`Save`)
 	}
-
 	if compo.ID == "" {
 		compo.ID = utils.Uuid(15) + "_btn"
 	}
-
 	return ComposeHtml(compo.TemplateList, compo.Separation, *compo, "button")
 }

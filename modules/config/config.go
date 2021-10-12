@@ -48,7 +48,6 @@ func (d Database) GetDSN() string {
 	if d.Dsn != "" {
 		return d.Dsn
 	}
-
 	if d.Driver == DriverMysql {
 		return d.User + ":" + d.Pwd + "@tcp(" + d.Host + ":" + d.Port + ")/" +
 			d.Name + d.ParamStr()
@@ -140,7 +139,7 @@ func (d DatabaseList) JSON() string {
 }
 
 func (d DatabaseList) Copy() DatabaseList {
-	var c = make(DatabaseList)
+	c := make(DatabaseList)
 	for k, v := range d {
 		c[k] = v
 	}
@@ -159,14 +158,14 @@ func (d DatabaseList) Connections() []string {
 
 func GetDatabaseListFromJSON(m string) DatabaseList {
 	var d = make(DatabaseList)
-	if m == "" {
-		panic("wrong config")
-	}
+	if m == "" { panic("wrong config") }
 	_ = utils.JsonUnmarshal([]byte(m), &d)
 	return d
 }
 
 const (
+	// EnvDev is a const value of development environment.
+	EnvDev = "dev"
 	// EnvTest is a const value of test environment.
 	EnvTest = "test"
 	// EnvLocal is a const value of local environment.
@@ -220,17 +219,13 @@ func (s Store) URL(suffix string) string {
 }
 
 func (s Store) JSON() string {
-	if s.Path == "" && s.Prefix == "" {
-		return ""
-	}
+	if s.Path == "" && s.Prefix == "" { return "" }
 	return utils.JSON(s)
 }
 
 func GetStoreFromJSON(m string) Store {
 	var s Store
-	if m == "" {
-		return s
-	}
+	if m == "" { return s }
 	_ = utils.JsonUnmarshal([]byte(m), &s)
 	return s
 }
@@ -242,9 +237,6 @@ type Config struct {
 	// element of Databases is the default connection. See the
 	// file connection.go.
 	Databases DatabaseList `json:"database,omitempty" yaml:"database,omitempty" ini:"database,omitempty"`
-
-	// The application unique ID. Once generated, don't modify.
-	AppID string `json:"app_id,omitempty" yaml:"app_id,omitempty" ini:"app_id,omitempty"`
 
 	// The cookie domain used in the auth modules. see
 	// the session.go.
@@ -353,9 +345,6 @@ type Config struct {
 	// Prohibit config modification
 	ProhibitConfigModification bool `json:"prohibit_config_modification,omitempty" yaml:"prohibit_config_modification,omitempty" ini:"prohibit_config_modification,omitempty"`
 
-	// Hide app info entrance flag
-	HideAppInfoEntrance bool `json:"hide_app_info_entrance,omitempty" yaml:"hide_app_info_entrance,omitempty" ini:"hide_app_info_entrance,omitempty"`
-
 	// Hide tool entrance flag
 	HideToolEntrance bool `json:"hide_tool_entrance,omitempty" yaml:"hide_tool_entrance,omitempty" ini:"hide_tool_entrance,omitempty"`
 
@@ -379,10 +368,6 @@ type Config struct {
 
 	ExcludeThemeComponents []string `json:"exclude_theme_components,omitempty" yaml:"exclude_theme_components,omitempty" ini:"exclude_theme_components,omitempty"`
 
-	BootstrapFilePath string `json:"bootstrap_file_path,omitempty" yaml:"bootstrap_file_path,omitempty" ini:"bootstrap_file_path,omitempty"`
-
-	GoModFilePath string `json:"go_mod_file_path,omitempty" yaml:"go_mod_file_path,omitempty" ini:"go_mod_file_path,omitempty"`
-
 	AllowDelOperationLog bool `json:"allow_del_operation_log,omitempty" yaml:"allow_del_operation_log,omitempty" ini:"allow_del_operation_log,omitempty"`
 
 	OperationLogOff bool `json:"operation_log_off,omitempty" yaml:"operation_log_off,omitempty" ini:"operation_log_off,omitempty"`
@@ -397,7 +382,6 @@ type Config struct {
 
 type Logger struct {
 	Encoder EncoderCfg `json:"encoder,omitempty" yaml:"encoder,omitempty" ini:"encoder,omitempty"`
-	Rotate  RotateCfg  `json:"rotate,omitempty" yaml:"rotate,omitempty" ini:"rotate,omitempty"`
 	Level   int8       `json:"level,omitempty" yaml:"level,omitempty" ini:"level,omitempty"`
 }
 
@@ -413,13 +397,6 @@ type EncoderCfg struct {
 	Duration      string `json:"duration,omitempty" yaml:"duration,omitempty" ini:"duration,omitempty"`
 	Caller        string `json:"caller,omitempty" yaml:"caller,omitempty" ini:"caller,omitempty"`
 	Encoding      string `json:"encoding,omitempty" yaml:"encoding,omitempty" ini:"encoding,omitempty"`
-}
-
-type RotateCfg struct {
-	MaxSize    int  `json:"max_size,omitempty" yaml:"max_size,omitempty" ini:"max_size,omitempty"`
-	MaxBackups int  `json:"max_backups,omitempty" yaml:"max_backups,omitempty" ini:"max_backups,omitempty"`
-	MaxAge     int  `json:"max_age,omitempty" yaml:"max_age,omitempty" ini:"max_age,omitempty"`
-	Compress   bool `json:"compress,omitempty" yaml:"compress,omitempty" ini:"compress,omitempty"`
 }
 
 type URLFormat struct {
@@ -509,6 +486,11 @@ func (c *Config) Url(suffix string) string {
 		return c.prefix
 	}
 	return c.prefix + suffix
+}
+
+// IsDevEnvironment check the environment if it is development.
+func (c *Config) IsDevEnvironment() bool {
+	return c.Env == EnvDev
 }
 
 // IsTestEnvironment check the environment if it is test.
@@ -660,11 +642,6 @@ func (c *Config) ToMap() map[string]string {
 				m["animation_duration"] = fmt.Sprintf("%.2f", c.Animation.Duration)
 				m["animation_delay"] = fmt.Sprintf("%.2f", c.Animation.Delay)
 			case "config.Logger":
-				m["logger_rotate_max_size"] = strconv.Itoa(c.Logger.Rotate.MaxSize)
-				m["logger_rotate_max_backups"] = strconv.Itoa(c.Logger.Rotate.MaxBackups)
-				m["logger_rotate_max_age"] = strconv.Itoa(c.Logger.Rotate.MaxAge)
-				m["logger_rotate_compress"] = strconv.FormatBool(c.Logger.Rotate.Compress)
-
 				m["logger_encoder_time_key"] = c.Logger.Encoder.TimeKey
 				m["logger_encoder_level_key"] = c.Logger.Encoder.LevelKey
 				m["logger_encoder_name_key"] = c.Logger.Encoder.NameKey
@@ -757,11 +734,6 @@ func (c *Config) Update(m map[string]string) error {
 				c.Animation.Duration = utils.ParseFloat32(m["animation_duration"])
 				c.Animation.Delay = utils.ParseFloat32(m["animation_delay"])
 			case "config.Logger":
-				c.Logger.Rotate.MaxSize, _ = strconv.Atoi(m["logger_rotate_max_size"])
-				c.Logger.Rotate.MaxBackups, _ = strconv.Atoi(m["logger_rotate_max_backups"])
-				c.Logger.Rotate.MaxAge, _ = strconv.Atoi(m["logger_rotate_max_age"])
-				c.Logger.Rotate.Compress = utils.ParseBool(m["logger_rotate_compress"])
-
 				c.Logger.Encoder.Encoding = m["logger_encoder_encoding"]
 				loggerLevel, _ := strconv.Atoi(m["logger_level"])
 				c.Logger.Level = int8(loggerLevel)
@@ -830,7 +802,6 @@ func SetDefault(cfg *Config) *Config {
 		// default two hours
 		cfg.SessionLifeTime = 7200
 	}
-	cfg.AppID = utils.Uuid(12)
 	if cfg.UrlPrefix == "" {
 		cfg.prefix = "/"
 	} else if cfg.UrlPrefix[0] != '/' {
@@ -870,12 +841,6 @@ func initLogger(cfg *Config) {
 		ErrorLogPath:       cfg.ErrorLogPath,
 		AccessLogPath:      cfg.AccessLogPath,
 		AccessAssetsLogOff: cfg.AccessAssetsLogOff,
-		Rotate: logger.RotateCfg{
-			MaxSize:    cfg.Logger.Rotate.MaxSize,
-			MaxBackups: cfg.Logger.Rotate.MaxBackups,
-			MaxAge:     cfg.Logger.Rotate.MaxAge,
-			Compress:   cfg.Logger.Rotate.Compress,
-		},
 		Encode: logger.EncoderCfg{
 			TimeKey:       cfg.Logger.Encoder.TimeKey,
 			LevelKey:      cfg.Logger.Encoder.LevelKey,
@@ -969,12 +934,6 @@ func GetLanguage() string {
 	_global.lock.RLock()
 	defer _global.lock.RUnlock()
 	return _global.Language
-}
-
-func GetAppID() string {
-	_global.lock.RLock()
-	defer _global.lock.RUnlock()
-	return _global.AppID
 }
 
 func GetUrlPrefix() string {

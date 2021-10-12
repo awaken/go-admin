@@ -8,6 +8,7 @@ import (
 	"bytes"
 	errors2 "errors"
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/controller"
 	template2 "html/template"
 	"net/http"
@@ -81,9 +82,6 @@ func (eng *Engine) Use(router interface{}) error {
 
 // AddPlugins add the plugins
 func (eng *Engine) AddPlugins(plugs ...plugins.Plugin) *Engine {
-	if len(plugs) == 0 {
-		return eng
-	}
 	for _, plug := range plugs {
 		eng.PluginList = eng.PluginList.Add(plug)
 	}
@@ -92,9 +90,6 @@ func (eng *Engine) AddPlugins(plugs ...plugins.Plugin) *Engine {
 
 // AddPluginList add the plugins
 func (eng *Engine) AddPluginList(plugs plugins.Plugins) *Engine {
-	if len(plugs) == 0 {
-		return eng
-	}
 	for _, plug := range plugs {
 		eng.PluginList = eng.PluginList.Add(plug)
 	}
@@ -121,18 +116,9 @@ func (eng *Engine) AddAuthService(processor auth.Processor) *Engine {
 // Config APIs
 // ============================
 
-func (eng *Engine) announce() *Engine {
-	if eng.config.Debug {
-		eng.announceLock.Do(func() {
-			fmt.Printf(language.Get("goadmin is now running. \nrunning in \"debug\" mode. switch to \"release\" mode in production.\n\n"))
-		})
-	}
-	return eng
-}
-
 // AddConfig set the global config.
 func (eng *Engine) AddConfig(cfg *config.Config) *Engine {
-	return eng.setConfig(cfg).announce().initDatabase()
+	return eng.setConfig(cfg).initDatabase()
 }
 
 // setConfig set the config of engine.
@@ -186,9 +172,7 @@ func emptyAdapterPanic() {
 
 // Register set default adapter of engine.
 func Register(ada adapter.WebFrameWork) {
-	if ada == nil {
-		emptyAdapterPanic()
-	}
+	if ada == nil { emptyAdapterPanic() }
 	defaultAdapter = ada
 }
 
@@ -290,15 +274,7 @@ func (eng *Engine) deferHandler(conn db.Connection) context.Handler {
 			if r := recover(); r != nil {
 				logger.Error(r)
 				logger.Error(string(debug.Stack()))
-
-				var errMsg string
-				switch t := r.(type) {
-				case string: errMsg = t
-				case error : errMsg = t.Error()
-				}
-				if errMsg == "" {
-					errMsg = "system error"
-				}
+				errMsg := utils.RecoveryToMsg(r)
 
 				if ctx.WantJSON() {
 					response.Error(ctx, errMsg)
@@ -315,13 +291,13 @@ func (eng *Engine) deferHandler(conn db.Connection) context.Handler {
 // wrapWithAuthMiddleware wrap a auth middleware to the given handler.
 func (eng *Engine) wrapWithAuthMiddleware(handler context.Handler) context.Handlers {
 	conn := db.GetConnection(eng.Services)
-	return []context.Handler{eng.deferHandler(conn), response.OffLineHandler, auth.Middleware(conn), handler}
+	return []context.Handler{ eng.deferHandler(conn), response.OffLineHandler, auth.Middleware(conn), handler }
 }
 
 // wrapWithAuthMiddleware wrap a auth middleware to the given handler.
 func (eng *Engine) wrap(handler context.Handler) context.Handlers {
 	conn := db.GetConnection(eng.Services)
-	return []context.Handler{eng.deferHandler(conn), response.OffLineHandler, handler}
+	return []context.Handler{ eng.deferHandler(conn), response.OffLineHandler, handler }
 }
 
 // ============================
@@ -380,9 +356,6 @@ func (eng *Engine) initPlugins() {
 		if plugin.Name() != "admin" {
 			printInitMsg("--> " + plugin.Name())
 			plugin.InitPlugin(eng.Services)
-			if !plugin.GetInfo().SkipInstallation {
-				eng.AddGenerator("plugin_" + plugin.Name(), plugin.GetSettingPage())
-			}
 			plugGenerators = plugGenerators.Combine(plugin.GetGenerators())
 		}
 	}
@@ -408,7 +381,7 @@ func (eng *Engine) initNavJumpButtonParams() []navJumpButtonParam {
 			Title:      "tool",
 			TitleScore: "tool",
 		}, {
-			Exist:      !eng.config.HideAppInfoEntrance,
+			Exist:      true,
 			Icon:       icon.Info,
 			BtnName:    types.NavBtnInfoName,
 			URL:        "/application/info",

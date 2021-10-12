@@ -173,26 +173,23 @@ func GetActionButton(title template.HTML, action Action, ids ...string) *ActionB
 }
 
 func (b *ActionButton) Content() (template.HTML, template.JS) {
-	const c1 = `<li style="cursor: pointer;"><a data-id="{{.Id}}" class="`
-	const c2 = `" `
-	const c3 = `</a></li>`
 	var hb strings.Builder
 	hb.Grow(256)
-	hb.WriteString(c1)
+	hb.WriteString(`<li style="cursor: pointer;"><a data-id="{{.Id}}" class="`)
 	hb.WriteString(b.Id)
 	hb.WriteByte(' ')
 	hb.WriteString(string(b.Action.BtnClass()))
-	hb.WriteString(c2)
+	hb.WriteString(`" `)
 	hb.WriteString(string(b.Action.BtnAttribute()))
 	hb.WriteByte('>')
 	hb.WriteString(string(b.Title))
-	hb.WriteString(c3)
+	hb.WriteString(`</a></li>`)
 	hb.WriteString(string(b.Action.ExtContent()))
 	return template.HTML(hb.String()), b.Action.Js()
 	/*cls  := b.Action.BtnClass()
 	attr := b.Action.BtnAttribute()
 	ext  := b.Action.ExtContent()
-	h := c1 + template.HTML(b.Id) + ` ` + cls + c2 + attr + `>` + b.Title + c3 + ext
+	h := `<li style="cursor: pointer;"><a data-id="{{.Id}}" class="` + template.HTML(b.Id) + ` ` + cls + `" ` + attr + `>` + b.Title + `</a></li>` + ext
 	return h, b.Action.Js()*/
 }
 
@@ -372,9 +369,7 @@ func GetNavButton(title template.HTML, icon string, action Action, names ...stri
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()
 	name := ""
-	if len(names) > 0 {
-		name = names[0]
-	}
+	if len(names) > 0 { name = names[0] }
 	return &NavButton{
 		BaseButton: &BaseButton{
 			Id:     id,
@@ -439,11 +434,9 @@ type NavDropDownItemButton struct {
 }
 
 func GetDropDownButton(title template.HTML, icon string, items []*NavDropDownItemButton, names ...string) *NavDropDownButton {
-	id := btnUUID()
+	id   := btnUUID()
 	name := ""
-	if len(names) > 0 {
-		name = names[0]
-	}
+	if len(names) > 0 { name = names[0] }
 	return &NavDropDownButton{
 		BaseButton: &BaseButton{
 			Id:       id,
@@ -532,9 +525,7 @@ func GetDropDownItemButton(title template.HTML, action Action, names ...string) 
 	action.SetBtnId("." + id)
 	node := action.GetCallbacks()
 	name := ""
-	if len(names) > 0 {
-		name = names[0]
-	}
+	if len(names) > 0 { name = names[0] }
 	return &NavDropDownItemButton{
 		BaseButton: &BaseButton{
 			Id:       id,

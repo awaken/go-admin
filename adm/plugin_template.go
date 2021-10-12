@@ -41,17 +41,11 @@ func New{{.PluginTitle}}(/*...*/) *{{.PluginTitle}} {
 	}
 }
 
-func (plug *{{.PluginTitle}}) IsInstalled() bool {
-	// ... implement it
-	return true
-}
-
 func (plug *{{.PluginTitle}}) GetIndexURL() string {
 	return config.Url("/{{.PluginName}}/example?param=helloworld")
 }
 
 func (plug *{{.PluginTitle}}) InitPlugin(srv service.List) {
-
 	// DO NOT DELETE
 	plug.InitBase(srv, "{{.PluginName}}")
 
@@ -88,11 +82,7 @@ func (plug *{{.PluginTitle}}) GetSettingPage() table.Generator {
 
 		cfg := table.DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
 
-		if !plug.IsInstalled() {
-			cfg = cfg.SetOnlyNewForm()
-		} else {
-			cfg = cfg.SetOnlyUpdateForm()
-		}
+		cfg = cfg.SetOnlyUpdateForm()
 
 		{{.PluginName}}Configuration = table.NewDefaultTable(cfg)
 
@@ -224,7 +214,7 @@ func (plug *{{.PluginTitle}}) initRouter(srv service.List) *context.App {
 
 	app := context.NewApp()
 	authRoute := app.Group("/", auth.Middleware(plug.Conn))
-	
+
 	authRoute.GET("/example", plug.guard.Example, plug.handler.Example)
 
 	return app

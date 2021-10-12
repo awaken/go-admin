@@ -26,7 +26,6 @@ type Admin struct {
 // InitPlugin implements Plugin.InitPlugin.
 // TODO: find a better way to manage the dependencies
 func (admin *Admin) InitPlugin(services service.List) {
-	// DO NOT DELETE
 	admin.InitBase(services, "")
 
 	c := config.GetService(services.Get("config"))
@@ -59,7 +58,6 @@ func (admin *Admin) InitPlugin(services service.List) {
 	admin.handler.AddNavButton(admin.UI.NavButtons)
 
 	table.SetServices(services)
-
 	action.InitOperationHandlerSetter(admin.GetAddOperationFn())
 }
 
@@ -78,15 +76,11 @@ func (admin *Admin) GetInfo() plugins.Info {
 	}
 }
 
-func (admin *Admin) IsInstalled() bool {
-	return true
-}
-
 // NewAdmin return the global Admin plugin.
 func NewAdmin(tableCfg ...table.GeneratorList) *Admin {
 	return &Admin{
 		tableList: make(table.GeneratorList).CombineAll(tableCfg),
-		Base:      &plugins.Base{PlugName: "admin"},
+		Base:      &plugins.Base{ PlugName: "admin" },
 		handler:   controller.New(),
 	}
 }

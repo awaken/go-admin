@@ -2,7 +2,6 @@ package utils
 
 import (
 	"archive/zip"
-	"encoding/json"
 	"fmt"
 	"github.com/NebulousLabs/fastrand"
 	"html/template"
@@ -101,10 +100,8 @@ func WrapURL(u string) string {
 }
 
 func JSON(a interface{}) string {
-	if a == nil {
-		return ""
-	}
-	b, _ := json.Marshal(a)
+	if a == nil { return "" }
+	b, _ := JsonMarshal(a)
 	return string(b)
 }
 
@@ -119,9 +116,7 @@ func ParseFloat32(f string) float32 {
 }
 
 func SetDefault(value, condition, def string) string {
-	if value == condition {
-		return def
-	}
+	if value == condition { return def }
 	return value
 }
 
@@ -169,9 +164,7 @@ func ParseText(name, tmpl string, param interface{}) string {
 }
 
 func CompareVersion(src, toCompare string) bool {
-	if toCompare == "" {
-		return false
-	}
+	if toCompare == "" { return false }
 
 	src = rexCompareVersion.ReplaceAllString(src, "")
 	toCompare = rexCompareVersion.ReplaceAllString(toCompare, "")

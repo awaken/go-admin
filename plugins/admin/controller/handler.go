@@ -30,15 +30,7 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 	if r := recover(); r != nil {
 		logger.Error(r)
 		logger.Error(string(debug.Stack()))
-
-		var errMsg string
-		switch t := r.(type) {
-		case string: errMsg = t
-		case error : errMsg = t.Error()
-		}
-		if errMsg == "" {
-			errMsg = "system error"
-		}
+		errMsg := utils.RecoveryToMsg(r)
 
 		if ctx.WantJSON() {
 			response.Error(ctx, errMsg)

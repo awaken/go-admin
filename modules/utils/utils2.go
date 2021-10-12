@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	jsoniter "github.com/json-iterator/go"
@@ -167,3 +168,13 @@ func JsonUnmarshal(data []byte, v interface{}) error {
 	return jsoniter.ConfigFastest.Unmarshal(data, v)
 }
 
+func RecoveryToMsg(r interface{}) string {
+	var msg string
+	switch t := r.(type) {
+	case string      : msg = t
+	case error       : msg = t.Error()
+	case fmt.Stringer: msg = t.String()
+	}
+	if msg == "" { return "system error" }
+	return msg
+}

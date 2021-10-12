@@ -6,22 +6,16 @@ package plugins
 
 import (
 	"bytes"
-	"errors"
 	template2 "html/template"
 	"net/http"
-	"plugin"
 	"strings"
 	"time"
-
-	"github.com/GoAdminGroup/go-admin/template/icon"
-	"github.com/GoAdminGroup/go-admin/template/types/action"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/modules/remote_server"
 	"github.com/GoAdminGroup/go-admin/modules/service"
@@ -30,7 +24,9 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template/icon"
 	"github.com/GoAdminGroup/go-admin/template/types"
+	"github.com/GoAdminGroup/go-admin/template/types/action"
 )
 
 // Plugin as one of the key components of goAdmin has three
@@ -48,9 +44,6 @@ type Plugin interface {
 	GetInfo() Info
 	GetIndexURL() string
 	GetSettingPage() table.Generator
-	IsInstalled() bool
-	Uninstall() error
-	Upgrade() error
 }
 
 type Info struct {
@@ -64,29 +57,15 @@ type Info struct {
 	Cover            string    `json:"cover" yaml:"cover" ini:"cover"`
 	MiniCover        string    `json:"mini_cover" yaml:"mini_cover" ini:"mini_cover"`
 	Website          string    `json:"website" yaml:"website" ini:"website"`
-	Agreement        string    `json:"agreement" yaml:"agreement" ini:"agreement"`
 	CreateDate       time.Time `json:"create_date" yaml:"create_date" ini:"create_date"`
 	UpdateDate       time.Time `json:"update_date" yaml:"update_date" ini:"update_date"`
-	ModulePath       string    `json:"module_path" yaml:"module_path" ini:"module_path"`
 	Name             string    `json:"name" yaml:"name" ini:"name"`
 	Uuid             string    `json:"uuid" yaml:"uuid" ini:"uuid"`
-	Downloaded       bool      `json:"downloaded" yaml:"downloaded" ini:"downloaded"`
-	ExtraDownloadUrl string    `json:"extra_download_url" yaml:"extra_download_url" ini:"extra_download_url"`
-	Price            []string  `json:"price" yaml:"price" ini:"price"`
 	GoodUUIDs        []string  `json:"good_uuids" yaml:"good_uuids" ini:"good_uuids"`
 	GoodNum          int64     `json:"good_num" yaml:"good_num" ini:"good_num"`
 	CommentNum       int64     `json:"comment_num" yaml:"comment_num" ini:"comment_num"`
 	Order            int64     `json:"order" yaml:"order" ini:"order"`
 	Features         string    `json:"features" yaml:"features" ini:"features"`
-	Questions        []string  `json:"questions" yaml:"questions" ini:"questions"`
-	HasBought        bool      `json:"has_bought" yaml:"has_bought" ini:"has_bought"`
-	CanUpdate        bool      `json:"can_update" yaml:"can_update" ini:"can_update"`
-	Legal            bool      `json:"legal" yaml:"legal" ini:"legal"`
-	SkipInstallation bool      `json:"skip_installation" yaml:"skip_installation" ini:"skip_installation"`
-}
-
-func (i Info) IsFree() bool {
-	return len(i.Price) == 0
 }
 
 type Base struct {
@@ -105,9 +84,6 @@ func (b *Base) GetHandler() context.HandlerMap     { return b.App.Handlers }
 func (b *Base) Name() string                       { return b.PlugName }
 func (b *Base) GetInfo() Info                      { return b.Info }
 func (b *Base) Prefix() string                     { return b.URLPrefix }
-func (b *Base) IsInstalled() bool                  { return false }
-func (b *Base) Uninstall() error                   { return nil }
-func (b *Base) Upgrade() error                     { return nil }
 func (b *Base) GetIndexURL() string                { return "" }
 func (b *Base) GetSettingPage() table.Generator    { return nil }
 
@@ -178,19 +154,17 @@ func (b *Base) HTMLMenuWithBtns(ctx *context.Context, panel types.Panel, menu *m
 }
 
 func (b *Base) HTMLFile(ctx *context.Context, path string, data map[string]interface{}, options ...template.ExecuteOptions) {
-	var sb strings.Builder
 	var panel types.Panel
 
 	t, err := template2.ParseFiles(path)
 	if err != nil {
 		panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 	} else {
+		var sb strings.Builder
 		if err := t.Execute(&sb, data); err != nil {
 			panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 		} else {
-			panel = types.Panel{
-				Content: template.HTML(sb.String()),
-			}
+			panel = types.Panel{ Content: template.HTML(sb.String()) }
 		}
 	}
 
@@ -198,19 +172,17 @@ func (b *Base) HTMLFile(ctx *context.Context, path string, data map[string]inter
 }
 
 func (b *Base) HTMLFiles(ctx *context.Context, data map[string]interface{}, files []string, options ...template.ExecuteOptions) {
-	var sb strings.Builder
 	var panel types.Panel
 
 	t, err := template2.ParseFiles(files...)
 	if err != nil {
 		panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 	} else {
+		var sb strings.Builder
 		if err := t.Execute(&sb, data); err != nil {
 			panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 		} else {
-			panel = types.Panel{
-				Content: template.HTML(sb.String()),
-			}
+			panel = types.Panel{ Content: template.HTML(sb.String()) }
 		}
 	}
 
@@ -219,53 +191,27 @@ func (b *Base) HTMLFiles(ctx *context.Context, data map[string]interface{}, file
 
 type BasePlugin struct {
 	Base
-	Info      Info
-	IndexURL  string
-	Installed bool
+	Info     Info
+	IndexURL string
 }
 
 func (b *BasePlugin) GetInfo() Info       { return b.Info }
 func (b *BasePlugin) Name() string        { return b.Info.Name }
 func (b *BasePlugin) GetIndexURL() string { return b.IndexURL }
-func (b *BasePlugin) IsInstalled() bool   { return b.Installed }
 
 func NewBasePluginWithInfo(info Info) Plugin {
-	return &BasePlugin{Info: info}
+	return &BasePlugin{ Info: info }
 }
 
-func NewBasePluginWithInfoAndIndexURL(info Info, u string, installed bool) Plugin {
-	return &BasePlugin{Info: info, IndexURL: u, Installed: installed}
+func NewBasePluginWithInfoAndIndexURL(info Info, url string) Plugin {
+	return &BasePlugin{ Info: info, IndexURL: url }
 }
 
-func GetPluginsWithInfos(info []Info) Plugins {
-	p := make(Plugins, len(info))
-	for k, i := range info {
-		p[k] = NewBasePluginWithInfo(i)
+func GetPluginsWithInfos(infos []Info) Plugins {
+	p := make(Plugins, len(infos))
+	for i, info := range infos {
+		p[i] = NewBasePluginWithInfo(info)
 	}
-	return p
-}
-
-func LoadFromPlugin(mod string) Plugin {
-
-	plug, err := plugin.Open(mod)
-	if err != nil {
-		logger.Error("LoadFromPlugin err", err)
-		panic(err)
-	}
-
-	symPlugin, err := plug.Lookup("Plugin")
-	if err != nil {
-		logger.Error("LoadFromPlugin err", err)
-		panic(err)
-	}
-
-	var p Plugin
-	p, ok := symPlugin.(Plugin)
-	if !ok {
-		logger.Error("LoadFromPlugin err: unexpected type from module symbol")
-		panic(errors.New("LoadFromPlugin err: unexpected type from module symbol"))
-	}
-
 	return p
 }
 
@@ -324,21 +270,12 @@ func ExecuteWithMenu(ctx *context.Context,
 	tmpl, tmplName := template.Get(config.GetTheme()).GetTemplate(ctx.IsPjax())
 
 	btns := options.NavDropDownButton
-	if btns == nil {
-		btns = []*types.NavDropDownItemButton{
-			types.GetDropDownItemButton(language.GetFromHtml("plugin setting"),
-				action.Jump(config.Url("/info/plugin_"+name+"/edit"))),
-			types.GetDropDownItemButton(language.GetFromHtml("menus manage"),
-				action.Jump(config.Url("/menu?__plugin_name="+name))),
-		}
-	} else {
-		btns = append(btns, []*types.NavDropDownItemButton{
-			types.GetDropDownItemButton(language.GetFromHtml("plugin setting"),
-				action.Jump(config.Url("/info/plugin_"+name+"/edit"))),
-			types.GetDropDownItemButton(language.GetFromHtml("menus manage"),
-				action.Jump(config.Url("/menu?__plugin_name="+name))),
-		}...)
-	}
+	btns = append(btns,
+		types.GetDropDownItemButton(language.GetFromHtml("plugin setting"),
+			action.Jump(config.Url("/info/plugin_"+name+"/edit"))),
+		types.GetDropDownItemButton(language.GetFromHtml("menus manage"),
+			action.Jump(config.Url("/menu?__plugin_name="+name))),
+	)
 
 	return template.Execute(&template.ExecuteParam{
 		User:      user,
@@ -348,8 +285,8 @@ func ExecuteWithMenu(ctx *context.Context,
 		Config:    config.Get(),
 		Menu:      menu.GetGlobalMenu(user, conn, ctx.Lang(), name).SetActiveClass(config.URLRemovePrefix(ctx.Path())),
 		Animation: options.Animation,
-		Buttons: navButtons.Copy().
-			RemoveInfoNavButton().
+		Buttons:   navButtons.Copy().
+			//RemoveInfoNavButton().
 			RemoveSiteNavButton().
 			RemoveToolNavButton().
 			Add(types.GetDropDownButton("", icon.Gear, btns)).CheckPermission(user),
@@ -370,8 +307,9 @@ func (pp Plugins) Add(p Plugin) Plugins {
 }
 
 func (pp Plugins) Exist(p Plugin) bool {
+	pname := p.Name()
 	for _, v := range pp {
-		if v.Name() == p.Name() {
+		if v.Name() == pname {
 			return true
 		}
 	}
@@ -406,17 +344,14 @@ func Exist(p Plugin) bool {
 }
 
 func Add(p Plugin) {
-	// TODO: 验证插件合法性
 	pluginList = pluginList.Add(p)
 }
 
 func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
-
 	plugs := make(Plugins, 0)
-	page := Page{}
+	page  := Page{}
 
 	res, err := remote_server.GetOnline(req, token)
-
 	if err != nil {
 		return plugs, page
 	}
@@ -426,7 +361,6 @@ func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
 	if err != nil {
 		return plugs, page
 	}
-
 	if data.Code != 0 {
 		return plugs, page
 	}
@@ -435,16 +369,15 @@ func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
 	page = data.Data.Page
 
 	for index, p := range plugs {
+		pname := p.Name()
 		for key, value := range pluginList {
-			if value.Name() == p.Name() {
+			if value.Name() == pname {
 				info := pluginList[key].GetInfo()
-				info.CanUpdate = utils.CompareVersion(info.Version, plugs[index].GetInfo().Version)
 				info.OldVersion = info.Version
-				info.Downloaded = true
 				info.Description = language.GetWithScope(info.Description, info.Name)
 				info.Title = language.GetWithScope(info.Title, info.Name)
 				info.Version = plugs[index].GetInfo().Version
-				plugs[index] = NewBasePluginWithInfoAndIndexURL(info, value.GetIndexURL(), value.IsInstalled())
+				plugs[index] = NewBasePluginWithInfoAndIndexURL(info, value.GetIndexURL())
 				break
 			}
 		}
@@ -452,8 +385,9 @@ func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
 
 	for _, p := range plugs {
 		exist := false
+		pname := p.Name()
 		for _, pp := range allPluginList {
-			if pp.Name() == p.Name() {
+			if pp.Name() == pname {
 				exist = true
 				break
 			}
@@ -467,7 +401,7 @@ func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
 }
 
 func Get() Plugins {
-	var plugs = make(Plugins, len(pluginList))
+	plugs := make(Plugins, len(pluginList))
 	copy(plugs, pluginList)
 	return plugs
 }
