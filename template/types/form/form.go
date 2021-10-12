@@ -292,8 +292,7 @@ func (t Type) String() string {
 }
 
 func (t Type) IsSelect() bool {
-	return t == Select || t == SelectSingle || t == SelectBox || t == Radio || t == Switch ||
-		t == Checkbox || t == CheckboxStacked || t == CheckboxSingle
+	return t == Select || t == SelectSingle || t == SelectBox || t == Radio || t == Switch || t == Checkbox || t == CheckboxStacked || t == CheckboxSingle
 }
 
 func (t Type) IsArray() bool {
@@ -381,13 +380,13 @@ func (t Type) FixOptions(m map[string]interface{}) map[string]interface{} {
 }
 
 func (t Type) SelectedLabel() []template.HTML {
-	if t == Select || t == SelectSingle || t == SelectBox {
-		return []template.HTML{"selected", ""}
+	switch t {
+	case Select, SelectSingle, SelectBox:
+		return []template.HTML{ "selected", "" }
+	case Radio, Switch, Checkbox, CheckboxStacked, CheckboxSingle:
+		return []template.HTML{ "checked", "" }
 	}
-	if t == Radio || t == Switch || t == Checkbox || t == CheckboxStacked || t == CheckboxSingle {
-		return []template.HTML{"checked", ""}
-	}
-	return []template.HTML{"", ""}
+	return []template.HTML{ "", "" }
 }
 
 func (t Type) GetDefaultOptions(field string) (map[string]interface{}, map[string]interface{}, template.JS) {

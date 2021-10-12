@@ -14,7 +14,7 @@ func init() {
 }
 
 func (l *Link) Get(args ...interface{}) types.FieldFilterFn {
-	prefix := ""
+	prefix        := ""
 	openInNewTabs := false
 	if len(args) > 0 {
 		prefix = args[0].(string)
@@ -24,11 +24,13 @@ func (l *Link) Get(args ...interface{}) types.FieldFilterFn {
 			openInNewTabs = openInNewTabsArr[0]
 		}
 	}
-	return func(value types.FieldModel) interface{} {
-		if openInNewTabs {
+
+	if openInNewTabs {
+		return func(value types.FieldModel) interface{} {
 			return template.Default().Link().SetURL(prefix + value.Value).OpenInNewTab().GetContent()
-		} else {
-			return template.Default().Link().SetURL(prefix + value.Value).GetContent()
 		}
+	}
+	return func(value types.FieldModel) interface{} {
+		return template.Default().Link().SetURL(prefix + value.Value).GetContent()
 	}
 }

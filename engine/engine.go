@@ -150,24 +150,6 @@ func (eng *Engine) setConfig(cfg *config.Config) *Engine {
 	return eng
 }
 
-// AddConfigFromJSON set the global config from json file.
-func (eng *Engine) AddConfigFromJSON(path string) *Engine {
-	cfg := config.ReadFromJson(path)
-	return eng.setConfig(&cfg).announce().initDatabase()
-}
-
-// AddConfigFromYAML set the global config from yaml file.
-func (eng *Engine) AddConfigFromYAML(path string) *Engine {
-	cfg := config.ReadFromYaml(path)
-	return eng.setConfig(&cfg).announce().initDatabase()
-}
-
-// AddConfigFromINI set the global config from ini file.
-func (eng *Engine) AddConfigFromINI(path string) *Engine {
-	cfg := config.ReadFromINI(path)
-	return eng.setConfig(&cfg).announce().initDatabase()
-}
-
 // InitDatabase initialize all database connection.
 func (eng *Engine) initDatabase() *Engine {
 	//printInitMsg(language.Get("initialize database connections"))
@@ -199,7 +181,7 @@ var engine *Engine
 var navButtons = new(types.Buttons)
 
 func emptyAdapterPanic() {
-	logger.Panic(language.Get("adapter is nil, import the default adapter or use addadapter method add the adapter"))
+	logger.Panic(language.Get("adapter is nil, import the default adapter or use AddAdapter method add the adapter"))
 }
 
 // Register set default adapter of engine.
@@ -305,20 +287,14 @@ func (eng *Engine) deferHandler(conn db.Connection) context.Handler {
 		defer func(ctx *context.Context) {
 			controller.RecordOperationLog(ctx, conn)
 
-			if err := recover(); err != nil {
-				logger.Error(err)
+			if r := recover(); r != nil {
+				logger.Error(r)
 				logger.Error(string(debug.Stack()))
 
-				var (
-					errMsg string
-					ok     bool
-					e      error
-				)
-
-				if errMsg, ok = err.(string); !ok {
-					if e, ok = err.(error); ok {
-						errMsg = e.Error()
-					}
+				var errMsg string
+				switch t := r.(type) {
+				case string: errMsg = t
+				case error : errMsg = t.Error()
 				}
 				if errMsg == "" {
 					errMsg = "system error"

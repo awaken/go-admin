@@ -5,10 +5,8 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -19,8 +17,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
-	"gopkg.in/ini.v1"
-	"gopkg.in/yaml.v3"
 )
 
 // Database is a type of database connection config.
@@ -166,7 +162,7 @@ func GetDatabaseListFromJSON(m string) DatabaseList {
 	if m == "" {
 		panic("wrong config")
 	}
-	_ = json.Unmarshal([]byte(m), &d)
+	_ = utils.JsonUnmarshal([]byte(m), &d)
 	return d
 }
 
@@ -235,7 +231,7 @@ func GetStoreFromJSON(m string) Store {
 	if m == "" {
 		return s
 	}
-	_ = json.Unmarshal([]byte(m), &s)
+	_ = utils.JsonUnmarshal([]byte(m), &s)
 	return s
 }
 
@@ -490,7 +486,7 @@ func GetFileUploadEngineFromJSON(m string) FileUploadEngine {
 	if m == "" {
 		return f
 	}
-	_ = json.Unmarshal([]byte(m), &f)
+	_ = utils.JsonUnmarshal([]byte(m), &f)
 	return f
 }
 
@@ -790,7 +786,7 @@ func (c *Config) Update(m map[string]string) error {
 		case reflect.Map:
 			if t.Type.String() == "config.ExtraInfo" && m["extra"] != "" {
 				var extra = make(map[string]interface{})
-				_ = json.Unmarshal([]byte(m["extra"]), &extra)
+				_ = utils.JsonUnmarshal([]byte(m["extra"]), &extra)
 				c.Extra = extra
 			}
 		}
@@ -813,74 +809,6 @@ var (
 	count          uint32
 	initializeLock sync.Mutex
 )
-
-// ReadFromJson read the Config from a JSON file.
-func ReadFromJson(path string) Config {
-	jsonByte, err := ioutil.ReadFile(path)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var cfg Config
-
-	err = json.Unmarshal(jsonByte, &cfg)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return cfg
-}
-
-// ReadFromYaml read the Config from a YAML file.
-func ReadFromYaml(path string) Config {
-	jsonByte, err := ioutil.ReadFile(path)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var cfg Config
-
-	err = yaml.Unmarshal(jsonByte, &cfg)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return cfg
-}
-
-// ReadFromINI read the Config from a INI file.
-func ReadFromINI(path string) Config {
-	iniCfg, err := ini.Load(path)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var cfg = Config{
-		Databases: make(DatabaseList),
-	}
-
-	err = iniCfg.MapTo(&cfg)
-
-	if err != nil {
-		panic(err)
-	}
-
-	for _, child := range iniCfg.ChildSections("database") {
-		var d Database
-		err = child.MapTo(&d)
-		if err != nil {
-			panic(err)
-		}
-		cfg.Databases[child.Name()[9:]] = d
-	}
-
-	return cfg
-}
 
 func SetDefault(cfg *Config) *Config {
 	cfg.Title = utils.SetDefault(cfg.Title, "", "GoAdmin")

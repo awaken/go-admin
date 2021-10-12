@@ -1,22 +1,19 @@
 package remote_server
 
 import (
-	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
-	"github.com/GoAdminGroup/go-admin/modules/system"
-
 	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/system"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 const (
 	ServerHost    = "http://localhost:3333"
 	ServerHostApi = "http://localhost:3333/api"
-
-	//ServerHost    = "https://www.go-admin.cn"
-	//ServerHostApi = "https://www.go-admin.cn/api"
 )
 
 type LoginRes struct {
@@ -45,17 +42,15 @@ func Login(account, password string) LoginRes {
 	req.Header.Add("Content-Type", "application/json")
 
 	res, err := http.DefaultClient.Do(req)
-
 	if err != nil {
 		logger.Error("login: ", err)
 		resData.Code = 500
 		resData.Msg = "request error"
 		return resData
 	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
-	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		logger.Error("login: ", err)
 		resData.Code = 500
@@ -63,7 +58,7 @@ func Login(account, password string) LoginRes {
 		return resData
 	}
 
-	err = json.Unmarshal(body, &resData)
+	err = utils.JsonUnmarshal(body, &resData)
 	if err != nil {
 		logger.Error("login: ", err)
 		resData.Code = 500
@@ -74,6 +69,7 @@ func Login(account, password string) LoginRes {
 		logger.Error("login to remote server error: ", resData.Msg)
 		return resData
 	}
+
 	return resData
 }
 
@@ -90,7 +86,6 @@ func GetDownloadURL(uuid, token string) (string, string, error) {
 	var resData GetDownloadURLRes
 
 	req, err := http.NewRequest("GET", ServerHostApi+"/plugin/download", strings.NewReader(`{"uuid":"`+uuid+`", "version":"`+system.Version()+`"}`))
-
 	if err != nil {
 		logger.Error("get plugin download url error: ", err)
 		return "", "", err
@@ -100,25 +95,24 @@ func GetDownloadURL(uuid, token string) (string, string, error) {
 	req.Header.Add("Content-Type", "application/json")
 
 	res, err := http.DefaultClient.Do(req)
-
 	if err != nil {
 		return "", "", err
 	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
-	body, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", "", err
 	}
 
-	err = json.Unmarshal(body, &resData)
+	err = utils.JsonUnmarshal(body, &resData)
 	if err != nil {
 		return "", "", err
 	}
 	if resData.Code != 0 {
 		return "", "", err
 	}
+
 	return resData.Data.Url, resData.Data.ExtraUrl, nil
 }
 
@@ -170,7 +164,6 @@ func (req GetOnlineReq) Format() string {
 func GetOnline(reqData GetOnlineReq, token string) ([]byte, error) {
 	// TODO: add cache
 	req, err := http.NewRequest("GET", ServerHostApi+"/plugin/list?"+reqData.Format(), nil)
-
 	if err != nil {
 		logger.Error("get online plugins: ", err)
 		return nil, err
@@ -186,9 +179,8 @@ func GetOnline(reqData GetOnlineReq, token string) ([]byte, error) {
 		logger.Error("get online plugins: ", err)
 		return nil, err
 	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
+	defer res.Body.Close()
+
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		logger.Error("get online plugins: ", err)

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -39,59 +38,53 @@ func (fo FieldOptions) Copy() FieldOptions {
 }
 
 func (fo FieldOptions) SetSelected(val interface{}, labels []template.HTML) FieldOptions {
-
 	if valArr, ok := val.([]string); ok {
-		for k := range fo {
-			text := fo[k].Text
+		for i, o := range fo {
+			text := o.Text
 			if text == "" {
-				text = string(fo[k].TextHTML)
+				text = string(o.TextHTML)
 			}
-			fo[k].Selected = utils.InArray(valArr, fo[k].Value) || utils.InArray(valArr, text)
-			if fo[k].Selected {
-				fo[k].SelectedLabel = labels[0]
+			o.Selected = utils.InArray(valArr, o.Value) || utils.InArray(valArr, text)
+			if o.Selected {
+				o.SelectedLabel = labels[0]
 			} else {
-				fo[k].SelectedLabel = labels[1]
+				o.SelectedLabel = labels[1]
 			}
+			fo[i] = o
 		}
 	} else {
-		for k := range fo {
-			text := fo[k].Text
+		for i, o := range fo {
+			text := fo[i].Text
 			if text == "" {
-				text = string(fo[k].TextHTML)
+				text = string(o.TextHTML)
 			}
-			fo[k].Selected = fo[k].Value == val || text == val
-			if fo[k].Selected {
-				fo[k].SelectedLabel = labels[0]
+			o.Selected = o.Value == val || text == val
+			if o.Selected {
+				o.SelectedLabel = labels[0]
 			} else {
-				fo[k].SelectedLabel = labels[1]
+				o.SelectedLabel = labels[1]
 			}
+			fo[i] = o
 		}
 	}
-
 	return fo
 }
 
 func (fo FieldOptions) SetSelectedLabel(labels []template.HTML) FieldOptions {
-	for k := range fo {
-		if fo[k].Selected {
-			fo[k].SelectedLabel = labels[0]
+	for i, o := range fo {
+		if o.Selected {
+			fo[i].SelectedLabel = labels[0]
 		} else {
-			fo[k].SelectedLabel = labels[1]
+			fo[i].SelectedLabel = labels[1]
 		}
 	}
 	return fo
 }
 
 func (fo FieldOptions) Marshal() string {
-	if len(fo) == 0 {
-		return ""
-	}
-	eo, err := json.Marshal(fo)
-
-	if err != nil {
-		return ""
-	}
-
+	if len(fo) == 0 { return "" }
+	eo, err := utils.JsonMarshal(fo)
+	if err != nil { return "" }
 	return string(eo)
 }
 
@@ -180,8 +173,10 @@ type FormField struct {
 
 func (f *FormField) GetRawValue(columns []string, v interface{}) string {
 	isJSON := len(columns) == 0
-	return modules.AorB(isJSON || modules.InArray(columns, f.Field),
-		db.GetValueFromDatabaseType(f.TypeName, v, isJSON).String(), "")
+	if isJSON || modules.InArray(columns, f.Field) {
+		return db.GetValueFromDatabaseType(f.TypeName, v, isJSON).String()
+	}
+	return ""
 }
 
 func (f *FormField) UpdateValue(id, val string, res map[string]interface{}, sql *db.SQL) *FormField {
@@ -239,24 +234,25 @@ func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ 
 
 	if f.isBelongToATable() {
 		if f.FormType.IsSelect() {
+			selectedLabels := f.FormType.SelectedLabel()
 			if len(f.OptionsArr) == 0 && f.OptionArrInitFn != nil {
 				f.OptionsArr = f.OptionArrInitFn(m)
 				for i, o := range f.OptionsArr {
-					f.OptionsArr[i] = o.SetSelectedLabel(f.FormType.SelectedLabel())
+					f.OptionsArr[i] = o.SetSelectedLabel(selectedLabels)
 				}
 			} else {
 				f.setOptionsFromSQL(sql)
 				if f.FormType.IsSingleSelect() {
 					values := f.ToDisplayStringArray(m)
 					f.OptionsArr = make([]FieldOptions, len(values))
-					for k, value := range values {
-						f.OptionsArr[k] = f.Options.Copy().SetSelected(value, f.FormType.SelectedLabel())
+					for i, value := range values {
+						f.OptionsArr[i] = f.Options.Copy().SetSelected(value, selectedLabels)
 					}
 				} else {
 					values := f.ToDisplayStringArrayArray(m)
 					f.OptionsArr = make([]FieldOptions, len(values))
-					for k, value := range values {
-						f.OptionsArr[k] = f.Options.Copy().SetSelected(value, f.FormType.SelectedLabel())
+					for i, value := range values {
+						f.OptionsArr[i] = f.Options.Copy().SetSelected(value, selectedLabels)
 					}
 				}
 			}
@@ -469,7 +465,6 @@ func (f *FormPanel) AddFieldWithTranslation(ctx *context.Context, head, field st
 }
 
 func (f *FormPanel) AddField(head, field string, filedType db.DatabaseType, formType form2.Type) *FormPanel {
-
 	f.FieldList = append(f.FieldList, FormField{
 		Head:        head,
 		Field:       field,
@@ -481,9 +476,7 @@ func (f *FormPanel) AddField(head, field string, filedType db.DatabaseType, form
 		Placeholder: language.Get("input") + " " + head,
 		FormType:    formType,
 		FieldDisplay: FieldDisplay{
-			Display: func(value FieldModel) interface{} {
-				return value.Value
-			},
+			Display: noopDisplay,
 			DisplayProcessChains: chooseDisplayProcessChains(f.processChains),
 		},
 	})
@@ -510,12 +503,15 @@ type AddFormFieldFn func(panel *FormPanel)
 func (f *FormPanel) AddTable(head, field string, addFields AddFormFieldFn) *FormPanel {
 	index := f.curFieldListIndex
 	addFields(f)
+
 	for i := index + 1; i <= f.curFieldListIndex; i++ {
 		f.FieldList[i].FatherFormType = form2.Table
 		f.FieldList[i].FatherField = field
 	}
-	fields := make(FormFields, f.curFieldListIndex-index)
+
+	fields := make(FormFields, f.curFieldListIndex - index)
 	copy(fields, f.FieldList[index+1:f.curFieldListIndex+1])
+
 	f.FieldList = append(f.FieldList, FormField{
 		Head:        head,
 		Field:       field,
@@ -526,12 +522,11 @@ func (f *FormPanel) AddTable(head, field string, addFields AddFormFieldFn) *Form
 		TableFields: fields,
 		FormType:    form2.Table,
 		FieldDisplay: FieldDisplay{
-			Display: func(value FieldModel) interface{} {
-				return value.Value
-			},
+			Display: noopDisplay,
 			DisplayProcessChains: chooseDisplayProcessChains(f.processChains),
 		},
 	})
+
 	f.curFieldListIndex++
 	return f
 }
@@ -542,12 +537,9 @@ func (f *FormPanel) AddRow(addFields AddFormFieldFn) *FormPanel {
 	if f.curFieldListIndex != index {
 		for i := index; i <= f.curFieldListIndex; i++ {
 			switch i {
-			case index:
-				f.FieldList[i].RowFlag = 1
-			case f.curFieldListIndex:
-				f.FieldList[i].RowFlag = 2
-			default:
-				f.FieldList[i].RowFlag = 3
+			case index              : f.FieldList[i].RowFlag = 1
+			case f.curFieldListIndex: f.FieldList[i].RowFlag = 2
+			default                 : f.FieldList[i].RowFlag = 3
 			}
 		}
 	}
@@ -631,9 +623,7 @@ func (f *FormPanel) FieldOptionInitFn(fn OptionInitFn) *FormPanel {
 }
 
 func (f *FormPanel) FieldOptionExt(m map[string]interface{}) *FormPanel {
-	if m == nil {
-		return f
-	}
+	if m == nil { return f }
 
 	if f.FieldList[f.curFieldListIndex].FormType.IsCode() {
 		f.FieldList[f.curFieldListIndex].OptionExt = template.JS(fmt.Sprintf(`
@@ -646,15 +636,14 @@ func (f *FormPanel) FieldOptionExt(m map[string]interface{}) *FormPanel {
 	}
 
 	m = f.FieldList[f.curFieldListIndex].FormType.FixOptions(m)
-
-	s, _ := json.Marshal(m)
+	s, _ := utils.JsonMarshal(m)
 
 	if f.FieldList[f.curFieldListIndex].OptionExt != "" {
 		ss := string(f.FieldList[f.curFieldListIndex].OptionExt)
 		ss = strings.Replace(ss, "}", "", strings.Count(ss, "}"))
 		ss = strings.TrimRight(ss, " ")
 		ss += ","
-		f.FieldList[f.curFieldListIndex].OptionExt = template.JS(ss) + template.JS(strings.Replace(string(s), "{", "", 1))
+		f.FieldList[f.curFieldListIndex].OptionExt = template.JS(ss + strings.Replace(string(s), "{", "", 1))
 	} else {
 		f.FieldList[f.curFieldListIndex].OptionExt = template.JS(s)
 	}
@@ -663,13 +652,10 @@ func (f *FormPanel) FieldOptionExt(m map[string]interface{}) *FormPanel {
 }
 
 func (f *FormPanel) FieldOptionExt2(m map[string]interface{}) *FormPanel {
-	if m == nil {
-		return f
-	}
+	if m == nil { return f }
 
 	m = f.FieldList[f.curFieldListIndex].FormType.FixOptions(m)
-
-	s, _ := json.Marshal(m)
+	s, _ := utils.JsonMarshal(m)
 
 	if f.FieldList[f.curFieldListIndex].OptionExt2 != "" {
 		ss := string(f.FieldList[f.curFieldListIndex].OptionExt2)
@@ -697,9 +683,11 @@ func (f *FormPanel) FieldOptionExtJS2(js template.JS) *FormPanel {
 }
 
 func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
-	url := f.OperationURL("/file/upload")
+	var url string
 	if len(data) > 0 {
 		url = data[0].(string)
+	} else {
+		url = f.OperationURL("/file/upload")
 	}
 
 	field := f.FieldList[f.curFieldListIndex].Field
@@ -727,9 +715,7 @@ func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
 
 			err := file.GetFileEngine(config.GetFileUploadEngine().Name).Upload(multiForm)
 			if err != nil {
-				ctx.JSON(http.StatusOK, map[string]interface{}{
-					"errno": 500,
-				})
+				ctx.JSON(http.StatusOK, map[string]interface{}{ "errno": 500 })
 				return
 			}
 
@@ -740,10 +726,7 @@ func (f *FormPanel) FieldEnableFileUpload(data ...interface{}) *FormPanel {
 				imgPath[i] = store.URL(path)
 			}
 
-			ctx.JSON(http.StatusOK, map[string]interface{}{
-				"errno": 0,
-				"data":  imgPath,
-			})
+			ctx.JSON(http.StatusOK, map[string]interface{}{ "errno": 0, "data": imgPath })
 		}
 	}
 
@@ -865,9 +848,7 @@ func (f *FormPanel) FieldNow() *FormPanel {
 
 func (f *FormPanel) FieldNowWhenUpdate() *FormPanel {
 	f.FieldList[f.curFieldListIndex].PostFilterFn = func(value PostFieldModel) interface{} {
-		if value.IsUpdate() {
-			return utils.NowStr()
-		}
+		if value.IsUpdate() { return utils.NowStr() }
 		return value.Value.Value()
 	}
 	return f
@@ -875,9 +856,7 @@ func (f *FormPanel) FieldNowWhenUpdate() *FormPanel {
 
 func (f *FormPanel) FieldNowWhenInsert() *FormPanel {
 	f.FieldList[f.curFieldListIndex].PostFilterFn = func(value PostFieldModel) interface{} {
-		if value.IsCreate() {
-			return utils.NowStr()
-		}
+		if value.IsCreate() { return utils.NowStr() }
 		return value.Value.Value()
 	}
 	return f
@@ -914,8 +893,7 @@ func (f *FormPanel) FieldToLower() *FormPanel {
 }
 
 func (f *FormPanel) FieldXssFilter() *FormPanel {
-	f.FieldList[f.curFieldListIndex].DisplayProcessChains = f.FieldList[f.curFieldListIndex].DisplayProcessChains.
-		Add(xssFilter)
+	f.FieldList[f.curFieldListIndex].DisplayProcessChains = f.FieldList[f.curFieldListIndex].DisplayProcessChains.Add(xssFilter)
 	return f
 }
 
@@ -975,7 +953,7 @@ func (f *FormPanel) FieldOnChooseAjax(field, url string, handler Handler, custom
 }
 
 func (f *FormPanel) FieldOnChooseHide(value string, field ...string) *FormPanel {
-	f.FooterHtml += chooseHideJS(f.FieldList[f.curFieldListIndex].Field, []string{value}, field...)
+	f.FooterHtml += chooseHideJS(f.FieldList[f.curFieldListIndex].Field, []string{ value }, field...)
 	return f
 }
 
@@ -985,7 +963,7 @@ func (f *FormPanel) FieldOnChooseOptionsHide(values []string, field ...string) *
 }
 
 func (f *FormPanel) FieldOnChooseShow(value string, field ...string) *FormPanel {
-	f.FooterHtml += chooseShowJS(f.FieldList[f.curFieldListIndex].Field, []string{value}, field...)
+	f.FooterHtml += chooseShowJS(f.FieldList[f.curFieldListIndex].Field, []string{ value }, field...)
 	return f
 }
 
@@ -995,7 +973,7 @@ func (f *FormPanel) FieldOnChooseOptionsShow(values []string, field ...string) *
 }
 
 func (f *FormPanel) FieldOnChooseDisable(value string, field ...string) *FormPanel {
-	f.FooterHtml += chooseDisableJS(f.FieldList[f.curFieldListIndex].Field, []string{value}, field...)
+	f.FooterHtml += chooseDisableJS(f.FieldList[f.curFieldListIndex].Field, []string{ value }, field...)
 	return f
 }
 
@@ -1078,11 +1056,11 @@ func chooseJS(field, chooseField, val string, value template.HTML) template.HTML
 }
 
 func chooseAjax(field, chooseField, url string, handler Handler, js ...template.HTML) (template.HTML, context.Node) {
-	actionJS := template.HTML("")
+	actionJS  := template.JS("")
 	passValue := template.JS("")
 
 	if len(js) > 0 {
-		actionJS = js[0]
+		actionJS = template.JS(js[0])
 	}
 	if len(js) > 1 {
 		passValue = template.JS(js[1])
@@ -1099,7 +1077,7 @@ func chooseAjax(field, chooseField, url string, handler Handler, js ...template.
 			Field:       template.JS(field),
 			ChooseField: template.JS(chooseField),
 			PassValue:   passValue,
-			ActionJS:    template.JS(actionJS),
+			ActionJS:    actionJS,
 		}), context.Node{
 			Path:     url,
 			Method:   "post",
@@ -1109,9 +1087,7 @@ func chooseAjax(field, chooseField, url string, handler Handler, js ...template.
 }
 
 func chooseHideJS(field string, value []string, chooseFields ...string) template.HTML {
-	if len(chooseFields) == 0 {
-		return ""
-	}
+	if len(chooseFields) == 0 { return "" }
 
 	return utils.ParseHTML("choose_hide", tmpls["choose_hide"], struct {
 		Field        template.JS
@@ -1125,9 +1101,7 @@ func chooseHideJS(field string, value []string, chooseFields ...string) template
 }
 
 func chooseShowJS(field string, value []string, chooseFields ...string) template.HTML {
-	if len(chooseFields) == 0 {
-		return ""
-	}
+	if len(chooseFields) == 0 { return "" }
 
 	return utils.ParseHTML("choose_show", tmpls["choose_show"], struct {
 		Field        template.JS
@@ -1141,9 +1115,7 @@ func chooseShowJS(field string, value []string, chooseFields ...string) template
 }
 
 func chooseDisableJS(field string, value []string, chooseFields ...string) template.HTML {
-	if len(chooseFields) == 0 {
-		return ""
-	}
+	if len(chooseFields) == 0 { return "" }
 
 	return utils.ParseHTML("choose_disable", tmpls["choose_disable"], struct {
 		Field        template.JS
@@ -1157,13 +1129,11 @@ func chooseDisableJS(field string, value []string, chooseFields ...string) templ
 }
 
 func decorateChooseValue(val []string) template.JS {
-	if len(val) == 0 {
-		return ""
-	}
+	if len(val) == 0 { return "" }
 
 	//res := make([]string, len(val))
 	var sb strings.Builder
-	sb.Grow(256)
+	sb.Grow(64)
 	sb.WriteByte('[')
 
 	for k, v := range val {
@@ -1354,13 +1324,33 @@ type AjaxData struct {
 }
 
 func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
+	langGotIt := language.Get("got it")
 	f.Ajax = true
 	if f.AjaxSuccessJS == "" {
-		successMsg := modules.AorB(data.SuccessTitle != "", `"`+data.SuccessTitle+`"`, "data.msg")
-		errorMsg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "data.msg")
-		jump := modules.AorB(data.SuccessJumpURL != "", `"`+data.SuccessJumpURL+`"`, "data.data.url")
-		text := modules.AorB(data.SuccessText != "", `text:"`+data.SuccessText+`",`, "")
-		wrongText := modules.AorB(data.ErrorText != "", `text:"`+data.ErrorText+`",`, "text:data.msg,")
+		var successMsg, errorMsg, jump, text, wrongText string
+		if data.SuccessTitle != "" {
+			successMsg = utils.StrConcat(`"`, data.SuccessTitle, `"`)
+		} else {
+			successMsg = "data.msg"
+		}
+		if data.ErrorTitle != "" {
+			errorMsg = utils.StrConcat(`"`, data.ErrorTitle, `"`)
+		} else {
+			errorMsg = "data.msg"
+		}
+		if data.SuccessJumpURL != "" {
+			jump = utils.StrConcat(`"`, data.SuccessJumpURL, `"`)
+		} else {
+			jump = "data.data.url"
+		}
+		if data.SuccessText != "" {
+			text = utils.StrConcat(`text:"`, data.SuccessText, `",`)
+		}
+		if data.ErrorText != "" {
+			wrongText = utils.StrConcat(`text:"`, data.ErrorText, `"`)
+		} else {
+			wrongText = "text:data.msg"
+		}
 		jumpURL := ""
 		if !data.DisableJump {
 			if data.JumpInNewTab != "" {
@@ -1368,15 +1358,9 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 			}
 			jumpURL = utils.StrConcat(jumpURL, `$.pjax({url: `, jump, `, container: '#pjax-container'});`)
 		} else {
-			jumpURL = `
-		if(data.data && data.data.token !== "") {
-			$("input[name='__go_admin_t_']").val(data.data.token)
-		}`
+			jumpURL = `if(data.data && data.data.token !== "") { $("input[name='__go_admin_t_']").val(data.data.token) }`
 		}
-		f.AjaxSuccessJS = template.JS(utils.StrConcat(`
-	if(typeof (data) === "string") {
-		data = JSON.parse(data);
-	}
+		f.AjaxSuccessJS = template.JS(utils.StrConcat(`if(typeof(data) === "string") { data = JSON.parse(data) }
 	if(data.code === 200) {
 		swal({
 			type: "success",
@@ -1384,31 +1368,42 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 			`, text, `
 			showCancelButton: false,
 			confirmButtonColor: "#3c8dbc",
-			confirmButtonText: '`, language.Get("got it"), `',
+			confirmButtonText: '`, langGotIt, `',
         }, function() {
 			$(".modal-backdrop.fade.in").remove();
 			`, jumpURL, `
 			`, data.SuccessJS, `
         });
 	} else {
-		if(data.data && data.data.token !== "") {
-			$("input[name='__go_admin_t_']").val(data.data.token);
-		}
+		if(data.data && data.data.token !== "") { $("input[name='__go_admin_t_']").val(data.data.token) }
 		swal({
 			type: "error",
 			title: `, errorMsg, `,
-			`, wrongText, `
+			`, wrongText, `,
 			showCancelButton: false,
 			confirmButtonColor: "#3c8dbc",
-			confirmButtonText: '`, language.Get("got it"), `',
+			confirmButtonText: "`, langGotIt, `",
         })
 	}
 `))
 	}
 	if f.AjaxErrorJS == "" {
-		errorMsg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "data.responseJSON.msg")
-		error2Msg := modules.AorB(data.ErrorTitle != "", `"`+data.ErrorTitle+`"`, "'"+language.Get("error")+"'")
-		wrongText := modules.AorB(data.ErrorText != "", `text:"`+data.ErrorText+`",`, "text:data.msg,")
+		var errorMsg, errorMsg2, wrongText string
+		if data.ErrorTitle != "" {
+			errorMsg = utils.StrConcat(`"`, data.ErrorTitle, `"`)
+		} else {
+			errorMsg = "data.responseJSON.msg"
+		}
+		if data.ErrorTitle != "" {
+			errorMsg2 = data.ErrorTitle
+		} else {
+			errorMsg2 = language.Get("error")
+		}
+		if data.ErrorText != "" {
+			wrongText = utils.StrConcat(`"`, data.ErrorText, `"`)
+		} else {
+			wrongText = "data.msg"
+		}
 		f.AjaxErrorJS = template.JS(utils.StrConcat(`
 	if(data.responseText !== "") {
 		if(data.responseJSON.data && data.responseJSON.data.token !== "") {
@@ -1420,16 +1415,16 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 			`, wrongText, `
 			showCancelButton: false,
 			confirmButtonColor: "#3c8dbc",
-			confirmButtonText: '`, language.Get("got it"), `',
+			confirmButtonText: '`, langGotIt, `',
         })
 	} else {
 		swal({
 			type: "error",
-			title: `, error2Msg, `,
-			`, wrongText, `
+			title: "`, errorMsg2, `",
+			text: `, wrongText, `,
 			showCancelButton: false,
 			confirmButtonColor: "#3c8dbc",
-			confirmButtonText: '`, language.Get("got it"), `',
+			confirmButtonText: "`, langGotIt, `",
 		})
 	}
 `))
@@ -1491,15 +1486,13 @@ func (f *FormPanel) SetInsertFn(fn FormPostFn) *FormPanel {
 }
 
 func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map[string]interface{}, sql func() *db.SQL) ([]FormFields, []string) {
-	var (
-		groupFormList []FormFields
-		groupHeaders  []string
-		existField    []string
-		hasPK         = false
-	)
+	groupFormList := make([]FormFields, len(f.TabGroups))
+	groupHeaders  := make([]string    , len(f.TabGroups))
+	existField    := make(map[string]struct{}, len(f.TabGroups))
+	hasPK         := false
 
 	for i, group := range f.TabGroups {
-		var list FormFields
+		list := make(FormFields, 0, len(group))
 		for j, fieldName := range group {
 			field := f.FieldList.FindByFieldName(fieldName)
 			if field != nil && field.isNotBelongToATable() && !field.NotAllowEdit {
@@ -1514,7 +1507,7 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 						}
 						field.TableFields[z] = *(tf.UpdateValue(id, rowValue, res, sql()))
 					}
-					if utils.InArray(existField, field.Field) {
+					if _, ok := existField[field.Field]; ok {
 						field.Field += "_ga_group_" + strconv.Itoa(j)
 					}
 					list = append(list, *field)
@@ -1523,17 +1516,17 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 						hasPK = true
 					}
 					rowValue := field.GetRawValue(columns, res[field.Field])
-					if utils.InArray(existField, field.Field) {
+					if _, ok := existField[field.Field]; ok {
 						field.Field += "_ga_group_" + strconv.Itoa(j)
 					}
 					list = append(list, *(field.UpdateValue(id, rowValue, res, sql())))
 				}
-				existField = append(existField, field.Field)
+				existField[field.Field] = struct{}{}
 			}
 		}
 
-		groupFormList = append(groupFormList, list.FillCustomContent())
-		groupHeaders  = append(groupHeaders, f.TabHeaders[i])
+		groupFormList[i] = list.FillCustomContent()
+		groupHeaders [i] = f.TabHeaders[i]
 	}
 
 	if len(groupFormList) > 0 && !hasPK {
@@ -1550,19 +1543,18 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 }
 
 func (f *FormPanel) GroupField(sqls ...func() *db.SQL) ([]FormFields, []string) {
-	var (
-		groupFormList []FormFields
-		groupHeaders  []string
-		existField    []string
-		sql           *db.SQL
-	)
-	if len(sqls) > 0 { sql = sqls[0]() }
+	var sql func() *db.SQL
+	if len(sqls) > 0 { sql = sqls[0] }
+	if sql == nil { sql = db.NilSQL }
+
+	groupFormList := make([]FormFields, len(f.TabGroups))
+	groupHeaders  := make([]string    , len(f.TabGroups))
+	existField    := make(map[string]struct{}, len(f.TabGroups))
 
 	for i, group := range f.TabGroups {
-		var list FormFields
+		list := make(FormFields, 0, len(group))
 		for j, fieldName := range group {
 			field := f.FieldList.FindByFieldName(fieldName)
-			label := "_ga_group_" + strconv.Itoa(j)
 			if field != nil && field.isNotBelongToATable() && field.allowAdd() {
 				field.Editable = !field.DisplayButNotAdd
 				if !field.Hide {
@@ -1570,34 +1562,32 @@ func (f *FormPanel) GroupField(sqls ...func() *db.SQL) ([]FormFields, []string) 
 				}
 				if field.FormType.IsTable() {
 					for z, tf := range field.TableFields {
-						field.TableFields[z] = *(tf.UpdateDefaultValue(sql))
+						field.TableFields[z] = *(tf.UpdateDefaultValue(sql()))
 					}
-					if utils.InArray(existField, field.Field) {
-						field.Field += label
+					if _, ok := existField[field.Field]; ok {
+						field.Field += "_ga_group_" + strconv.Itoa(j)
 					}
 					list = append(list, *field)
 				} else {
-					if utils.InArray(existField, field.Field) {
-						field.Field += label
+					if _, ok := existField[field.Field]; ok {
+						field.Field += "_ga_group_" + strconv.Itoa(j)
 					}
-					list = append(list, *(field.UpdateDefaultValue(sql)))
+					list = append(list, *(field.UpdateDefaultValue(sql())))
 				}
-				existField = append(existField, field.Field)
+				existField[field.Field] = struct{}{}
 			}
 		}
-		groupFormList = append(groupFormList, list.FillCustomContent())
-		groupHeaders  = append(groupHeaders, f.TabHeaders[i])
+		groupFormList[i] = list.FillCustomContent()
+		groupHeaders [i] = f.TabHeaders[i]
 	}
 
 	return groupFormList, groupHeaders
 }
 
-func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[string]interface{}, sqlFunc func() *db.SQL) FormFields {
-	var (
-		list  FormFields
-		hasPK = false
-		sql   = sqlFunc()
-	)
+func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[string]interface{}, sql func() *db.SQL) FormFields {
+	if sql == nil { sql = db.NilSQL }
+	list  := make(FormFields, 0, len(f.FieldList))
+	hasPK := false
 	for i, ff := range f.FieldList {
 		if !ff.NotAllowEdit {
 			if !ff.Hide {
@@ -1605,11 +1595,11 @@ func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[str
 			}
 			rowValue := ff.GetRawValue(columns, res[ff.Field])
 			if ff.FatherField != "" {
-				f.FieldList.FindTableField(ff.Field, ff.FatherField).UpdateValue(id, rowValue, res, sql)
+				f.FieldList.FindTableField(ff.Field, ff.FatherField).UpdateValue(id, rowValue, res, sql())
 			} else if ff.FormType.IsTable() {
 				list = append(list, ff)
 			} else {
-				list = append(list, *(ff.UpdateValue(id, rowValue, res, sql)))
+				list = append(list, *(ff.UpdateValue(id, rowValue, res, sql())))
 			}
 			if ff.Field == pk {
 				hasPK = true
@@ -1631,9 +1621,11 @@ func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[str
 }
 
 func (f *FormPanel) FieldsWithDefaultValue(sqls ...func() *db.SQL) FormFields {
-	var sql *db.SQL
-	if len(sqls) > 0 { sql = sqls[0]() }
-	var list FormFields
+	var sql func() *db.SQL
+	if len(sqls) > 0 { sql = sqls[0] }
+	if sql == nil { sql = db.NilSQL }
+
+	list := make(FormFields, 0, len(f.FieldList))
 	for i, ff := range f.FieldList {
 		if ff.allowAdd() {
 			ff.Editable = !ff.DisplayButNotAdd
@@ -1641,11 +1633,11 @@ func (f *FormPanel) FieldsWithDefaultValue(sqls ...func() *db.SQL) FormFields {
 				ff.Hide = ff.CreateHide
 			}
 			if ff.FatherField != "" {
-				f.FieldList.FindTableField(ff.Field, ff.FatherField).UpdateDefaultValue(sql)
+				f.FieldList.FindTableField(ff.Field, ff.FatherField).UpdateDefaultValue(sql())
 			} else if ff.FormType.IsTable() {
 				list = append(list, ff)
 			} else {
-				list = append(list, *(ff.UpdateDefaultValue(sql)))
+				list = append(list, *(ff.UpdateDefaultValue(sql())))
 			}
 			f.FieldList[i] = ff
 		}
@@ -1727,11 +1719,11 @@ func (f FormFields) Add(field *FormField) FormFields {
 
 func (f FormFields) RemoveNotShow() FormFields {
 	ff := f
-	for i := 0; i < len(ff); {
+	for i := len(ff) - 1; i >= 0; {
 		if ff[i].FatherFormType == form2.Table {
 			ff = append(ff[:i], ff[i+1:]...)
 		} else {
-			i++
+			i--
 		}
 	}
 	return ff

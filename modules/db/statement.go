@@ -44,6 +44,10 @@ func newSQL() *SQL {
 	return SQLPool.Get().(*SQL)
 }
 
+func NilSQL() *SQL {
+	return nil
+}
+
 // *******************************
 // process method
 // *******************************
@@ -248,12 +252,12 @@ func (sql *SQL) Where(field string, operation string, arg interface{}) *SQL {
 // WhereIn add the where operation of "in" and argument values.
 func (sql *SQL) WhereIn(field string, arg []interface{}) *SQL {
 	if len(arg) == 0 {
-		panic("wrong parameter")
+		panic("missing parameter")
 	}
 	sql.Wheres = append(sql.Wheres, dialect.Where{
 		Field:     field,
 		Operation: "in",
-		Qmark:     "(" + strings.Repeat("?,", len(arg)-1) + "?)",
+		Qmark:     utils.StrConcat("(", strings.Repeat("?,", len(arg)-1), "?)"),
 	})
 	sql.Args = append(sql.Args, arg...)
 	return sql
@@ -262,12 +266,12 @@ func (sql *SQL) WhereIn(field string, arg []interface{}) *SQL {
 // WhereNotIn add the where operation of "not in" and argument values.
 func (sql *SQL) WhereNotIn(field string, arg []interface{}) *SQL {
 	if len(arg) == 0 {
-		panic("wrong parameter")
+		panic("missing parameter")
 	}
 	sql.Wheres = append(sql.Wheres, dialect.Where{
 		Field:     field,
 		Operation: "not in",
-		Qmark:     "(" + strings.Repeat("?,", len(arg)-1) + "?)",
+		Qmark:     utils.StrConcat("(", strings.Repeat("?,", len(arg)-1), "?)"),
 	})
 	sql.Args = append(sql.Args, arg...)
 	return sql
@@ -280,11 +284,12 @@ func (sql *SQL) Find(arg interface{}) (map[string]interface{}, error) {
 
 // Count query the count of query results.
 func (sql *SQL) Count() (int64, error) {
+	driver := sql.diver.Name()
 	res, err := sql.Select("count(*)").First()
 	if err != nil {
 		return 0, err
 	}
-	switch sql.diver.Name() {
+	switch driver {
 	case DriverPostgresql:
 		return res["count"].(int64), nil
 	case DriverMssql:
@@ -481,9 +486,14 @@ func (sql *SQL) ShowTables() ([]string, error) {
 	}
 
 	var key string
+	isSqlite := false
+
 	switch sql.diver.Name() {
-	case DriverPostgresql, DriverSqlite:
+	case DriverPostgresql:
 		key = "tablename"
+	case DriverSqlite:
+		key = "tablename"
+		isSqlite = true
 	case DriverMssql:
 		key = "TABLE_NAME"
 	default:
@@ -498,9 +508,7 @@ func (sql *SQL) ShowTables() ([]string, error) {
 	for _, model := range models {
 		keyName := model[key].(string)
 		// skip sqlite system tables
-		if sql.diver.Name() == DriverSqlite && keyName == "sqlite_sequence" {
-			continue
-		}
+		if isSqlite && keyName == "sqlite_sequence" { continue }
 		tables = append(tables, keyName)
 	}
 
@@ -613,7 +621,7 @@ func (sql *SQL) Insert(values dialect.H) (int64, error) {
 }
 
 func (sql *SQL) wrap(field string) string {
-	return sql.diver.GetDelimiter() + field + sql.diver.GetDelimiter2()
+	return utils.StrConcat(sql.diver.GetDelimiter(), field, sql.diver.GetDelimiter2())
 }
 
 func (sql *SQL) clean() {

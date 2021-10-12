@@ -226,45 +226,41 @@ func (pop *PopUpAction) GetCallbacks() context.Node {
 }
 
 func (pop *PopUpAction) Js() template.JS {
-	return template.JS(`$('`+pop.BtnId+`').on('`+string(pop.Event)+`', function (event) {
-						let data = `+pop.Data.JSON()+`;
-						`) + pop.ParameterJS + template.JS(`
-						let id = $(this).attr("data-id");
-						if (id && id !== "") {
-							data["id"] = id;
-						}
-						data['popup_id'] = "`+pop.Id+`"
-						$.ajax({
-                            method: '`+pop.Method+`',
-                            url: "`+pop.Url+`",
-                            data: data,
-                            success: function (data) {
-                                if (typeof (data) === "string") {
-                                    data = JSON.parse(data);
-                                }
-                                if (data.code === 0) {
-                                    $('#`+pop.Id+` .modal-body').html(data.data);
-                                } else {
-                                    swal(data.msg, '', 'error');
-                                }
-                            },
-							error: function (data) {
-								if (data.responseText !== "") {
-									swal(data.responseJSON.msg, '', 'error');
-								} else {
-									swal('error', '', 'error');
-								}
-								setTimeout(function() {
-									$('#`+pop.Id+`').hide();
-									$('.modal-backdrop.fade.in').hide();
-								}, 500)
-							},
-                        });
-            		});`)
+	return template.JS(utils.StrConcat(`$('`, pop.BtnId, `').on('`, string(pop.Event), `', function(event) {
+		let data = `, pop.Data.JSON(), `;
+		`, string(pop.ParameterJS), `
+		let id = $(this).attr("data-id");
+		if(id && id !== "") { data["id"] = id }
+		data['popup_id'] = "`, pop.Id, `"
+		$.ajax({
+			method: '`, pop.Method, `',
+			url: "`, pop.Url, `",
+			data: data,
+			success: function (data) {
+				if(typeof (data) === "string") { data = JSON.parse(data) }
+				if(data.code === 0) {
+					$('#`, pop.Id, ` .modal-body').html(data.data);
+				} else {
+					swal(data.msg, '', 'error');
+				}
+			},
+			error: function(data) {
+				if(data.responseText !== "") {
+					swal(data.responseJSON.msg, '', 'error');
+				} else {
+					swal('error', '', 'error');
+				}
+				setTimeout(function() {
+					$('#`, pop.Id, `').hide();
+					$('.modal-backdrop.fade.in').hide();
+				}, 500)
+			},
+        });
+	});`))
 }
 
 func (pop *PopUpAction) BtnAttribute() template.HTML {
-	return template.HTML(`data-toggle="modal" data-target="#` + pop.Id + ` " data-id="{{.Id}}" style="cursor: pointer;"`)
+	return template.HTML(utils.StrConcat(`data-toggle="modal" data-target="#`, pop.Id, ` " data-id="{{.Id}}" style="cursor: pointer;"`))
 }
 
 func (pop *PopUpAction) FooterContent() template.HTML {

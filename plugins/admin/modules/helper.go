@@ -79,13 +79,6 @@ func GetPage(page string) int {
 	return pageInt
 }
 
-func AorB(condition bool, a, b string) string {
-	if condition {
-		return a
-	}
-	return b
-}
-
 func AorEmpty(condition bool, a string) string {
 	if condition {
 		return a

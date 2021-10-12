@@ -1,7 +1,6 @@
 package components
 
 import (
-	"encoding/json"
 	"html/template"
 
 	"github.com/GoAdminGroup/go-admin/modules/utils"
@@ -36,7 +35,7 @@ func (compo *TreeViewAttribute) GetContent() template.HTML {
 	if compo.ID == "" {
 		compo.ID = utils.Uuid(10)
 	}
-	b, _ := json.Marshal(compo.Tree)
+	b, _ := utils.JsonMarshal(compo.Tree)
 	compo.TreeJSON = template.JS(b)
 	return ComposeHtml(compo.TemplateList, compo.Separation, *compo, "treeview")
 }

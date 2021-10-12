@@ -6,9 +6,9 @@ package context
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"io"
 	"math"
 	"net"
@@ -156,7 +156,7 @@ func (ctx *Context) BindJSON(data interface{}) error {
 	if ctx.Request.Body != nil {
 		b, err := io.ReadAll(ctx.Request.Body)
 		if err == nil {
-			return json.Unmarshal(b, data)
+			return utils.JsonUnmarshal(b, data)
 		}
 		return err
 	}
@@ -169,7 +169,7 @@ func (ctx *Context) MustBindJSON(data interface{}) {
 		if err != nil {
 			panic(err)
 		}
-		err = json.Unmarshal(b, data)
+		err = utils.JsonUnmarshal(b, data)
 		if err != nil {
 			panic(err)
 		}
@@ -191,7 +191,7 @@ func (ctx *Context) Write(code int, header map[string]string, Body string) {
 func (ctx *Context) JSON(code int, Body map[string]interface{}) {
 	ctx.Response.StatusCode = code
 	ctx.SetContentType("application/json")
-	BodyStr, err := json.Marshal(Body)
+	BodyStr, err := utils.JsonMarshal(Body)
 	if err != nil {
 		panic(err)
 	}

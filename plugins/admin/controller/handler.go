@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
+	"runtime/debug"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -26,20 +27,14 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 		h.RecordOperationLog(ctx)
 	}
 
-	if err := recover(); err != nil {
-		logger.Error(err)
-		//logger.Error(string(debug.Stack()))		// TODO: keep commented in prod??? (uncomment only for debugging)
+	if r := recover(); r != nil {
+		logger.Error(r)
+		logger.Error(string(debug.Stack()))
 
-		var (
-			errMsg string
-			ok     bool
-			e      error
-		)
-
-		if errMsg, ok = err.(string); !ok {
-			if e, ok = err.(error); ok {
-				errMsg = e.Error()
-			}
+		var errMsg string
+		switch t := r.(type) {
+		case string: errMsg = t
+		case error : errMsg = t.Error()
 		}
 		if errMsg == "" {
 			errMsg = "system error"
@@ -50,67 +45,50 @@ func (h *Handler) GlobalDeferHandler(ctx *context.Context) {
 			return
 		}
 
-		ctxPath := ctx.Path()
-		if strings.Contains(ctxPath, "/edit") {
-			h.setFormWithReturnErrMessage(ctx, errMsg, "edit")
-			return
-		}
-		if strings.Contains(ctxPath, "/new"); ok {
-			h.setFormWithReturnErrMessage(ctx, errMsg, "new")
-			return
+		ctxPath := utils.UrlWithoutQuery(ctx.Path()[len(h.config.UrlPrefix):])
+		for _, action := range [...]string{ "/edit", "/new" } {
+			if strings.HasPrefix(ctxPath, action) || strings.HasSuffix(ctxPath, action) {
+				h.setFormWithReturnErrMessage(ctx, errMsg, action[1:])
+				return
+			}
 		}
 
 		h.HTML(ctx, auth.Auth(ctx), template.WarningPanelWithDescAndTitle(errMsg, errors.Msg, errors.Msg))
 	}
 }
 
-func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg string, kind string) {
+func (h *Handler) setFormWithReturnErrMessage(ctx *context.Context, errMsg, kind string) {
 	var (
 		formInfo table.FormInfo
+		f        *types.FormPanel
+		btnWord  template2.HTML
 		prefix   = ctx.Query(constant.PrefixKey)
 		panel    = h.table(prefix, ctx)
-		btnWord  template2.HTML
-		f        *types.FormPanel
-		info     *types.InfoPanel
+		info     = panel.GetInfo()
 	)
 
 	if kind == "edit" {
-		f = panel.GetForm()
 		id := ctx.Query("id")
-		if id == "" {
-			/*pk := panel.GetPrimaryKey()
-			pname := pk.Name
-			req := ctx.Request
-			println(fmt.Sprintf("%# v", req))
-			mform := req.MultipartForm
-			val := mform.Value
-			list := val[pname]
-			id = list[0]*/
-			if ctx.Request.MultipartForm == nil {
-				if err := ctx.Request.ParseForm(); err != nil {
-					logger.Error(err)
-				}
-				if ctx.Request.MultipartForm == nil {
-					logger.Error("FUCK!")
-				}
-			}
+		switch id {
+		case "":
+			if ctx.Request.MultipartForm == nil { break }
 			id = ctx.Request.MultipartForm.Value[panel.GetPrimaryKey().Name][0]
+			fallthrough
+		default:
+			f = panel.GetForm()
+			formInfo, _ = panel.GetDataWithId(parameter.GetParam(ctx.Request.URL, info.DefaultPageSize, info.SortField, info.GetSort()).WithPKs(id))
+			btnWord = f.FormEditBtnWord
 		}
-		info = panel.GetInfo()
-		formInfo, _ = panel.GetDataWithId(parameter.GetParam(ctx.Request.URL,
-			info.DefaultPageSize, info.SortField, info.GetSort()).WithPKs(id))
-		btnWord = f.FormEditBtnWord
-	} else {
+	}
+	if f == nil {
 		f = panel.GetActualNewForm()
 		formInfo = panel.GetNewFormInfo()
 		formInfo.Title = f.Title
 		formInfo.Description = f.Description
 		btnWord = f.FormNewBtnWord
-		info = panel.GetInfo()
 	}
 
-	queryParam := parameter.GetParam(ctx.Request.URL, info.DefaultPageSize,
-		info.SortField, info.GetSort()).GetRouteParamStr()
+	queryParam := parameter.GetParam(ctx.Request.URL, info.DefaultPageSize, info.SortField, info.GetSort()).GetRouteParamStr()
 
 	h.HTML(ctx, auth.Auth(ctx), types.Panel{
 		Content: aAlert().Warning(errMsg) + formContent(aForm().

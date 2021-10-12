@@ -3,9 +3,11 @@ package utils
 import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	jsoniter "github.com/json-iterator/go"
 	"regexp"
 	"strings"
 	"time"
+	"unsafe"
 )
 
 var (
@@ -104,52 +106,36 @@ func CachedRex(rexStr string) (*regexp.Regexp, error) {
 }
 
 func StrConcat(args ...string) string {
-	var sb strings.Builder
+	var buf []byte
 	switch len(args) {
 	case 0: return ""
 	case 1: return args[0]
 	case 2: return args[0] + args[1]
 	case 3:
-		sb.Grow(len(args[0]) + len(args[1]) + len(args[2]))
-		sb.WriteString(args[0])
-		sb.WriteString(args[1])
-		sb.WriteString(args[2])
-		return sb.String()
+		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]))
+		buf = append(append(append(buf, args[0]...), args[1]...), args[2]...)
 	case 4:
-		sb.Grow(len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]))
-		sb.WriteString(args[0])
-		sb.WriteString(args[1])
-		sb.WriteString(args[2])
-		sb.WriteString(args[3])
+		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]))
+		buf = append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...)
 	case 5:
-		sb.Grow(len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]))
-		sb.WriteString(args[0])
-		sb.WriteString(args[1])
-		sb.WriteString(args[2])
-		sb.WriteString(args[3])
-		sb.WriteString(args[4])
+		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]))
+		buf = append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...)
 	case 6:
-		sb.Grow(len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]))
-		sb.WriteString(args[0])
-		sb.WriteString(args[1])
-		sb.WriteString(args[2])
-		sb.WriteString(args[3])
-		sb.WriteString(args[4])
-		sb.WriteString(args[5])
+		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]))
+		buf = append(append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...), args[5]...)
+	case 7:
+		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]) + len(args[6]))
+		buf = append(append(append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...), args[5]...), args[6]...)
+	case 8:
+		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]) + len(args[6]) + len(args[7]))
+		buf = append(append(append(append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...), args[5]...), args[6]...), args[7]...)
 	default:
-		ss := args[6:]
-		n  := len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5])
-		for _, s := range ss { n += len(s) }
-		sb.Grow(n)
-		sb.WriteString(args[0])
-		sb.WriteString(args[1])
-		sb.WriteString(args[2])
-		sb.WriteString(args[3])
-		sb.WriteString(args[4])
-		sb.WriteString(args[5])
-		for _, s := range ss { sb.WriteString(s) }
+		n := 0
+		for _, s := range args { n += len(s) }
+		buf = make([]byte, 0, n)
+		for _, s := range args { buf = append(buf, s...) }
 	}
-	return sb.String()
+	return *(*string)(unsafe.Pointer(&buf))
 }
 
 func UrlWithoutQuery(url string) string {
@@ -172,3 +158,12 @@ func StrSplitByte2(s string, sep byte) (string, string) {
 	}
 	return s, ""
 }
+
+func JsonMarshal(v interface{}) ([]byte, error) {
+	return jsoniter.ConfigFastest.Marshal(v)
+}
+
+func JsonUnmarshal(data []byte, v interface{}) error {
+	return jsoniter.ConfigFastest.Unmarshal(data, v)
+}
+

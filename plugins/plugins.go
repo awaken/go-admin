@@ -6,7 +6,6 @@ package plugins
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	template2 "html/template"
 	"net/http"
@@ -423,7 +422,7 @@ func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
 	}
 
 	var data GetOnlineRes
-	err = json.Unmarshal(res, &data)
+	err = utils.JsonUnmarshal(res, &data)
 	if err != nil {
 		return plugs, page
 	}

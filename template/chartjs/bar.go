@@ -1,29 +1,26 @@
 package chartjs
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"html/template"
 	"strings"
 
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "github.com/GoAdminGroup/go-admin/template"
 )
 
 type BarChart struct {
 	*Chart
-
 	JsContent BarJsContent
 }
 
 type BarJsContent struct {
 	JsContent
-
 	Data BarAttributes `json:"data"`
 }
 
 type BarAttributes struct {
 	Attributes
-
 	DataSets BarDataSets `json:"datasets"`
 }
 
@@ -253,12 +250,12 @@ func (l *BarChart) GetContent() template.HTML {
 		l.JsContent.Options = l.JsContentOptions
 	}
 
-	jsonByte, _ := json.Marshal(l.JsContent)
-	l.Js = template.JS(string(jsonByte))
+	jsonByte, _ := utils.JsonMarshal(l.JsContent)
+	l.Js = template.JS(jsonByte)
 
 	err := tmpl.ExecuteTemplate(&sb, defineName, l)
 	if err != nil {
-		fmt.Println("ComposeHtml Error:", err)
+		logger.Error("ComposeHtml Error:", err)
 	}
 	return template.HTML(sb.String())
 }

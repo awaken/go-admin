@@ -1,18 +1,18 @@
 package controller
 
 import (
-	"encoding/json"
-	"github.com/GoAdminGroup/go-admin/modules/db"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 )
 
 func (h *Handler) Operation(ctx *context.Context) {
 	id := ctx.Query("__goadmin_op_id")
-	if !h.OperationHandler(config.Url("/operation/"+id), ctx) {
+	if !h.OperationHandler(config.Url("/operation/" + id), ctx) {
 		errMsg := "not found"
 		if ctx.IsDataRequest() {
 			response.BadRequest(ctx, errMsg)
@@ -32,11 +32,9 @@ func RecordOperationLog(ctx *context.Context, conn db.Connection) {
 	if user, ok := ctx.User().(models.UserModel); ok {
 		var input []byte
 		form := ctx.Request.MultipartForm
-		if form != nil {
-			input, _ = json.Marshal(form.Value)
+		if form != nil && len(form.Value) > 0 {
+			input, _ = utils.JsonMarshal(form.Value)
 		}
-		_ = user
-		_ = input
-		//models.OperationLog().SetConn(conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
+		models.OperationLog().SetConn(conn).New(user.Id, ctx.Path(), ctx.Method(), ctx.LocalIP(), string(input))
 	}
 }

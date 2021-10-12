@@ -5,7 +5,7 @@
 package auth
 
 import (
-	"encoding/json"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"net/http"
 	"strconv"
 	"time"
@@ -167,7 +167,7 @@ func (driver *DBDriver) Load(sid string) (map[string]interface{}, error) {
 	}
 
 	var values map[string]interface{}
-	err = json.Unmarshal([]byte(sesModel["values"].(string)), &values)
+	err = utils.JsonUnmarshal([]byte(sesModel["values"].(string)), &values)
 	return values, err
 }
 
@@ -212,7 +212,7 @@ func (driver *DBDriver) Update(sid string, values map[string]interface{}) error 
 				return err
 			}
 		}
-		valuesByte, err := json.Marshal(values)
+		valuesByte, err := utils.JsonMarshal(values)
 		if err != nil {
 			return err
 		}

@@ -284,12 +284,12 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 
 		editCheckBox = template.HTML(`
 			<label class="pull-right" style="margin: 5px 10px 0 0;">
-                <input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> ` + language.Get("continue editing") + `
-            </label>`)
+				<input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> ` + language.Get("continue editing") + `
+			</label>`)
 		newCheckBox = template.HTML(`
 			<label class="pull-right" style="margin: 5px 10px 0 0;">
-                <input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> ` + language.Get("continue creating") + `
-            </label>`)
+				<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> ` + language.Get("continue creating") + `
+			</label>`)
 
 		editWithNewCheckBoxJs = template.HTML(`$('.continue_edit').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
 		if (this.checked) {

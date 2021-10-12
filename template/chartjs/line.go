@@ -1,8 +1,8 @@
 package chartjs
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"html/template"
 	"strings"
 
@@ -503,12 +503,12 @@ func (l *LineChart) GetContent() template.HTML {
 		l.JsContent.Options = l.JsContentOptions
 	}
 
-	jsonByte, _ := json.Marshal(l.JsContent)
-	l.Js = template.JS(string(jsonByte))
+	jsonByte, _ := utils.JsonMarshal(l.JsContent)
+	l.Js = template.JS(jsonByte)
 
 	err := tmpl.ExecuteTemplate(&sb, defineName, l)
 	if err != nil {
-		fmt.Println("ComposeHtml Error:", err)
+		logger.Error("ComposeHtml Error:", err)
 	}
 	return template.HTML(sb.String())
 }

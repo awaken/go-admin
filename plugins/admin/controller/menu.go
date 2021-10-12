@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"encoding/json"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	template2 "html/template"
 	"net/url"
 
@@ -240,7 +240,7 @@ func (h *Handler) NewMenu(ctx *context.Context) {
 func (h *Handler) MenuOrder(ctx *context.Context) {
 
 	var data []map[string]interface{}
-	_ = json.Unmarshal([]byte(ctx.FormValue("_order")), &data)
+	_ = utils.JsonUnmarshal([]byte(ctx.FormValue("_order")), &data)
 
 	models.Menu().SetConn(h.conn).ResetOrder([]byte(ctx.FormValue("_order")))
 

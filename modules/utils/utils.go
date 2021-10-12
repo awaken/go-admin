@@ -2,8 +2,6 @@ package utils
 
 import (
 	"archive/zip"
-	"bytes"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"github.com/NebulousLabs/fastrand"
@@ -127,32 +125,9 @@ func SetDefault(value, condition, def string) string {
 	return value
 }
 
-func AorB(condition bool, a, b string) string {
-	if condition {
-		return a
-	}
-	return b
-}
-
 func IsJSON(str string) bool {
-	var js json.RawMessage
-	return json.Unmarshal([]byte(str), &js) == nil
-}
-
-func CopyMap(m map[string]string) map[string]string {
-	var buf bytes.Buffer
-	enc := gob.NewEncoder(&buf)
-	dec := gob.NewDecoder(&buf)
-	err := enc.Encode(m)
-	if err != nil {
-		panic(err)
-	}
-	var cm map[string]string
-	err = dec.Decode(&cm)
-	if err != nil {
-		panic(err)
-	}
-	return cm
+	var js interface{}
+	return JsonUnmarshal([]byte(str), &js) == nil
 }
 
 func ParseTime(stringTime string) time.Time {
@@ -200,13 +175,20 @@ func CompareVersion(src, toCompare string) bool {
 
 	src = rexCompareVersion.ReplaceAllString(src, "")
 	toCompare = rexCompareVersion.ReplaceAllString(toCompare, "")
+	toCompare = strings.ReplaceAll(toCompare, "v", "")
 
 	src0, src1 := StrSplitByte2(src, 'v')
 	srcArr := strings.Split(src1, ".")
 	op := ">"
 	src0 = strings.TrimSpace(src0)
 	switch src0 {
-	case ">=", "<=", "=", ">", "<": op = src0
+	case ">=", "<=":
+		if src1 == toCompare { return true }
+		op = src0
+	case ">", "<":
+		op = src0
+	case "=":
+		return src1 == toCompare
 	}
 	/*srcs := strings.Split(src, "v")
 	srcArr := strings.Split(srcs[1], ".")
@@ -214,19 +196,13 @@ func CompareVersion(src, toCompare string) bool {
 	srcs[0] = strings.TrimSpace(srcs[0])
 	if InArray([]string{">=", "<=", "=", ">", "<"}, srcs[0]) {
 		op = srcs[0]
-	}*/
-
-	toCompare = strings.ReplaceAll(toCompare, "v", "")
-
+	}
 	if op == "=" {
-		return src1 == toCompare
-		//return srcs[1] == toCompare
+		return srcs[1] == toCompare
 	}
-
 	//if srcs[1] == toCompare && (op == "<=" || op == ">=") {
-	if src1 == toCompare && (op == "<=" || op == ">=") {
 		return true
-	}
+	}*/
 
 	toCompareArr := strings.Split(strings.ReplaceAll(toCompare, "v", ""), ".")
 	for i, s := range srcArr {
@@ -308,22 +284,19 @@ func FileExist(path string) bool {
 // TimeSincePro calculates the time interval and generate full user-friendly string.
 func TimeSincePro(then time.Time, m map[string]string) string {
 	now  := time.Now()
+	if then.After(now) { return "future" }
+
+	var timeSb strings.Builder
+	var diffStr string
 	diff := now.Unix() - then.Unix()
 
-	if then.After(now) {
-		return "future"
-	}
-
-	var timeStr, diffStr string
-	for {
-		if diff == 0 {
-			break
-		}
-
+	for diff != 0 {
 		diff, diffStr = computeTimeDiff(diff, m)
-		timeStr += ", " + diffStr
+		if timeSb.Len() > 0 { timeSb.WriteString(", ") }
+		timeSb.WriteString(diffStr)
 	}
-	return strings.TrimPrefix(timeStr, ", ")
+
+	return timeSb.String()
 }
 
 // Seconds-based time units

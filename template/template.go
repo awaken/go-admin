@@ -193,23 +193,23 @@ func VersionCompare(toCompare string, versions []string) bool {
 }
 
 func GetPageContentFromPageType(title, desc, msg string, pt PageType) (template.HTML, template.HTML, template.HTML) {
-	if c.GetDebug() {
+	if c.GetDebug() {		// TODO: configurable
 		return template.HTML(title), template.HTML(desc), Default().Alert().SetTitle(errors2.MsgWithIcon).Warning(msg)
 	}
-
-	if pt == Missing404Page {
-		if c.GetCustom404HTML() != "" {
-			return "", "", c.GetCustom404HTML()
+	switch pt {
+	case NoPermission403Page:
+		if c.GetCustom403HTML() != "" {
+			return "", "", c.GetCustom403HTML()
 		} else {
-			return "", "", Default().Get404HTML()
+			return "", "", Default().Get403HTML()
 		}
-	} else if pt == NoPermission403Page {
+	case Missing404Page:
 		if c.GetCustom404HTML() != "" {
 			return "", "", c.GetCustom403HTML()
 		} else {
 			return "", "", Default().Get403HTML()
 		}
-	} else {
+	default:
 		if c.GetCustom500HTML() != "" {
 			return "", "", c.GetCustom500HTML()
 		} else {
@@ -218,7 +218,7 @@ func GetPageContentFromPageType(title, desc, msg string, pt PageType) (template.
 	}
 }
 
-var DefaultThemeNames = []string{"sword", "adminlte"}
+var DefaultThemeNames = []string{ "sword", "adminlte" }
 
 func Themes() []string {
 	names := make([]string, len(templateMap))
@@ -405,9 +405,7 @@ func updateNavAndLogoJS(logo template.HTML) template.JS {
 }
 
 func updateNavJS(isPjax bool) template.JS {
-	if !isPjax {
-		return ""
-	}
+	if !isPjax { return "" }
 	return `$(function () {
 	let lis = $(".navbar-custom-menu .nav.navbar-nav li");
 	for (var i = lis.length - 8; i > -1; i--) {
@@ -459,9 +457,7 @@ func Execute(param *ExecuteParam) *bytes.Buffer {
 
 func WarningPanel(msg string, pts ...PageType) types.Panel {
 	pt := Error500Page
-	if len(pts) > 0 {
-		pt = pts[0]
-	}
+	if len(pts) > 0 { pt = pts[0] }
 	pageTitle, description, content := GetPageContentFromPageType(msg, msg, msg, pt)
 	return types.Panel{
 		Content:     content,
@@ -472,14 +468,12 @@ func WarningPanel(msg string, pts ...PageType) types.Panel {
 
 func WarningPanelWithDescAndTitle(msg, desc, title string, pts ...PageType) types.Panel {
 	pt := Error500Page
-	if len(pts) > 0 {
-		pt = pts[0]
-	}
+	if len(pts) > 0 { pt = pts[0] }
 	pageTitle, description, content := GetPageContentFromPageType(msg, desc, title, pt)
 	return types.Panel{
-		Content:     content,
-		Description: description,
 		Title:       pageTitle,
+		Description: description,
+		Content:     content,
 	}
 }
 
@@ -487,9 +481,7 @@ var DefaultFuncMap = template.FuncMap{
 	"lang":     language.Get,
 	"langHtml": language.GetFromHtml,
 	"link": func(cdnUrl, prefixUrl, assetsUrl string) string {
-		if cdnUrl == "" {
-			return prefixUrl + assetsUrl
-		}
+		if cdnUrl == "" { return prefixUrl + assetsUrl }
 		return cdnUrl + assetsUrl
 	},
 	"isLinkUrl": func(s string) bool {
@@ -514,11 +506,10 @@ var DefaultFuncMap = template.FuncMap{
 		return template.HTMLAttr(s)
 	},
 	"js": func(s interface{}) template.JS {
-		if ss, ok := s.(string); ok {
-			return template.JS(ss)
-		}
-		if ss, ok := s.(template.HTML); ok {
-			return template.JS(ss)
+		switch t := s.(type) {
+		case string       : return template.JS(t)
+		case template.JS  : return t
+		case template.HTML: return template.JS(t)
 		}
 		return ""
 	},

@@ -1,13 +1,13 @@
 package action
 
 import (
-	"encoding/json"
 	"html/template"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/modules/language"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/template/types"
 )
 
@@ -43,16 +43,12 @@ func Ajax(id string, handler types.Handler) *AjaxAction {
 		Url:    URL(id),
 		Method: "post",
 		Data:   NewAjaxData(),
-		SuccessJS: `if (data.code === 0) {
-                                    swal(data.msg, '', 'success');
-                                } else {
-                                    swal(data.msg, '', 'error');
-                                }`,
-		ErrorJS: `if (data.responseText !== "") {
-									swal(data.responseJSON.msg, '', 'error');								
-								} else {
-									swal('error', '', 'error');
-								}`,
+		SuccessJS: `swal(data.msg, '', data.code===0 ? 'success' : 'error');`,
+		ErrorJS: `if(data.responseText !== "") {
+				swal(data.responseJSON.msg, '', 'error');
+			} else {
+				swal('error', '', 'error');
+			}`,
 		Handlers: context.Handlers{handler.Wrap()},
 		Event:    EventClick,
 	}
@@ -97,30 +93,29 @@ func (ajax *AjaxAction) SetSuccessJS(successJS template.JS) *AjaxAction {
 }
 
 func (ajax *AjaxAction) ChangeHTMLWhenSuccess(identify string, text ...string) *AjaxAction {
-	data := template.JS("data.data")
+	data := "data.data"
 	if len(text) > 0 {
-		if len(text[0]) > 5 && text[0][:5] == "data." {
-			data = template.JS(text[0])
+		if t := text[0]; len(t) > 5 && t[:5] == "data." {
+			data = t
 		} else {
-			data = `"` + template.JS(text[0]) + `"`
+			data = utils.StrConcat(`"`, t, `"`)
 		}
 	}
-	selector := template.JS(identify)
-	if !strings.Contains(identify, "$") {
-		selector = `$("` + template.JS(identify) + `")`
+	if !strings.ContainsRune(identify, '$') {
+		identify = utils.StrConcat(`$("`, identify, `")`)
 	}
-	ajax.SuccessJS = `
-	if (data.code === 0) {
-		if (` + selector + `.is("input")) {
-			` + selector + `.val(` + data + `);
-		} else if (` + selector + `.is("select")) {
-			` + selector + `.val(` + data + `);
+	ajax.SuccessJS = template.JS(utils.StrConcat(`
+	if(data.code === 0) {
+		if(`, identify, `.is("input")) {
+			`, identify, `.val(`, data, `);
+		} else if(`, identify, `.is("select")) {
+			`, identify, `.val(`, data, `);
 		} else {
-			` + selector + `.html(` + data + `);
+			`, identify, `.html(`, data, `);
 		}
 	} else {
 		swal(data.msg, '', 'error');
-	}`
+	}`))
 	return ajax
 }
 
@@ -149,41 +144,31 @@ func (ajax *AjaxAction) GetCallbacks() context.Node {
 		Path:     ajax.Url,
 		Method:   ajax.Method,
 		Handlers: ajax.Handlers,
-		Value:    map[string]interface{}{constant.ContextNodeNeedAuth: 1},
+		Value:    map[string]interface{}{ constant.ContextNodeNeedAuth: 1 },
 	}
 }
 
 func (ajax *AjaxAction) Js() template.JS {
-
-	ajaxStatement := `$.ajax({
-                            method: '` + ajax.Method + `',
-                            url: "` + ajax.Url + `",
-                            data: data,
-                            success: function (data) { 
-                                ` + string(ajax.SuccessJS) + `
-                            },
-							error: function (data) {
-								` + string(ajax.ErrorJS) + `
-							},
-                        });`
+	ajaxStatement := utils.StrConcat(`$.ajax({
+		method: '`, ajax.Method, `',
+		url: "`, ajax.Url, `",
+		data: data,
+		success: function (data){`, string(ajax.SuccessJS), `},
+		error: function(data){`, string(ajax.ErrorJS), `},
+	});`)
 
 	if ajax.Alert {
-		b, _ := json.Marshal(ajax.AlertData)
-		ajaxStatement = "swal(" + string(b) + `,
-                    function () {
-						` + ajaxStatement + `
-					});`
+		b, _ := utils.JsonMarshal(ajax.AlertData)
+		ajaxStatement = utils.StrConcat("swal(", string(b), `, function(){`, ajaxStatement, `});`)
 	}
 
-	return template.JS(`$('`+ajax.BtnId+`').on('`+string(ajax.Event)+`', function (event) {
-						let data = `+ajax.Data.JSON()+`;
-						`) + ajax.ParameterJS + template.JS(`
-						let id = $(this).attr("data-id");
-						if (id && id !== "") {
-							data["id"] = id;
-						}
-						`+ajaxStatement+`
-            		});`)
+	return template.JS(utils.StrConcat(`$('`, ajax.BtnId, `').on('`, string(ajax.Event), `',function(event){
+		let data = `, ajax.Data.JSON(), `;
+		`, string(ajax.ParameterJS), `
+		let id = $(this).attr("data-id");
+		if(id) { data["id"] = id }
+		`, ajaxStatement, `
+	});`))
 }
 
-func (ajax *AjaxAction) BtnAttribute() template.HTML { return template.HTML(`href="javascript:;"`) }
+func (ajax *AjaxAction) BtnAttribute() template.HTML { return `href="javascript:;"` }

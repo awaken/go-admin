@@ -1,11 +1,10 @@
 package guard
 
 import (
-	"encoding/json"
-	"io/ioutil"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+	"io"
 )
 
 type ServerLoginParam struct {
@@ -14,17 +13,15 @@ type ServerLoginParam struct {
 }
 
 func (g *Guard) ServerLogin(ctx *context.Context) {
-
 	var p ServerLoginParam
 
-	body, err := ioutil.ReadAll(ctx.Request.Body)
+	body, err := io.ReadAll(ctx.Request.Body)
 
 	if err != nil {
 		logger.Error("get server login parameter error: ", err)
 	}
 
-	err = json.Unmarshal(body, &p)
-
+	err = utils.JsonUnmarshal(body, &p)
 	if err != nil {
 		logger.Error("unmarshal server login parameter error: ", err)
 	}

@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
@@ -11,7 +10,6 @@ import (
 // MenuModel is menu model structure.
 type MenuModel struct {
 	Base
-
 	Id        int64
 	Title     string
 	ParentId  int64
@@ -24,13 +22,13 @@ type MenuModel struct {
 
 // Menu return a default menu model.
 func Menu() MenuModel {
-	return MenuModel{Base: Base{TableName: "goadmin_menu"}}
+	return MenuModel{Base: Base{ TableName: "goadmin_menu" }}
 }
 
 // MenuWithId return a default menu model of given id.
 func MenuWithId(id string) MenuModel {
 	idInt, _ := strconv.Atoi(id)
-	return MenuModel{Base: Base{TableName: "goadmin_menu"}, Id: int64(idInt)}
+	return MenuModel{Base: Base{ TableName: "goadmin_menu" }, Id: int64(idInt)}
 }
 
 func (t MenuModel) SetConn(con db.Connection) MenuModel {
@@ -46,7 +44,6 @@ func (t MenuModel) Find(id interface{}) MenuModel {
 
 // New create a new menu model.
 func (t MenuModel) New(title, icon, uri, header, pluginName string, parentId, order int64) (MenuModel, error) {
-
 	id, err := t.Table(t.TableName).Insert(dialect.H{
 		"title":       title,
 		"parent_id":   parentId,
@@ -108,9 +105,8 @@ type OrderItem struct {
 
 // ResetOrder update the order of menu models.
 func (t MenuModel) ResetOrder(data []byte) {
-
 	var items OrderItems
-	_ = json.Unmarshal(data, &items)
+	_ = utils.JsonUnmarshal(data, &items)
 
 	count := 1
 	for _, v := range items {
@@ -124,7 +120,6 @@ func (t MenuModel) ResetOrder(data []byte) {
 
 			for _, v2 := range v.Children {
 				if len(v2.Children) > 0 {
-
 					_, _ = t.Table(t.TableName).
 						Where("id", "=", v2.ID).
 						Update(dialect.H{

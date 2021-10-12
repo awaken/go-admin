@@ -1,7 +1,6 @@
 package table
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/GoAdminGroup/go-admin/modules/config"
@@ -20,6 +19,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
@@ -196,7 +196,7 @@ func (tb *DefaultTable) getDataFromURL(params parameter.Parameters) ([]map[strin
 
 	var data GetDataFromURLRes
 
-	err = json.Unmarshal(body, &data)
+	err = utils.JsonUnmarshal(body, &data)
 	if err != nil {
 		return []map[string]interface{}{}, 0
 	}
@@ -222,13 +222,12 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 		return tb.getDataFromDatabase(params)
 	}
 
-	var infoList []map[string]types.InfoItem
-
-	for i := 0; i < len(data); i++ {
-		infoList = append(infoList, tb.getTempModelData(data[i], params, []string{}))
+	infoList := make([]map[string]types.InfoItem, len(data))
+	for i, d := range data {
+		infoList[i] = tb.getTempModelData(d, params, nil)
 	}
 
-	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, []string{})
+	thead, _, _, _, _, filterForm := tb.getTheadAndFilterForm(params, nil)
 
 	return PanelInfo{
 		Thead:    thead,
@@ -245,7 +244,7 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 }
 
 func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columns Columns) map[string]types.InfoItem {
-	var tempModelData = map[string]types.InfoItem{
+	tempModelData := map[string]types.InfoItem{
 		"__goadmin_edit_params"  : {},
 		"__goadmin_delete_params": {},
 		"__goadmin_detail_params": {},
@@ -718,8 +717,11 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 				for _, join := range formField.Joins {
 					joinTableName := join.GetTableName(delim, delim2)
 					if _, ok := joinTabMap[joinTableName]; !ok {
-						if joinTabMap == nil { joinTabMap = map[string]struct{}{} }
-						joinTabMap[joinTableName] = struct{}{}
+						if joinTabMap == nil {
+							joinTabMap = map[string]struct{}{ joinTableName: {} }
+						} else {
+							joinTabMap[joinTableName] = struct{}{}
+						}
 						if join.BaseTable == "" {
 							join.BaseTable = tableName
 						}
@@ -735,7 +737,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 						joins.WriteString(delim)
 						joins.WriteString(join.JoinField)
 						joins.WriteString(delim2)
-						joins.WriteString(" = ")
+						joins.WriteByte('=')
 						joins.WriteString(join.BaseTable)
 						joins.WriteByte('.')
 						joins.WriteString(delim)
@@ -847,14 +849,13 @@ func (tb *DefaultTable) UpdateData(dataList form.Values) error {
 			dataList.Add(form.PostResultKey, errMsg)
 			go func() {
 				defer func() {
-					if err := recover(); err != nil {
-						logger.Error(err)
-						//logger.Error(string(debug.Stack()))
+					if r := recover(); r != nil {
+						logger.Error(r)
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 
-				err := tb.Form.PostHook(dataList)
-				if err != nil {
+				if err := tb.Form.PostHook(dataList); err != nil {
 					logger.Error(err)
 				}
 			}()
@@ -918,9 +919,9 @@ func (tb *DefaultTable) InsertData(dataList form.Values) error {
 			dataList.Add(form.PostResultKey, errMsg)
 			go func() {
 				defer func() {
-					if err := recover(); err != nil {
-						logger.Error(err)
-						//logger.Error(string(debug.Stack()))
+					if r := recover(); r != nil {
+						logger.Error(r)
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 				if err := f.PostHook(dataList); err != nil {
@@ -1077,7 +1078,7 @@ func (tb *DefaultTable) DeleteData(id string) error {
 				defer func() {
 					if r := recover(); r != nil {
 						logger.Error(r)
-						//logger.Error(string(debug.Stack()))
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 				if hookErr := tb.Info.DeleteHook(ids); hookErr != nil {
@@ -1093,7 +1094,7 @@ func (tb *DefaultTable) DeleteData(id string) error {
 				defer func() {
 					if r := recover(); r != nil {
 						logger.Error(r)
-						//logger.Error(string(debug.Stack()))
+						logger.Error(string(debug.Stack()))
 					}
 				}()
 				if hookErr := tb.Info.DeleteHookWithRes(ids, err); hookErr != nil {
@@ -1126,7 +1127,7 @@ func (tb *DefaultTable) DeleteData(id string) error {
 func (tb *DefaultTable) GetNewFormInfo() FormInfo {
 	f := tb.GetActualNewForm()
 	if len(f.TabGroups) == 0 {
-		return FormInfo{FieldList: f.FieldsWithDefaultValue(tb.sqlObjOrNil)}
+		return FormInfo{ FieldList: f.FieldsWithDefaultValue(tb.sqlObjOrNil) }
 	}
 	newForm, headers := f.GroupField(tb.sqlObjOrNil)
 	return FormInfo{GroupFieldList: newForm, GroupFieldHeaders: headers}

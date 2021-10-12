@@ -1,8 +1,8 @@
 package chartjs
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"html/template"
 	"strings"
 
@@ -11,19 +11,16 @@ import (
 
 type PieChart struct {
 	*Chart
-
 	JsContent PieJsContent
 }
 
 type PieJsContent struct {
 	JsContent
-
 	Data PieAttributes `json:"data"`
 }
 
 type PieAttributes struct {
 	Attributes
-
 	DataSets PieDataSets `json:"datasets"`
 }
 
@@ -215,12 +212,12 @@ func (l *PieChart) GetContent() template.HTML {
 		l.JsContent.Options = l.JsContentOptions
 	}
 
-	jsonByte, _ := json.Marshal(l.JsContent)
-	l.Js = template.JS(string(jsonByte))
+	jsonByte, _ := utils.JsonMarshal(l.JsContent)
+	l.Js = template.JS(jsonByte)
 
 	err := tmpl.ExecuteTemplate(&sb, defineName, l)
 	if err != nil {
-		fmt.Println("ComposeHtml Error:", err)
+		logger.Error("ComposeHtml Error:", err)
 	}
 	return template.HTML(sb.String())
 }

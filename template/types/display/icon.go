@@ -14,16 +14,15 @@ func init() {
 }
 
 func (i *Icon) Get(args ...interface{}) types.FieldFilterFn {
+	icons := args[0].(map[string]string)
+	defaultIcon := ""
+	if len(args) > 1 {
+		defaultIcon = args[1].(string)
+	}
+
 	return func(value types.FieldModel) interface{} {
-		icons := args[0].(map[string]string)
-		defaultIcon := ""
-		if len(args) > 1 {
-			defaultIcon = args[1].(string)
-		}
-		for k, iconClass := range icons {
-			if k == value.Value {
-				return icon.Icon(iconClass)
-			}
+		if iconClass, ok := icons[value.Value]; ok {
+			return icon.Icon(iconClass)
 		}
 		if defaultIcon != "" {
 			return icon.Icon(defaultIcon)

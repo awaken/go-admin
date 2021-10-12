@@ -1,10 +1,10 @@
 package types
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
@@ -75,11 +75,9 @@ type InfoItem struct {
 type InfoList []map[string]InfoItem
 
 func (il InfoList) GroupBy(groups TabGroups) []InfoList {
-	var res = make([]InfoList, len(groups))
-
+	res := make([]InfoList, len(groups))
 	for i, value := range groups {
 		newInfoList := make(InfoList, len(il))
-
 		for j, info := range il {
 			newRow := make(map[string]InfoItem)
 			for k, m := range info {
@@ -89,10 +87,8 @@ func (il InfoList) GroupBy(groups TabGroups) []InfoList {
 			}
 			newInfoList[j] = newRow
 		}
-
 		res[i] = newInfoList
 	}
-
 	return res
 }
 
@@ -181,25 +177,24 @@ type FilterFormField struct {
 }
 
 func (f Field) GetFilterFormFields(params parameter.Parameters, headField string, sqls ...*db.SQL) []FormField {
-	var (
-		filterForm               []FormField
-		value, value2, keySuffix string
-		sql                      *db.SQL
-	)
+	var value, value2, keySuffix string
+	var sql *db.SQL
 	if len(sqls) > 0 { sql = sqls[0] }
+
+	filterForm := make([]FormField, 0, len(f.FilterFormFields))
 	headFieldWithKeySuffix := headField
 
-	for index, filter := range f.FilterFormFields {
-		if index > 0 {
-			keySuffix = parameter.FilterParamCountInfix + strconv.Itoa(index)
+	for i, filter := range f.FilterFormFields {
+		if i > 0 {
+			keySuffix = parameter.FilterParamCountInfix + strconv.Itoa(i)
 			headFieldWithKeySuffix += keySuffix
 		}
 
 		if filter.Type.IsRange() {
-			value = params.GetFilterFieldValueStart(headField)
+			value  = params.GetFilterFieldValueStart(headField)
 			value2 = params.GetFilterFieldValueEnd(headField)
 		} else if filter.Type.IsMultiSelect() {
-			value = params.GetFieldValuesStr(headField)
+			value  = params.GetFieldValuesStr(headField)
 		} else {
 			if filter.Operator == FilterOperatorFree {
 				value2 = GetOperatorFromValue(params.GetFieldOperator(headField, keySuffix)).String()
@@ -215,11 +210,11 @@ func (f Field) GetFilterFormFields(params parameter.Parameters, headField string
 		if filter.OptionExt == "" {
 			op1, op2, js := filter.Type.GetDefaultOptions(headFieldWithKeySuffix)
 			if op1 != nil {
-				s, _ := json.Marshal(op1)
+				s, _ := utils.JsonMarshal(op1)
 				optionExt1 = template.JS(s)
 			}
 			if op2 != nil {
-				s, _ := json.Marshal(op2)
+				s, _ := utils.JsonMarshal(op2)
 				optionExt2 = template.JS(s)
 			}
 			if js != "" {
@@ -293,15 +288,17 @@ type TableInfo struct {
 
 func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parameters, columns []string, sqlFuncs ...func() *db.SQL) (Thead, string, string, string, []string, []FormField) {
 	var (
-		sql        *db.SQL
-		thead      Thead
 		fields     strings.Builder
 		joinFields strings.Builder
 		joins      strings.Builder
 		joinTables []string
-		filterForm []FormField
+		sql        func() *db.SQL
 	)
-	if len(sqlFuncs) > 0 { sql = sqlFuncs[0]() }
+	if len(sqlFuncs) > 0 { sql = sqlFuncs[0] }
+	if sql == nil { sql = db.NilSQL }
+
+	thead      := make(Thead      , 0, len(f))
+	filterForm := make([]FormField, 0, len(f))
 	fields.Grow(256)
 
 	for _, field := range f {
@@ -320,7 +317,7 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 
 		if field.Joins.Valid() {
 			lastJoin := field.Joins.Last()
-			headField = lastJoin.GetTableName() + parameter.FilterParamJoinInfix + field.Field
+			headField = utils.StrConcat(lastJoin.GetTableName(), parameter.FilterParamJoinInfix, field.Field)
 			var sb strings.Builder
 			sb.Grow(64)
 			sb.WriteString(lastJoin.GetTableName(info.Delimiter, info.Delimiter2))
@@ -354,12 +351,12 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 		}
 
 		if field.Filterable {
-			filterForm = append(filterForm, field.GetFilterFormFields(params, headField, sql)...)
+			filterForm = append(filterForm, field.GetFilterFormFields(params, headField, sql())...)
 		}
-
 		if field.Hide {
 			continue
 		}
+
 		thead = append(thead, TheadItem{
 			Head:       field.Head,
 			Sortable:   field.Sortable,
@@ -377,11 +374,11 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 
 func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns []string) (Thead, string, string) {
 	var (
-		thead      Thead
 		fields     strings.Builder
 		joins      strings.Builder
 		joinTables []string
 	)
+	thead := make(Thead, 0, len(f))
 	fields.Grow(256)
 
 	for _, field := range f {
@@ -423,7 +420,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 					joins.WriteString(info.Delimiter)
 					joins.WriteString(join.JoinField)
 					joins.WriteString(info.Delimiter2)
-					joins.WriteString(" = ")
+					joins.WriteByte('=')
 					joins.WriteString(info.Delimiter)
 					joins.WriteString(join.BaseTable)
 					joins.WriteString(info.Delimiter2)
@@ -438,6 +435,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 		if field.Hide {
 			continue
 		}
+
 		thead = append(thead, TheadItem{
 			Head:       field.Head,
 			Sortable:   field.Sortable,
@@ -477,10 +475,8 @@ func (f FieldList) GetFieldJoinTable(key string) string {
 
 func (f FieldList) GetFieldByFieldName(name string) Field {
 	for _, field := range f {
-		if field.Field == name {
-			return field
-		}
-		if JoinField(field.Joins.Last().GetTableName(), field.Field) == name {
+		switch name {
+		case field.Field, JoinField(field.Joins.Last().GetTableName(), field.Field):
 			return field
 		}
 	}
@@ -511,7 +507,7 @@ type Join struct {
 type Joins []Join
 
 func JoinField(table, field string) string {
-	return table + parameter.FilterParamJoinInfix + field
+	return utils.StrConcat(table, parameter.FilterParamJoinInfix, field)
 }
 
 func GetJoinField(field string) string {
@@ -519,8 +515,8 @@ func GetJoinField(field string) string {
 }
 
 func (j Joins) Valid() bool {
-	for i := 0; i < len(j); i++ {
-		if j[i].Valid() {
+	for _, e := range j {
+		if e.Valid() {
 			return true
 		}
 	}
@@ -804,9 +800,9 @@ type Handler func(ctx *context.Context) (success bool, msg string, data interfac
 func (h Handler) Wrap() context.Handler {
 	return func(ctx *context.Context) {
 		defer func() {
-			if err := recover(); err != nil {
-				logger.Error(err)
-				//logger.Error(string(debug.Stack()))
+			if r := recover(); r != nil {
+				logger.Error(r)
+				logger.Error(string(debug.Stack()))
 
 				ctx.JSON(http.StatusInternalServerError, map[string]interface{}{
 					"code": 500,
@@ -1153,10 +1149,6 @@ func (i *InfoPanel) AddField(head, field string, typeName db.DatabaseType) *Info
 	return i
 }
 
-func noopDisplay(value FieldModel) interface{} {
-	return value.Value
-}
-
 func (i *InfoPanel) AddFilter(head, field string, typeName db.DatabaseType, fn UpdateParametersFn, filterType ...FilterType) *InfoPanel {
 	return i.AddField(head, field, typeName).FieldHide().FieldFilterable(filterType...).AddUpdateParametersFn(fn)
 }
@@ -1387,7 +1379,7 @@ func (i *InfoPanel) FieldFilterable(filterType ...FilterType) *InfoPanel {
 			}
 			//ff.Placeholder = modules.AorB(filter.Placeholder == "", language.Get("input")+" "+ff.Head, filter.Placeholder)
 			if len(filter.OptionExt) > 0 {
-				s, _ := json.Marshal(filter.OptionExt)
+				s, _ := utils.JsonMarshal(filter.OptionExt)
 				ff.OptionExt = template.JS(s)
 			}
 			curField.FilterFormFields = append(curField.FilterFormFields, ff)
@@ -1424,7 +1416,7 @@ func (i *InfoPanel) FieldFilterProcess(process func(string) string) *InfoPanel {
 }
 
 func (i *InfoPanel) FieldFilterOptionExt(m map[string]interface{}) *InfoPanel {
-	s, _ := json.Marshal(m)
+	s, _ := utils.JsonMarshal(m)
 	i.FieldList[i.curFieldListIndex].FilterFormFields[0].OptionExt = template.JS(s)
 	return i
 }

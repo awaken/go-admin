@@ -34,10 +34,8 @@ import (
 
 // ShowInfo show info page.
 func (h *Handler) ShowInfo(ctx *context.Context) {
-
 	prefix := ctx.Query(constant.PrefixKey)
-
-	panel := h.table(prefix, ctx)
+	panel  := h.table(prefix, ctx)
 
 	if panel.GetOnlyUpdateForm() {
 		ctx.Redirect(h.routePathWithPrefix("show_edit", prefix))
@@ -54,21 +52,19 @@ func (h *Handler) ShowInfo(ctx *context.Context) {
 		return
 	}
 
-	params := parameter.GetParam(ctx.Request.URL, panel.GetInfo().DefaultPageSize, panel.GetInfo().SortField,
-		panel.GetInfo().GetSort())
+	info   := panel.GetInfo()
+	params := parameter.GetParam(ctx.Request.URL, info.DefaultPageSize, info.SortField, info.GetSort())
 
 	buf := h.showTable(ctx, prefix, params, panel)
 	ctx.HTML(http.StatusOK, buf.String())
 }
 
-func (h *Handler) showTableData(ctx *context.Context, prefix string, params parameter.Parameters,
-	panel table.Table, urlNamePrefix string) (table.Table, table.PanelInfo, []string, error) {
+func (h *Handler) showTableData(ctx *context.Context, prefix string, params parameter.Parameters, panel table.Table, urlNamePrefix string) (table.Table, table.PanelInfo, []string, error) {
 	if panel == nil {
 		panel = h.table(prefix, ctx)
 	}
 
 	panelInfo, err := panel.GetData(params.WithIsAll(false))
-
 	if err != nil {
 		return panel, panelInfo, nil, err
 	}
@@ -94,11 +90,10 @@ func (h *Handler) showTableData(ctx *context.Context, prefix string, params para
 	exportUrl = user.GetCheckPermissionByUrlMethod(exportUrl, h.route(urlNamePrefix + "export").Method())
 	detailUrl = user.GetCheckPermissionByUrlMethod(detailUrl, h.route(urlNamePrefix + "detail").Method())
 
-	return panel, panelInfo, []string{editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl, updateUrl}, nil
+	return panel, panelInfo, []string{ editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl, updateUrl }, nil
 }
 
 func (h *Handler) showTable(ctx *context.Context, prefix string, params parameter.Parameters, panel table.Table) *bytes.Buffer {
-
 	panel, panelInfo, urls, err := h.showTableData(ctx, prefix, params, panel, "")
 	if err != nil {
 		return h.Execute(ctx, auth.Auth(ctx),
@@ -164,7 +159,8 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 				html.A(icon.Icon(icon.EllipsisV),
 					html.M{"color": "#676565"},
 					html.M{"href": "#"},
-				), html.M{"cursor": "pointer", "width": "100%"}, html.M{"class": "dropdown-toggle", "data-toggle": "dropdown"})+
+				),
+				html.M{"cursor": "pointer", "width": "100%"}, html.M{"class": "dropdown-toggle", "data-toggle": "dropdown"}) +
 				html.Ul(content,
 					html.M{"min-width": "20px !important", "left": "-32px", "overflow": "hidden"},
 					html.M{"class": "dropdown-menu", "role": "menu", "aria-labelledby": "dLabel"}),
@@ -180,7 +176,6 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 	btns, btnsJs := info.Buttons.CheckPermissionWhenURLAndMethodNotEmpty(user).Content()
 
 	if info.TabGroups.Valid() {
-
 		dataTable = aDataTable().
 			SetThead(panelInfo.Thead).
 			SetDeleteUrl(deleteUrl).
@@ -192,6 +187,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 			infoListArr = panelInfo.InfoList.GroupBy(info.TabGroups)
 			theadArr    = panelInfo.Thead.GroupBy(info.TabGroups)
 		)
+
 		for key, header := range info.TabHeaders {
 			tabsHtml[key] = map[string]template2.HTML{
 				"title": template2.HTML(header),
@@ -268,9 +264,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 				SetMethod("get").
 				SetLayout(info.FilterFormLayout).
 				SetUrl(infoUrl). //  + params.GetFixedParamStrWithoutColumnsAndPage()
-				SetHiddenFields(map[string]string{
-					form.NoAnimationKey: "true",
-				}).
+				SetHiddenFields(map[string]string{ form.NoAnimationKey: "true" }).
 				SetOperationFooter(filterFormFooter(infoUrl)).
 				GetContent())
 	}
@@ -281,10 +275,10 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 		content = info.Wrapper(content)
 	}
 
-	interval := make([]int, 0)
+	var interval []int
 	autoRefresh := info.AutoRefresh != uint(0)
 	if autoRefresh {
-		interval = append(interval, int(info.AutoRefresh))
+		interval = []int{ int(info.AutoRefresh) }
 	}
 
 	return h.Execute(ctx, user, types.Panel{
@@ -294,7 +288,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 		MiniSidebar:     info.HideSideBar,
 		AutoRefresh:     autoRefresh,
 		RefreshInterval: interval,
-	}, "", template.ExecuteOptions{Animation: params.Animation, NoCompress: info.NoCompress})
+	}, "", template.ExecuteOptions{ Animation: params.Animation, NoCompress: info.NoCompress })
 }
 
 // Assets return front-end assets according the request path.
@@ -380,9 +374,8 @@ func (h *Handler) Export(ctx *context.Context) {
 		}
 	}
 
-	// TODO: support any numbers of fields.
-	orders := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
-
+	// TODO: support any number of fields.
+	orders := []string{ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" }
 	if len(infoData.Thead) > 26 {
 		j := -1
 		n := len(infoData.Thead) - 26
@@ -422,7 +415,6 @@ func (h *Handler) Export(ctx *context.Context) {
 	}
 
 	buf, err := f.WriteToBuffer()
-
 	if err != nil || buf == nil {
 		response.Error(ctx, "export error")
 		return

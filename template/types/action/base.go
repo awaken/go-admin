@@ -1,7 +1,6 @@
 package action
 
 import (
-	"encoding/json"
 	"html/template"
 
 	"github.com/GoAdminGroup/go-admin/context"
@@ -24,7 +23,7 @@ func (a AjaxData) Add(m map[string]interface{}) AjaxData {
 }
 
 func (a AjaxData) JSON() string {
-	b, _ := json.Marshal(a)
+	b, _ := utils.JsonMarshal(a)
 	return utils.JsonTmplReplacer.Replace(string(b))
 }
 

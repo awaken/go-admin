@@ -204,12 +204,13 @@ func (f FieldDisplay) ToDisplayStringArrayArray(value FieldModel) [][]string {
 }
 
 func (f FieldDisplay) AddLimit(limit int) DisplayProcessFnChains {
-	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
-		if limit > len(value.Value) {
-			return value
-		} else if limit < 0 {
+	if limit <= 0 {
+		return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
 			return ""
-		}
+		})
+	}
+	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
+		if limit > len(value.Value) { return value.Value }
 		return value.Value[:limit]
 	})
 }
@@ -219,16 +220,15 @@ func (f FieldDisplay) AddTrimSpace() DisplayProcessFnChains {
 }
 
 func (f FieldDisplay) AddSubstr(start int, end int) DisplayProcessFnChains {
-	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
-		if start > end || start > len(value.Value) || end < 0 {
+	if start < 0 { start = 0 }
+	if start >= end || end < 0 {
+		return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
 			return ""
-		}
-		if start < 0 {
-			start = 0
-		}
-		if end > len(value.Value) {
-			end = len(value.Value)
-		}
+		})
+	}
+	return f.DisplayProcessChains.Add(func(value FieldModel) interface{} {
+		if start >= len(value.Value) { return "" }
+		if end   >= len(value.Value) { return value.Value[start:] }
 		return value.Value[start:end]
 	})
 }
@@ -260,18 +260,14 @@ func (d DisplayProcessFnChains) Append(f DisplayProcessFnChains) DisplayProcessF
 }
 
 func (d DisplayProcessFnChains) Copy() DisplayProcessFnChains {
-	if len(d) == 0 {
-		return nil
-	}
+	if len(d) == 0 { return nil }
 	newDisplayProcessFnChains := make(DisplayProcessFnChains, len(d))
 	copy(newDisplayProcessFnChains, d)
 	return newDisplayProcessFnChains
 }
 
 func chooseDisplayProcessChains(internal DisplayProcessFnChains) DisplayProcessFnChains {
-	if len(internal) > 0 {
-		return internal
-	}
+	if len(internal) > 0 { return internal }
 	return globalDisplayProcessChains.Copy()
 }
 
@@ -314,12 +310,13 @@ func AddXssJsFilter() DisplayProcessFnChains {
 }
 
 func addLimit(limit int, chains DisplayProcessFnChains) DisplayProcessFnChains {
-	return chains.Add(func(value FieldModel) interface{} {
-		if limit > len(value.Value) {
-			return value
-		} else if limit < 0 {
+	if limit <= 0 {
+		return chains.Add(func(value FieldModel) interface{} {
 			return ""
-		}
+		})
+	}
+	return chains.Add(func(value FieldModel) interface{} {
+		if limit > len(value.Value) { return value.Value }
 		return value.Value[:limit]
 	})
 }
@@ -333,17 +330,20 @@ func trimSpaceFilter(value FieldModel) interface{} {
 }
 
 func addSubstr(start int, end int, chains DisplayProcessFnChains) DisplayProcessFnChains {
+	if start < 0 { start = 0 }
+	if start >= end || end < 0 {
+		return chains.Add(func(value FieldModel) interface{} {
+			return func(value FieldModel) interface{} {
+				return ""
+			}
+		})
+	}
 	return chains.Add(func(value FieldModel) interface{} {
-		if start > end || start > len(value.Value) || end < 0 {
-			return ""
+		return func(value FieldModel) interface{} {
+			if start >= len(value.Value) { return "" }
+			if end   >= len(value.Value) { return value.Value[start:] }
+			return value.Value[start:end]
 		}
-		if start < 0 {
-			start = 0
-		}
-		if end > len(value.Value) {
-			end = len(value.Value)
-		}
-		return value.Value[start:end]
 	})
 }
 
@@ -397,9 +397,7 @@ func setDefaultDisplayFnOfFormType(f *FormPanel, typ form.Type) {
 }
 
 func multiFileFilter(value FieldModel) interface{} {
-	if value.Value == "" {
-		return ""
-	}
+	if value.Value == "" { return "" }
 	arr := strings.Split(value.Value, ",")
 	store := config.GetStore()
 	var sb strings.Builder

@@ -1794,17 +1794,15 @@ func lg(v string) string {
 func defaultFilterFn(val string, def ...string) types.FieldFilterFn {
 	if len(def) > 0 {
 		defValue := def[0]
-		return func(value types.FieldModel) interface{} {
-			if value.Value == defValue {
-				return val
+		if defValue != "" {
+			return func(value types.FieldModel) interface{} {
+				if value.Value == defValue { return val }
+				return value.Value
 			}
-			return value.Value
 		}
 	}
 	return func(value types.FieldModel) interface{} {
-		if value.Value == "" {
-			return val
-		}
+		if value.Value == "" { return val }
 		return value.Value
 	}
 }
@@ -1826,9 +1824,7 @@ func link(url, content string) tmpl.HTML {
 }
 
 func escape(s string) string {
-	if s == "" {
-		return ""
-	}
+	if s == "" { return "" }
 	s, err := url.QueryUnescape(s)
 	if err != nil {
 		logger.Error("escape error", err)
@@ -1863,8 +1859,8 @@ func interfaces(arr []string) []interface{} {
 func addSwitchForTool(formList *types.FormPanel, head, field, def string, row ...int) {
 	formList.AddField(lgWithScore(head, "tool"), field, db.Varchar, form.Switch).
 		FieldOptions(types.FieldOptions{
-			{Text: lgWithScore("show", "tool"), Value: "n"},
-			{Text: lgWithScore("hide", "tool"), Value: "y"},
+			{ Text: lgWithScore("show", "tool"), Value: "n" },
+			{ Text: lgWithScore("hide", "tool"), Value: "y" },
 		}).FieldDefault(def)
 	if len(row) > 0 {
 		formList.FieldRowWidth(row[0])
