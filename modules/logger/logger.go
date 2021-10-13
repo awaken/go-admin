@@ -184,10 +184,6 @@ type Config struct {
 
 	SqlLogOpen bool
 
-	InfoLogPath   string
-	ErrorLogPath  string
-	AccessLogPath string
-
 	AccessAssetsLogOff bool
 
 	Rotate RotateCfg
@@ -199,11 +195,8 @@ type Config struct {
 }
 
 func InitWithConfig(cfg Config) {
-	logger.infoLogPath = cfg.InfoLogPath
 	logger.infoLogOff = cfg.InfoLogOff
-	logger.errorLogPath = cfg.ErrorLogPath
 	logger.errorLogOff = cfg.ErrorLogOff
-	logger.accessLogPath = cfg.AccessLogPath
 	logger.accessLogOff = cfg.AccessLogOff
 	logger.sqlLogOpen = cfg.SqlLogOpen
 	logger.accessAssetsLogOff = cfg.AccessAssetsLogOff

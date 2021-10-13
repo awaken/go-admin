@@ -1141,7 +1141,7 @@ func (i *InfoPanel) AddField(head, field string, typeName db.DatabaseType) *Info
 		TypeName: typeName,
 		EditType: table.Text,
 		FieldDisplay: FieldDisplay{
-			Display: noopDisplay,
+			Display:              NoopFieldDisplay,
 			DisplayProcessChains: chooseDisplayProcessChains(i.processChains),
 		},
 	})
@@ -1377,7 +1377,7 @@ func (i *InfoPanel) FieldFilterable(filterType ...FilterType) *InfoPanel {
 			} else {
 				ff.Placeholder = filter.Placeholder
 			}
-			//ff.Placeholder = modules.AorB(filter.Placeholder == "", language.Get("input")+" "+ff.Head, filter.Placeholder)
+			//ff.Placeholder = modules.AorB(filter.Placeholder == "", language.MustGet("input")+" "+ff.Head, filter.Placeholder)
 			if len(filter.OptionExt) > 0 {
 				s, _ := utils.JsonMarshal(filter.OptionExt)
 				ff.OptionExt = template.JS(s)

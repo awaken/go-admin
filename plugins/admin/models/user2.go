@@ -40,6 +40,10 @@ func (t UserModel) IsDisabled() bool {
 	return t.Disabled == UserDisabledValue
 }
 
+func (t UserModel) IsValid() bool {
+	return t.Id != 0 && t.Disabled != UserDisabledValue
+}
+
 func (t UserModel) IsRootAdmin() bool {
 	return t.Root == StrTrue
 }

@@ -212,8 +212,6 @@ func buildProjectWeb(port string) {
 				AccessLogPath:     rootPath + "/logs/access.log",
 				ErrorLogPath:      rootPath + "/logs/error.log",
 				InfoLogPath:       rootPath + "/logs/info.log",
-				BootstrapFilePath: rootPath + "/bootstrap.go",
-				GoModFilePath:     rootPath + "/go.mod",
 				Logo:              template.HTML(r.PostFormValue("sidebar_logo")),
 				LoginLogo:         template.HTML(r.PostFormValue("login_page_logo")),
 				MiniLogo:          template.HTML(r.PostFormValue("sidebar_min_logo")),

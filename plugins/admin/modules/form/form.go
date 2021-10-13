@@ -27,9 +27,7 @@ type Values map[string][]string
 // the empty string. To access multiple values, use the map
 // directly.
 func (f Values) Get(key string) string {
-	if len(f[key]) > 0 {
-		return f[key][0]
-	}
+	if len(f[key]) > 0 { return f[key][0] }
 	return ""
 }
 
@@ -66,7 +64,7 @@ func (f Values) Delete(key string) {
 
 // ToMap turn the values to a map[string]string type.
 func (f Values) ToMap() map[string]string {
-	var m = make(map[string]string)
+	m := make(map[string]string)
 	for key, v := range f {
 		if len(v) > 0 {
 			m[key] = v[0]

@@ -17,7 +17,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
-	template2 "html/template"
 	"net/http"
 )
 
@@ -27,7 +26,7 @@ func (h *Handler) ShowForm(ctx *context.Context) {
 	h.showForm(ctx, "", param.Prefix, param.Param, false)
 }
 
-func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix string, param parameter.Parameters, isEdit bool, animation ...bool) {
+func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix string, param parameter.Parameters, isEdit bool, animation ...bool) {
 	panel := h.table(prefix, ctx)
 	f     := panel.GetForm()
 
@@ -120,8 +119,8 @@ func (h *Handler) showForm(ctx *context.Context, alert template2.HTML, prefix st
 
 	h.HTML(ctx, user, types.Panel{
 		Content:     alert + content,
-		Description: template2.HTML(formInfo.Description),
-		Title:       modules.AorBHTML(isNotIframe, template2.HTML(formInfo.Title), ""),
+		Description: template.HTML(formInfo.Description),
+		Title:       modules.AorBHTML(isNotIframe, template.HTML(formInfo.Title), ""),
 		MiniSidebar: f.HideSideBar,
 	}, template.ExecuteOptions{Animation: alert == "" || ((len(animation) > 0) && animation[0]), NoCompress: f.NoCompress})
 

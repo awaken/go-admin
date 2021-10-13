@@ -476,7 +476,7 @@ func (f *FormPanel) AddField(head, field string, filedType db.DatabaseType, form
 		Placeholder: language.Get("input") + " " + head,
 		FormType:    formType,
 		FieldDisplay: FieldDisplay{
-			Display: noopDisplay,
+			Display:              NoopFieldDisplay,
 			DisplayProcessChains: chooseDisplayProcessChains(f.processChains),
 		},
 	})
@@ -522,7 +522,7 @@ func (f *FormPanel) AddTable(head, field string, addFields AddFormFieldFn) *Form
 		TableFields: fields,
 		FormType:    form2.Table,
 		FieldDisplay: FieldDisplay{
-			Display: noopDisplay,
+			Display:              NoopFieldDisplay,
 			DisplayProcessChains: chooseDisplayProcessChains(f.processChains),
 		},
 	})

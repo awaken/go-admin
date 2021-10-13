@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/controller"
-	template2 "html/template"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -56,19 +55,19 @@ type Engine struct {
 
 // Default return the default engine instance.
 func Default() *Engine {
-	engine = &Engine{
-		Adapter:    defaultAdapter,
-		Services:   service.GetServices(),
-		NavButtons: new(types.Buttons),
+	if engine == nil {
+		engine = &Engine{
+			Adapter:    defaultAdapter,
+			Services:   service.GetServices(),
+			NavButtons: new(types.Buttons),
+		}
 	}
 	return engine
 }
 
 // Use enable the adapter.
 func (eng *Engine) Use(router interface{}) error {
-	if eng.Adapter == nil {
-		emptyAdapterPanic()
-	}
+	if eng.Adapter == nil { emptyAdapterPanic() }
 
 	eng.Services.Add(auth.InitCSRFTokenSrv(eng.DefaultConnection()))
 	eng.initSiteSetting()
@@ -138,7 +137,7 @@ func (eng *Engine) setConfig(cfg *config.Config) *Engine {
 
 // InitDatabase initialize all database connection.
 func (eng *Engine) initDatabase() *Engine {
-	//printInitMsg(language.Get("initialize database connections"))
+	//printInitMsg(language.MustGet("initialize database connections"))
 	for driver, databaseCfg := range eng.config.Databases.GroupByDriver() {
 		eng.Services.Add(driver, db.GetConnectionByDriver(driver).InitDB(databaseCfg))
 	}
@@ -152,28 +151,31 @@ func (eng *Engine) initDatabase() *Engine {
 }
 
 // AddAdapter add the adapter of engine.
-func (eng *Engine) AddAdapter(ada adapter.WebFrameWork) *Engine {
-	eng.Adapter = ada
-	defaultAdapter = ada
+func (eng *Engine) AddAdapter(adapter adapter.WebFrameWork) *Engine {
+	eng.Adapter = adapter
+	defaultAdapter = adapter
 	return eng
 }
 
-// defaultAdapter is the default adapter of engine.
-var defaultAdapter adapter.WebFrameWork
+var (
+	// defaultAdapter is the default adapter of engine.
+	defaultAdapter adapter.WebFrameWork
 
-var engine *Engine
+	// engine is the default engine.
+	engine *Engine
 
-// navButtons is the default buttons in the navigation bar.
-var navButtons = new(types.Buttons)
+	// navButtons is the default buttons in the navigation bar.
+	navButtons = new(types.Buttons)
+)
 
 func emptyAdapterPanic() {
 	logger.Panic(language.Get("adapter is nil, import the default adapter or use AddAdapter method add the adapter"))
 }
 
 // Register set default adapter of engine.
-func Register(ada adapter.WebFrameWork) {
-	if ada == nil { emptyAdapterPanic() }
-	defaultAdapter = ada
+func Register(adapter adapter.WebFrameWork) {
+	if adapter == nil { emptyAdapterPanic() }
+	defaultAdapter = adapter
 }
 
 // User call the User method of defaultAdapter.
@@ -192,7 +194,7 @@ func (eng *Engine) User(ctx interface{}) (models.UserModel, bool) {
 
 // DB return the db connection of given driver.
 func (eng *Engine) DB(driver string) db.Connection {
-	return db.GetConnectionFromService(eng.Services.Get(driver))
+	return db.GetConnectionFromService(eng.Services.MustGet(driver))
 }
 
 // DefaultConnection return the default db connection.
@@ -202,22 +204,22 @@ func (eng *Engine) DefaultConnection() db.Connection {
 
 // MysqlConnection return the mysql db connection of given driver.
 func (eng *Engine) MysqlConnection() db.Connection {
-	return db.GetConnectionFromService(eng.Services.Get(db.DriverMysql))
+	return db.GetConnectionFromService(eng.Services.MustGet(db.DriverMysql))
 }
 
 // MssqlConnection return the mssql db connection of given driver.
 func (eng *Engine) MssqlConnection() db.Connection {
-	return db.GetConnectionFromService(eng.Services.Get(db.DriverMssql))
+	return db.GetConnectionFromService(eng.Services.MustGet(db.DriverMssql))
 }
 
 // PostgresqlConnection return the postgresql db connection of given driver.
 func (eng *Engine) PostgresqlConnection() db.Connection {
-	return db.GetConnectionFromService(eng.Services.Get(db.DriverPostgresql))
+	return db.GetConnectionFromService(eng.Services.MustGet(db.DriverPostgresql))
 }
 
 // SqliteConnection return the sqlite db connection of given driver.
 func (eng *Engine) SqliteConnection() db.Connection {
-	return db.GetConnectionFromService(eng.Services.Get(db.DriverSqlite))
+	return db.GetConnectionFromService(eng.Services.MustGet(db.DriverSqlite))
 }
 
 type ConnectionSetter func(db.Connection)
@@ -230,26 +232,22 @@ func (eng *Engine) ResolveConnection(setter ConnectionSetter, driver string) *En
 
 // ResolveMysqlConnection resolve the mysql connection.
 func (eng *Engine) ResolveMysqlConnection(setter ConnectionSetter) *Engine {
-	eng.ResolveConnection(setter, db.DriverMysql)
-	return eng
+	return eng.ResolveConnection(setter, db.DriverMysql)
 }
 
 // ResolveMssqlConnection resolve the mssql connection.
 func (eng *Engine) ResolveMssqlConnection(setter ConnectionSetter) *Engine {
-	eng.ResolveConnection(setter, db.DriverMssql)
-	return eng
+	return eng.ResolveConnection(setter, db.DriverMssql)
 }
 
 // ResolveSqliteConnection resolve the sqlite connection.
 func (eng *Engine) ResolveSqliteConnection(setter ConnectionSetter) *Engine {
-	eng.ResolveConnection(setter, db.DriverSqlite)
-	return eng
+	return eng.ResolveConnection(setter, db.DriverSqlite)
 }
 
 // ResolvePostgresqlConnection resolve the postgres connection.
 func (eng *Engine) ResolvePostgresqlConnection(setter ConnectionSetter) *Engine {
-	eng.ResolveConnection(setter, db.DriverPostgresql)
-	return eng
+	return eng.ResolveConnection(setter, db.DriverPostgresql)
 }
 
 type Setter func(*Engine)
@@ -305,7 +303,7 @@ func (eng *Engine) wrap(handler context.Handler) context.Handlers {
 // ============================
 
 // AddNavButtons add the nav buttons.
-func (eng *Engine) AddNavButtons(title template2.HTML, icon string, action types.Action) *Engine {
+func (eng *Engine) AddNavButtons(title template.HTML, icon string, action types.Action) *Engine {
 	btn := types.GetNavButton(title, icon, action)
 	*eng.NavButtons = append(*eng.NavButtons, btn)
 	return eng
@@ -340,7 +338,7 @@ func printInitMsg(msg string) {
 }
 
 func (eng *Engine) initJumpNavButtons() {
-	//printInitMsg(language.Get("initialize navigation buttons"))
+	//printInitMsg(language.MustGet("initialize navigation buttons"))
 	for _, param := range eng.initNavJumpButtonParams() {
 		eng.addJumpNavButton(param)
 	}
@@ -349,7 +347,7 @@ func (eng *Engine) initJumpNavButtons() {
 }
 
 func (eng *Engine) initPlugins() {
-	//printInitMsg(language.Get("initialize plugins"))
+	//printInitMsg(language.MustGet("initialize plugins"))
 	eng.AddPlugins(admin.NewAdmin()).AddPluginList(plugins.Get())
 	plugGenerators := make(table.GeneratorList)
 	for _, plugin := range eng.PluginList {
@@ -399,7 +397,7 @@ func (eng *Engine) initNavJumpButtonParams() []navJumpButtonParam {
 }
 
 func (eng *Engine) initSiteSetting() {
-	//printInitMsg(language.Get("initialize configuration"))
+	//printInitMsg(language.MustGet("initialize configuration"))
 	/*err := eng.config.Update(models.Site().
 		SetConn(eng.DefaultConnection()).
 		Init(eng.config.ToMap()).
@@ -444,7 +442,7 @@ func (eng *Engine) Data(method, url string, handler context.Handler, noAuth ...b
 
 // HTML inject the route and corresponding handler wrapped by the given function to the web framework.
 func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...bool) {
-	var handler = func(ctx *context.Context) {
+	handler := func(ctx *context.Context) {
 		panel, err := fn(ctx)
 		if err != nil {
 			panel = template.WarningPanel(err.Error())
@@ -454,12 +452,11 @@ func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...b
 
 		var (
 			tmpl, tmplName = template.Default().GetTemplate(ctx.IsPjax())
-
 			user = auth.Auth(ctx)
-			sb   strings.Builder
+			res  strings.Builder
 		)
 
-		hasError := tmpl.ExecuteTemplate(&sb, tmplName, types.NewPage(&types.NewPageParam{
+		hasError := tmpl.ExecuteTemplate(&res, tmplName, types.NewPage(&types.NewPageParam{
 			User:         user,
 			Menu:         menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(config.URLRemovePrefix(ctx.Path())),
 			Panel:        panel.GetContent(eng.config.IsProductionEnvironment()),
@@ -474,7 +471,7 @@ func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...b
 			logger.Error(fmt.Sprintf("error: %s adapter content, ", eng.Adapter.Name()), hasError)
 		}
 
-		ctx.HTML(http.StatusOK, sb.String())
+		ctx.HTML(http.StatusOK, res.String())
 	}
 
 	if len(noAuth) > 0 && noAuth[0] {
@@ -487,26 +484,26 @@ func (eng *Engine) HTML(method, url string, fn types.GetPanelInfoFn, noAuth ...b
 // HTMLFile inject the route and corresponding handler which returns the panel content of given html file path
 // to the web framework.
 func (eng *Engine) HTMLFile(method, url, path string, data map[string]interface{}, noAuth ...bool) {
-	var handler = func(ctx *context.Context) {
+	handler := func(ctx *context.Context) {
 		cbuf := new(bytes.Buffer)
 
-		t, err := template2.ParseFiles(path)
+		t, err := template.ParseFiles(path)
 		if err != nil {
 			eng.errorPanelHTML(ctx, cbuf, err)
 			return
-		} else if err := t.Execute(cbuf, data); err != nil {
+		}
+		if err = t.Execute(cbuf, data); err != nil {
 			eng.errorPanelHTML(ctx, cbuf, err)
 			return
 		}
 
 		var (
 			tmpl, tmplName = template.Default().GetTemplate(ctx.IsPjax())
-
 			user = auth.Auth(ctx)
-			sb   strings.Builder
+			res  strings.Builder
 		)
 
-		hasError := tmpl.ExecuteTemplate(&sb, tmplName, types.NewPage(&types.NewPageParam{
+		hasError := tmpl.ExecuteTemplate(&res, tmplName, types.NewPage(&types.NewPageParam{
 			User:         user,
 			Menu:         menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(eng.config.URLRemovePrefix(ctx.Path())),
 			Panel:        types.Panel{ Content: template.HTML(cbuf.String()) },
@@ -521,7 +518,7 @@ func (eng *Engine) HTMLFile(method, url, path string, data map[string]interface{
 			logger.Error(fmt.Sprintf("error: %s adapter content, ", eng.Adapter.Name()), hasError)
 		}
 
-		ctx.HTML(http.StatusOK, sb.String())
+		ctx.HTML(http.StatusOK, res.String())
 	}
 
 	if len(noAuth) > 0 && noAuth[0] {
@@ -549,23 +546,23 @@ func (eng *Engine) htmlFilesHandler(data map[string]interface{}, files ...string
 	return func(ctx *context.Context) {
 		cbuf := new(bytes.Buffer)
 
-		t, err := template2.ParseFiles(files...)
+		t, err := template.ParseFiles(files...)
 		if err != nil {
 			eng.errorPanelHTML(ctx, cbuf, err)
 			return
-		} else if err := t.Execute(cbuf, data); err != nil {
+		}
+		if err = t.Execute(cbuf, data); err != nil {
 			eng.errorPanelHTML(ctx, cbuf, err)
 			return
 		}
 
 		var (
 			tmpl, tmplName = template.Default().GetTemplate(ctx.IsPjax())
-
 			user = auth.Auth(ctx)
-			sb   strings.Builder
+			res  strings.Builder
 		)
 
-		hasError := tmpl.ExecuteTemplate(&sb, tmplName, types.NewPage(&types.NewPageParam{
+		hasError := tmpl.ExecuteTemplate(&res, tmplName, types.NewPage(&types.NewPageParam{
 			User:         user,
 			Menu:         menu.GetGlobalMenu(user, eng.Adapter.GetConnection(), ctx.Lang()).SetActiveClass(eng.config.URLRemovePrefix(ctx.Path())),
 			Panel:        types.Panel{ Content: template.HTML(cbuf.String()) },
@@ -580,7 +577,7 @@ func (eng *Engine) htmlFilesHandler(data map[string]interface{}, files ...string
 			logger.Error(fmt.Sprintf("error: %s adapter content, ", eng.Adapter.Name()), hasError)
 		}
 
-		ctx.HTML(http.StatusOK, sb.String())
+		ctx.HTML(http.StatusOK, res.String())
 	}
 }
 
@@ -616,18 +613,16 @@ func (eng *Engine) AddGenerators(list ...table.GeneratorList) *Engine {
 	plug, exist := eng.FindPluginByName("admin")
 	if exist {
 		plug.(*admin.Admin).AddGenerators(list...)
-		return eng
+	} else {
+		eng.PluginList = append(eng.PluginList, admin.NewAdmin(list...))
 	}
-	eng.PluginList = append(eng.PluginList, admin.NewAdmin(list...))
 	return eng
 }
 
 // AdminPlugin get the admin plugin. if not exist, create one.
 func (eng *Engine) AdminPlugin() *admin.Admin {
 	plug, exist := eng.FindPluginByName("admin")
-	if exist {
-		return plug.(*admin.Admin)
-	}
+	if exist { return plug.(*admin.Admin) }
 	adm := admin.NewAdmin()
 	eng.PluginList = append(eng.PluginList, adm)
 	return adm
@@ -641,7 +636,7 @@ func (eng *Engine) SetCaptcha(captcha map[string]string) *Engine {
 
 // SetCaptchaDriver set the captcha config with driver.
 func (eng *Engine) SetCaptchaDriver(driver string) *Engine {
-	eng.AdminPlugin().SetCaptcha(map[string]string{"driver": driver})
+	eng.AdminPlugin().SetCaptcha(map[string]string{ "driver": driver })
 	return eng
 }
 

@@ -5,11 +5,11 @@
 package auth
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/config"
 	"net/http"
 	"sync"
 
 	"github.com/GoAdminGroup/go-admin/context"
+	"github.com/GoAdminGroup/go-admin/modules/config"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
@@ -24,21 +24,14 @@ func Auth(ctx *context.Context) models.UserModel {
 	return ctx.User().(models.UserModel)
 }
 
-// Check check the password and username and return the user model.
-func Check(password string, username string, conn db.Connection) (user models.UserModel, ok bool) {
-	user = models.User().SetConn(conn).FindByUserName(username)
-	if user.IsEmpty() || user.IsDisabled() {
-		ok = false
-	} else {
-		if comparePassword(password, user.Password) {
-			ok = true
-			user = user.WithRoles().WithPermissions().WithMenus()
-			user.UpdatePwd(EncodePassword([]byte(password)))
-		} else {
-			ok = false
-		}
+// Check check username and password and return the user model.
+func Check(username, password string, conn db.Connection) (models.UserModel, bool) {
+	user := models.User().SetConn(conn).FindByUserName(username)
+	if !user.IsValid() || !comparePassword(password, user.Password) {
+		return user, false
 	}
-	return
+	//user.UpdatePwd(EncodePassword([]byte(password)))			// uncomment to enforce security: rewrite new hashed password at each successful access
+	return user.WithRoles().WithPermissions().WithMenus(), true
 }
 
 func comparePassword(comPwd, pwdHash string) bool {
@@ -55,9 +48,7 @@ func EncodePassword(pwd []byte) string {
 // SetCookie set the cookie.
 func SetCookie(ctx *context.Context, user models.UserModel, conn db.Connection) error {
 	ses, err := InitSession(ctx, conn)
-	if err != nil {
-		return err
-	}
+	if err != nil { return err }
 	return ses.Add("user_id", user.Id)
 }
 
@@ -75,9 +66,7 @@ func DefaultCookie() *http.Cookie {
 func DelCookie(ctx *context.Context, conn db.Connection) error {
 	ctx.SetCookie(DefaultCookie())
 	ses, err := InitSession(ctx, conn)
-	if err != nil {
-		return err
-	}
+	if err != nil { return err }
 	return ses.Clear()
 }
 
@@ -96,7 +85,7 @@ func InitCSRFTokenSrv(conn db.Connection) (string, service.Service) {
 		Where("values", "=", "__csrf_token__").
 		All()
 	if db.CheckError(err, db.QUERY) {
-		logger.Error("csrf token query from database error: ", err)
+		logger.Error("cannot retrieve csrf token from db: ", err)
 	}
 	tokens := make(CSRFToken, len(list))
 	for _, elem := range list {
@@ -104,7 +93,7 @@ func InitCSRFTokenSrv(conn db.Connection) (string, service.Service) {
 	}
 	return TokenServiceKey, &TokenService{
 		tokens: tokens,
-		conn:   conn,
+		conn  : conn,
 	}
 }
 
@@ -127,11 +116,11 @@ func (s *TokenService) AddToken() string {
 	tokenStr := modules.Uuid()
 	s.tokens[tokenStr] = struct{}{}
 	_, err := db.WithDriver(s.conn).Table("goadmin_session").Insert(dialect.H{
-		"sid":    tokenStr,
+		"sid"   : tokenStr,
 		"values": "__csrf_token__",
 	})
 	if db.CheckError(err, db.INSERT) {
-		logger.Error("csrf token insert into database error: ", err)
+		logger.Error("cannot insert csrf token into db: ", err)
 	}
 	return tokenStr
 }
@@ -143,11 +132,11 @@ func (s *TokenService) CheckToken(tokenToCheck string) bool {
 	if _, ok := s.tokens[tokenToCheck]; ok {
 		delete(s.tokens, tokenToCheck)
 		err := db.WithDriver(s.conn).Table("goadmin_session").
-			Where("sid", "=", tokenToCheck).
+			Where("sid"   , "=", tokenToCheck).
 			Where("values", "=", "__csrf_token__").
 			Delete()
 		if db.CheckError(err, db.DELETE) {
-			logger.Error("csrf token delete from database error: ", err)
+			logger.Error("cannot delete csrf token from db: ", err)
 		}
 		return true
 	}
@@ -175,7 +164,5 @@ func GetService(s interface{}) *Service {
 }
 
 func NewService(processor Processor) *Service {
-	return &Service{
-		P: processor,
-	}
+	return &Service{ P: processor }
 }

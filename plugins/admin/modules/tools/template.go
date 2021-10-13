@@ -11,8 +11,8 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/types/form"
 )
 
-func Get{{.TableTitle}}Table(ctx *context.Context) table.Table {
-	
+func MustGet{{.TableTitle}}Table(ctx *context.Context) table.Table {
+
 	{{if eq .Connection "default"}}
 	{{.Table}} := table.NewDefaultTable(table.DefaultConfigWithDriver("{{.Driver}}"))
 	{{else}}
@@ -54,10 +54,10 @@ func Get{{.TableTitle}}Table(ctx *context.Context) table.Table {
 		FieldHideWhenCreate(){{end -}}{{$field.ExtraFun}}
 	{{- end}}
 
-	{{if .HideContinueEditCheckBox}}formList.HideContinueEditCheckBox(){{end}} 
-	{{if .HideContinueNewCheckBox}}formList.HideContinueNewCheckBox(){{end}}  
-	{{if .HideResetButton}}formList.HideResetButton(){{end}}          
-	{{if .HideBackButton}}formList.HideBackButton(){{end}}           
+	{{if .HideContinueEditCheckBox}}formList.HideContinueEditCheckBox(){{end}}
+	{{if .HideContinueNewCheckBox}}formList.HideContinueNewCheckBox(){{end}}
+	{{if .HideResetButton}}formList.HideResetButton(){{end}}
+	{{if .HideBackButton}}formList.HideBackButton(){{end}}
 
 	formList.SetTable("{{.TableName}}").SetTitle("{{.FormTitle}}").SetDescription("{{.FormDescription}}")
 

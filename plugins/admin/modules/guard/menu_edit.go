@@ -39,7 +39,7 @@ func (g *Guard) MenuEdit(ctx *context.Context) {
 		alert          template.HTML
 	)
 
-	if !auth.GetTokenService(g.services.Get(auth.TokenServiceKey)).CheckToken(token) {
+	if !auth.GetTokenService(g.services.MustGet(auth.TokenServiceKey)).CheckToken(token) {
 		alert = getAlert(errors.EditFailWrongToken)
 	}
 

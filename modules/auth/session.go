@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/db/dialect"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 )
 
@@ -157,7 +157,6 @@ type DBDriver struct {
 // Load implements the PersistenceDriver.Load.
 func (driver *DBDriver) Load(sid string) (map[string]interface{}, error) {
 	sesModel, err := driver.table().Where("sid", "=", sid).First()
-
 	if db.CheckError(err, db.QUERY) {
 		return nil, err
 	}
@@ -179,30 +178,28 @@ func (driver *DBDriver) deleteOverdueSession() {
 		}
 	}()
 
-	var (
-		duration   = strconv.Itoa(config.GetSessionLifeTime() + 1000)
-		driverName = config.GetDatabases().GetDefault().Driver
-		raw        = ``
-	)
+	duration   := strconv.Itoa(config.GetSessionLifeTime() + 1000)
+	driverName := config.GetDatabases().GetDefault().Driver
+	raw        := ""
 
-	if db.DriverPostgresql == driverName {
-		raw = `extract(epoch from now()) - ` + duration + ` > extract(epoch from created_at)`
-	} else if db.DriverMysql == driverName {
+	switch driverName {
+	case db.DriverMysql:
 		raw = `unix_timestamp(created_at) < unix_timestamp() - ` + duration
-	} else if db.DriverSqlite == driverName {
-		raw = `strftime('%s', created_at) < strftime('%s', 'now') - ` + duration
-	} else if db.DriverMssql == driverName {
+	case db.DriverPostgresql:
+		raw = `extract(epoch from now()) - ` + duration + ` > extract(epoch from created_at)`
+	case db.DriverMssql:
 		raw = `DATEDIFF(second, [created_at], GETDATE()) > ` + duration
+	case db.DriverSqlite:
+		raw = `strftime('%s', created_at) < strftime('%s', 'now') - ` + duration
+	default:
+		return
 	}
 
-	if raw != "" {
-		_ = driver.table().WhereRaw(raw).Delete()
-	}
+	_ = driver.table().WhereRaw(raw).Delete()
 }
 
 // Update implements the PersistenceDriver.Update.
 func (driver *DBDriver) Update(sid string, values map[string]interface{}) error {
-
 	go driver.deleteOverdueSession()
 
 	if sid != "" {

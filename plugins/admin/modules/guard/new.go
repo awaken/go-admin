@@ -88,7 +88,7 @@ func (g *Guard) NewForm(ctx *context.Context) {
 		token         = ctx.FormValue(form.TokenKey)
 	)
 
-	if !auth.GetTokenService(g.services.Get(auth.TokenServiceKey)).CheckToken(token) {
+	if !auth.GetTokenService(g.services.MustGet(auth.TokenServiceKey)).CheckToken(token) {
 		alert(ctx, panel, errors.CreateFailWrongToken, conn, g.navBtns)
 		ctx.Abort()
 		return

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	template2 "html/template"
 	"net/http"
 	"net/url"
 	"strings"
@@ -20,10 +19,10 @@ import (
 // Auth check the input password and username for authentication.
 func (h *Handler) Auth(ctx *context.Context) {
 	var (
-		user     models.UserModel
-		ok       bool
-		errMsg   = "fail"
-		s, exist = h.services.GetOrNot(auth.ServiceKey)
+		user   models.UserModel
+		ok     bool
+		errMsg = "fail"
+		s      = h.services.Get(auth.ServiceKey)
 	)
 
 	if capDriver, ok := h.captchaConfig["driver"]; ok {
@@ -35,14 +34,14 @@ func (h *Handler) Auth(ctx *context.Context) {
 		}
 	}
 
-	if !exist {
+	if s == nil {
 		username := ctx.FormValue("username")
 		password := ctx.FormValue("password")
 		if username == "" || password == "" {
 			response.BadRequest(ctx, "wrong password or username")
 			return
 		}
-		user, ok = auth.Check(password, username, h.conn)
+		user, ok = auth.Check(username, password, h.conn)
 	} else {
 		user, ok, errMsg = auth.GetService(s).P(ctx)
 	}
@@ -96,15 +95,13 @@ func (h *Handler) ShowLogin(ctx *context.Context) {
 	err := tmpl.ExecuteTemplate(&sb, name, struct {
 		UrlPrefix string
 		Title     string
-		Logo      template2.HTML
+		Logo      template.HTML
 		CdnUrl    string
-		//System    types.SystemInfo
 	}{
 		UrlPrefix: h.config.AssertPrefix(),
 		Title:     h.config.LoginTitle,
 		Logo:      h.config.LoginLogo,
 		CdnUrl:    h.config.AssetUrl,
-		//System:    types.SystemInfo{ Version: system.Version() },
 	})
 
 	if err == nil {

@@ -15,7 +15,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
-	template2 "html/template"
 	"net/http"
 )
 
@@ -25,7 +24,7 @@ func (h *Handler) ShowNewForm(ctx *context.Context) {
 	h.showNewForm(ctx, "", param.Prefix, param.Param.GetRouteParamStr(), false)
 }
 
-func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix, paramStr string, isNew bool) {
+func (h *Handler) showNewForm(ctx *context.Context, alert template.HTML, prefix, paramStr string, isNew bool) {
 	var (
 		user        = auth.Auth(ctx)
 		panel       = h.table(prefix, ctx)
@@ -80,8 +79,8 @@ func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix
 
 	h.HTML(ctx, user, types.Panel{
 		Content:     alert + content,
-		Description: template2.HTML(f.Description),
-		Title:       modules.AorBHTML(isNotIframe, template2.HTML(f.Title), ""),
+		Description: template.HTML(f.Description),
+		Title:       modules.AorBHTML(isNotIframe, template.HTML(f.Title), ""),
 		MiniSidebar: f.HideSideBar,
 	}, template.ExecuteOptions{Animation: alert == ""})
 
@@ -92,7 +91,6 @@ func (h *Handler) showNewForm(ctx *context.Context, alert template2.HTML, prefix
 
 // NewForm insert a table row into database.
 func (h *Handler) NewForm(ctx *context.Context) {
-
 	param := guard.GetNewFormParam(ctx)
 
 	// process uploading files, only support local storage

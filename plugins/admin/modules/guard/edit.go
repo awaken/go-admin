@@ -14,7 +14,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
-	tmpl "html/template"
 	"mime/multipart"
 )
 
@@ -79,7 +78,7 @@ type EditFormParam struct {
 	Path         string
 	MultiForm    *multipart.Form
 	PreviousPath string
-	Alert        tmpl.HTML
+	Alert        template.HTML
 	FromList     bool
 	IsIframe     bool
 	IframeID     string
@@ -99,7 +98,7 @@ func (g *Guard) EditForm(ctx *context.Context) {
 	}
 	token := ctx.FormValue(form.TokenKey)
 
-	if !auth.GetTokenService(g.services.Get(auth.TokenServiceKey)).CheckToken(token) {
+	if !auth.GetTokenService(g.services.MustGet(auth.TokenServiceKey)).CheckToken(token) {
 		alert(ctx, panel, errors.EditFailWrongToken, g.conn, g.navBtns)
 		ctx.Abort()
 		return
@@ -151,6 +150,6 @@ func alertWithTitleAndDesc(ctx *context.Context, title, desc, msg string, conn d
 	response.Alert(ctx, desc, title, msg, conn, btns)
 }
 
-func getAlert(msg string) tmpl.HTML {
+func getAlert(msg string) template.HTML {
 	return template.Get(config.GetTheme()).Alert().Warning(msg)
 }

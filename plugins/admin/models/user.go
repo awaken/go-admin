@@ -278,28 +278,35 @@ func (t UserModel) GetAllRoleId() []interface{} {
 // WithPermissions query the permission info of the user.
 func (t UserModel) WithPermissions() UserModel {
 	var permissions []map[string]interface{}
+	var err         error
 
 	roleIds := t.GetAllRoleId()
-
 	if len(roleIds) > 0 {
-		permissions, _ = t.Table("goadmin_role_permissions").
+		permissions, err = t.Table("goadmin_role_permissions").
 			LeftJoin("goadmin_permissions", "goadmin_permissions.id", "=", "goadmin_role_permissions.permission_id").
 			WhereIn("role_id", roleIds).
 			Select("goadmin_permissions.http_method", "goadmin_permissions.http_path",
 				"goadmin_permissions.id", "goadmin_permissions.name", "goadmin_permissions.slug",
 				"goadmin_permissions.created_at", "goadmin_permissions.updated_at").
 			All()
+		if err != nil {
+			logger.Errorf("cannot retrieve role permissions (related to user %s): %v", t.UserName, err)
+		}
 	}
 
-	userPermissions, _ := t.Table("goadmin_user_permissions").
+	userPermissions, err := t.Table("goadmin_user_permissions").
 		LeftJoin("goadmin_permissions", "goadmin_permissions.id", "=", "goadmin_user_permissions.permission_id").
 		Where("user_id", "=", t.Id).
 		Select("goadmin_permissions.http_method", "goadmin_permissions.http_path",
 			"goadmin_permissions.id", "goadmin_permissions.name", "goadmin_permissions.slug",
 			"goadmin_permissions.created_at", "goadmin_permissions.updated_at").
 		All()
+	if err != nil {
+		logger.Errorf("cannot retrieve user permissions (related to user %s): %v", t.UserName, err)
+	}
 
 	permissions = append(permissions, userPermissions...)
+	t.Permissions = make([]PermissionModel, 0, len(permissions))
 
 	for _, perm := range permissions {
 		permId := perm["id"]
@@ -320,16 +327,17 @@ func (t UserModel) WithPermissions() UserModel {
 // WithMenus query the menu info of the user.
 func (t UserModel) WithMenus() UserModel {
 	var menuIdsModel []map[string]interface{}
+	var err error
 
 	if t.IsSuperAdmin() {
-		menuIdsModel, _ = t.Table("goadmin_role_menu").
+		menuIdsModel, err = t.Table("goadmin_role_menu").
 			LeftJoin("goadmin_menu", "goadmin_menu.id", "=", "goadmin_role_menu.menu_id").
 			Select("menu_id", "parent_id").
 			All()
 	} else {
 		rolesId := t.GetAllRoleId()
 		if len(rolesId) > 0 {
-			menuIdsModel, _ = t.Table("goadmin_role_menu").
+			menuIdsModel, err = t.Table("goadmin_role_menu").
 				LeftJoin("goadmin_menu", "goadmin_menu.id", "=", "goadmin_role_menu.menu_id").
 				WhereIn("goadmin_role_menu.role_id", rolesId).
 				Select("menu_id", "parent_id").
@@ -337,18 +345,22 @@ func (t UserModel) WithMenus() UserModel {
 		}
 	}
 
+	if err != nil {
+		logger.Errorf("cannot retrieve menu entries (related to user '%s'): %v", t.UserName, err)
+	}
+
 	menuIds := make([]int64, 0, len(menuIdsModel))
 
-	for _, mid := range menuIdsModel {
-		if parentId, _ := mid["parent_id"].(int64); parentId != 0 {
-			for _, mid2 := range menuIdsModel {
-				if mid2["menu_id"].(int64) == parentId {
-					menuIds = append(menuIds, mid["menu_id"].(int64))
+	for _, m := range menuIdsModel {
+		if parentId, _ := m["parent_id"].(int64); parentId != 0 {
+			for _, p := range menuIdsModel {
+				if p["menu_id"].(int64) == parentId {
+					menuIds = append(menuIds, m["menu_id"].(int64))
 					break
 				}
 			}
 		} else {
-			menuIds = append(menuIds, mid["menu_id"].(int64))
+			menuIds = append(menuIds, m["menu_id"].(int64))
 		}
 	}
 

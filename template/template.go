@@ -112,20 +112,18 @@ const (
 	CompButton    = "button"
 )
 
-func HTML(s string) template.HTML {
-	return template.HTML(s)
-}
-
-func CSS(s string) template.CSS {
-	return template.CSS(s)
-}
-
-func JS(s string) template.JS {
-	return template.JS(s)
-}
+type (
+	HTML = template.HTML
+	CSS  = template.CSS
+	JS   = template.JS
+)
 
 // The templateMap contains templates registered.
 var templateMap = make(map[string]Template)
+
+func ParseFiles(filenames ...string) (*template.Template, error) {
+	return template.ParseFiles(filenames...)
+}
 
 // Get the template interface by theme name. If the
 // name is not found, it panics.

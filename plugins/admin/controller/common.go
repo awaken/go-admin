@@ -2,7 +2,6 @@ package controller
 
 import (
 	"bytes"
-	template2 "html/template"
 	"net/http"
 	"sync"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/menu"
 	"github.com/GoAdminGroup/go-admin/modules/service"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
@@ -34,20 +34,21 @@ type Handler struct {
 	operationLock sync.Mutex
 }
 
-func New(cfg ...Config) *Handler {
-	if len(cfg) == 0 {
+func New(cfgs ...Config) *Handler {
+	if len(cfgs) == 0 {
 		return &Handler{
-			operations: make([]context.Node, 0),
-			navButtons: new(types.Buttons),
+			//operations: make([]context.Node, 0),
+			//navButtons: new(types.Buttons),
 		}
 	}
+	cfg := cfgs[0]
 	return &Handler{
-		config:     cfg[0].Config,
-		services:   cfg[0].Services,
-		conn:       cfg[0].Connection,
-		generators: cfg[0].Generators,
-		operations: make([]context.Node, 0),
-		navButtons: new(types.Buttons),
+		config:     cfg.Config,
+		services:   cfg.Services,
+		conn:       cfg.Connection,
+		generators: cfg.Generators,
+		//operations: make([]context.Node, 0),
+		//navButtons: new(types.Buttons),
 	}
 }
 
@@ -59,9 +60,9 @@ type Config struct {
 }
 
 func (h *Handler) UpdateCfg(cfg Config) {
-	h.config = cfg.Config
-	h.services = cfg.Services
-	h.conn = cfg.Connection
+	h.config     = cfg.Config
+	h.services   = cfg.Services
+	h.conn       = cfg.Connection
 	h.generators = cfg.Generators
 }
 
@@ -81,10 +82,10 @@ func (h *Handler) table(prefix string, ctx *context.Context) table.Table {
 			h.AddOperation(context.Node{
 				Path:     cb.Path,
 				Method:   cb.Method,
-				Handlers: append([]context.Handler{authHandler}, cb.Handlers...),
+				Handlers: append([]context.Handler{ authHandler }, cb.Handlers...),
 			})
 		} else {
-			h.AddOperation(context.Node{Path: cb.Path, Method: cb.Method, Handlers: cb.Handlers})
+			h.AddOperation(context.Node{ Path: cb.Path, Method: cb.Method, Handlers: cb.Handlers })
 		}
 	}
 	for _, cb := range t.GetForm().Callbacks {
@@ -92,10 +93,10 @@ func (h *Handler) table(prefix string, ctx *context.Context) table.Table {
 			h.AddOperation(context.Node{
 				Path:     cb.Path,
 				Method:   cb.Method,
-				Handlers: append([]context.Handler{authHandler}, cb.Handlers...),
+				Handlers: append([]context.Handler{ authHandler }, cb.Handlers...),
 			})
 		} else {
-			h.AddOperation(context.Node{Path: cb.Path, Method: cb.Method, Handlers: cb.Handlers})
+			h.AddOperation(context.Node{ Path: cb.Path, Method: cb.Method, Handlers: cb.Handlers })
 		}
 	}
 	return t
@@ -117,7 +118,7 @@ func (h *Handler) AddOperation(nodes ...context.Node) {
 	h.operationLock.Lock()
 	defer h.operationLock.Unlock()
 	// TODO: Avoid repeated additions. After the first addition, most of the subsequent repetitions will occur. The following loop can be optimized
-	var addNodes []context.Node
+	addNodes := make([]context.Node, 0, len(nodes))
 	for _, node := range nodes {
 		if h.searchOperation(node.Path, node.Method) { continue }
 		addNodes = append(addNodes, node)
@@ -159,8 +160,7 @@ func (h *Handler) HTML(ctx *context.Context, user models.UserModel, panel types.
 	ctx.HTML(http.StatusOK, buf.String())
 }
 
-func (h *Handler) HTMLPlug(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string,
-	options ...template.ExecuteOptions) {
+func (h *Handler) HTMLPlug(ctx *context.Context, user models.UserModel, panel types.Panel, plugName string, options ...template.ExecuteOptions) {
 	var btns types.Buttons
 	//if plugName == "" {
 		btns = (*h.navButtons).CheckPermission(user)
@@ -220,7 +220,7 @@ func (h *Handler) Execute(ctx *context.Context, user models.UserModel, panel typ
 }
 
 func (h *Handler) authSrv() *auth.TokenService {
-	return auth.GetTokenService(h.services.Get(auth.TokenServiceKey))
+	return auth.GetTokenService(h.services.MustGet(auth.TokenServiceKey))
 }
 
 func aAlert() types.AlertAttribute {
@@ -275,21 +275,21 @@ func isPjax(ctx *context.Context) bool {
 	return ctx.IsPjax()
 }
 
-func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord template2.HTML) template2.HTML {
+func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord template.HTML) template.HTML {
 	col1 := aCol().SetSize(types.SizeMD(2)).GetContent()
 
 	var (
-		checkBoxs  template2.HTML
-		checkBoxJS template2.HTML
+		checkBoxs  template.HTML
+		checkBoxJS template.HTML
 
-		editCheckBox = template.HTML(`
+		editCheckBox = template.HTML(utils.StrConcat(`
 			<label class="pull-right" style="margin: 5px 10px 0 0;">
-				<input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> ` + language.Get("continue editing") + `
-			</label>`)
-		newCheckBox = template.HTML(`
+				<input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> `, language.Get("continue editing"), `
+			</label>`))
+		newCheckBox = template.HTML(utils.StrConcat(`
 			<label class="pull-right" style="margin: 5px 10px 0 0;">
-				<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> ` + language.Get("continue creating") + `
-			</label>`)
+				<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> `, language.Get("continue creating"), `
+			</label>`))
 
 		editWithNewCheckBoxJs = template.HTML(`$('.continue_edit').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
 		if (this.checked) {
@@ -320,14 +320,14 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 			editWithNewCheckBoxJs = ""
 		}
 		checkBoxs = editCheckBox + newCheckBox
-		checkBoxJS = `<script>
+		checkBoxJS = template.HTML(utils.StrConcat(`<script>
 	let previous_url_goadmin = $('input[name="` + form.PreviousKey + `"]').attr("value")
-	` + editWithNewCheckBoxJs + newWithEditCheckBoxJs + `
+	`, string(editWithNewCheckBoxJs), string(newWithEditCheckBoxJs), `
 </script>
-`
+`))
 	} else if page == "edit_only" && !isHideEdit {
 		checkBoxs = editCheckBox
-		checkBoxJS = template.HTML(`	<script>
+		checkBoxJS = template.HTML(`<script>
 	let previous_url_goadmin = $('input[name="` + form.PreviousKey + `"]').attr("value")
 	$('.continue_edit').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
 		if (this.checked) {
@@ -340,7 +340,7 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 `)
 	} else if page == "new" && !isHideNew {
 		checkBoxs = newCheckBox
-		checkBoxJS = template.HTML(`	<script>
+		checkBoxJS = template.HTML(`<script>
 	let previous_url_goadmin = $('input[name="` + form.PreviousKey + `"]').attr("value")
 	$('.continue_new').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
 		if (this.checked) {
@@ -371,11 +371,13 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 			GetContent()
 	}
 	col2 := aCol().SetSize(types.SizeMD(8)).
-		SetContent(btn1 + checkBoxs + btn2 + checkBoxJS).GetContent()
+		SetContent(template.HTML(utils.StrConcat(string(btn1), string(checkBoxs), string(btn2), string(checkBoxJS)))).
+		GetContent()
+
 	return col1 + col2
 }
 
-func filterFormFooter(infoUrl string) template2.HTML {
+func filterFormFooter(infoUrl string) template.HTML {
 	col1 := aCol().SetSize(types.SizeMD(2)).GetContent()
 	btn1 := aButton().SetType("submit").
 		AddClass("submit").
@@ -399,13 +401,13 @@ func filterFormFooter(infoUrl string) template2.HTML {
 	return col1 + col2
 }
 
-func formContent(form types.FormAttribute, isTab, iframe, isHideBack bool, header template2.HTML) template2.HTML {
+func formContent(form types.FormAttribute, isTab, iframe, isHideBack bool, header template.HTML) template.HTML {
 	if isTab {
 		return form.GetContent()
 	}
 	if iframe {
 		header = ""
-	} else if header == template2.HTML("") {
+	} else if header == "" {
 		header = form.GetDefaultBoxHeader(isHideBack)
 	}
 	return aBox().
@@ -417,7 +419,7 @@ func formContent(form types.FormAttribute, isTab, iframe, isHideBack bool, heade
 		GetContent()
 }
 
-func detailContent(form types.FormAttribute, editUrl, deleteUrl string, iframe bool) template2.HTML {
+func detailContent(form types.FormAttribute, editUrl, deleteUrl string, iframe bool) template.HTML {
 	return aBox().
 		SetHeader(form.GetDetailBoxHeader(editUrl, deleteUrl)).
 		WithHeadBorder().
@@ -426,7 +428,7 @@ func detailContent(form types.FormAttribute, editUrl, deleteUrl string, iframe b
 		GetContent()
 }
 
-func menuFormContent(form types.FormAttribute) template2.HTML {
+func menuFormContent(form types.FormAttribute) template.HTML {
 	return aBox().
 		SetHeader(form.GetBoxHeaderNoButton()).
 		SetStyle(" ").

@@ -28,7 +28,7 @@ type Admin struct {
 func (admin *Admin) InitPlugin(services service.List) {
 	admin.InitBase(services, "")
 
-	c := config.GetService(services.Get("config"))
+	c := config.GetService(services.MustGet("config"))
 	st := table.NewSystemTable(admin.Conn, c)
 	genList := table.GeneratorList{
 		"manager":        st.GetManagerTable,
@@ -68,7 +68,6 @@ func (admin *Admin) GetIndexURL() string {
 func (admin *Admin) GetInfo() plugins.Info {
 	return plugins.Info{
 		Title      : "Base Admin",
-		Website    : "https://flow-er.app",
 		Description: "Built-in plugin which help you to build a crud manager platform quickly.",
 		Version    : system.Version(),
 		CreateDate : utils.ParseTime("2018-07-08 00:00:00"),

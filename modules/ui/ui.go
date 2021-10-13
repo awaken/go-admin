@@ -9,31 +9,29 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/types/action"
 )
 
+const ServiceKey = "ui"
+
 type Service struct {
 	NavButtons *types.Buttons
 }
-
-const ServiceKey = "ui"
 
 func (s *Service) Name() string {
 	return ServiceKey
 }
 
 func GetService(srv service.List) *Service {
-	if v, ok := srv.Get(ServiceKey).(*Service); ok {
+	if v, ok := srv.MustGet(ServiceKey).(*Service); ok {
 		return v
 	}
 	panic("wrong service")
 }
 
 func NewService(btns *types.Buttons) *Service {
-	return &Service{
-		NavButtons: btns,
-	}
+	return &Service{ NavButtons: btns }
 }
 
 func (s *Service) UpdateButtons() {
-
+	// TODO: ???
 }
 
 func (s *Service) RemoveOrShowSiteNavButton(remove bool) {

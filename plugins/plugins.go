@@ -6,7 +6,6 @@ package plugins
 
 import (
 	"bytes"
-	template2 "html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -49,21 +48,14 @@ type Plugin interface {
 type Info struct {
 	Title            string    `json:"title" yaml:"title" ini:"title"`
 	Description      string    `json:"description" yaml:"description" ini:"description"`
-	OldVersion       string    `json:"old_version" yaml:"old_version" ini:"old_version"`
 	Version          string    `json:"version" yaml:"version" ini:"version"`
 	Author           string    `json:"author" yaml:"author" ini:"author"`
 	Banners          []string  `json:"banners" yaml:"banners" ini:"banners"`
-	Url              string    `json:"url" yaml:"url" ini:"url"`
 	Cover            string    `json:"cover" yaml:"cover" ini:"cover"`
 	MiniCover        string    `json:"mini_cover" yaml:"mini_cover" ini:"mini_cover"`
-	Website          string    `json:"website" yaml:"website" ini:"website"`
 	CreateDate       time.Time `json:"create_date" yaml:"create_date" ini:"create_date"`
 	UpdateDate       time.Time `json:"update_date" yaml:"update_date" ini:"update_date"`
 	Name             string    `json:"name" yaml:"name" ini:"name"`
-	Uuid             string    `json:"uuid" yaml:"uuid" ini:"uuid"`
-	GoodUUIDs        []string  `json:"good_uuids" yaml:"good_uuids" ini:"good_uuids"`
-	GoodNum          int64     `json:"good_num" yaml:"good_num" ini:"good_num"`
-	CommentNum       int64     `json:"comment_num" yaml:"comment_num" ini:"comment_num"`
 	Order            int64     `json:"order" yaml:"order" ini:"order"`
 	Features         string    `json:"features" yaml:"features" ini:"features"`
 }
@@ -156,7 +148,7 @@ func (b *Base) HTMLMenuWithBtns(ctx *context.Context, panel types.Panel, menu *m
 func (b *Base) HTMLFile(ctx *context.Context, path string, data map[string]interface{}, options ...template.ExecuteOptions) {
 	var panel types.Panel
 
-	t, err := template2.ParseFiles(path)
+	t, err := template.ParseFiles(path)
 	if err != nil {
 		panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 	} else {
@@ -174,7 +166,7 @@ func (b *Base) HTMLFile(ctx *context.Context, path string, data map[string]inter
 func (b *Base) HTMLFiles(ctx *context.Context, data map[string]interface{}, files []string, options ...template.ExecuteOptions) {
 	var panel types.Panel
 
-	t, err := template2.ParseFiles(files...)
+	t, err := template.ParseFiles(files...)
 	if err != nil {
 		panel = template.WarningPanel(err.Error()).GetContent(config.IsProductionEnvironment())
 	} else {
@@ -254,7 +246,7 @@ func ExecuteWithCustomMenu(ctx *context.Context,
 		Animation:  options.Animation,
 		Buttons:    navButtons.CheckPermission(user),
 		NoCompress: options.NoCompress,
-		Logo:       template2.HTML(logo),
+		Logo:       template.HTML(logo),
 		IsPjax:     ctx.IsPjax(),
 		Iframe:     ctx.IsIframe(),
 	})
@@ -291,7 +283,7 @@ func ExecuteWithMenu(ctx *context.Context,
 			RemoveToolNavButton().
 			Add(types.GetDropDownButton("", icon.Gear, btns)).CheckPermission(user),
 		NoCompress: options.NoCompress,
-		Logo:       template2.HTML(logo),
+		Logo:       template.HTML(logo),
 		IsPjax:     ctx.IsPjax(),
 		Iframe:     ctx.IsIframe(),
 	})
@@ -373,7 +365,6 @@ func GetAll(req remote_server.GetOnlineReq, token string) (Plugins, Page) {
 		for key, value := range pluginList {
 			if value.Name() == pname {
 				info := pluginList[key].GetInfo()
-				info.OldVersion = info.Version
 				info.Description = language.GetWithScope(info.Description, info.Name)
 				info.Title = language.GetWithScope(info.Title, info.Name)
 				info.Version = plugs[index].GetInfo().Version

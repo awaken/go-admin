@@ -1,8 +1,6 @@
 package datamodel
 
 import (
-	template2 "html/template"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
@@ -14,7 +12,6 @@ import (
 
 // GetPostsTable return the model of table posts.
 func GetPostsTable(ctx *context.Context) (postsTable table.Table) {
-
 	postsTable = table.NewDefaultTable(table.DefaultConfig().SetExportable(true))
 
 	info := postsTable.GetInfo()
@@ -24,7 +21,7 @@ func GetPostsTable(ctx *context.Context) (postsTable table.Table) {
 		return template.Default().
 			Link().
 			SetURL("/admin/info/authors/detail?__goadmin_detail_pk=" + value.Value).
-			SetContent(template2.HTML(value.Value)).
+			SetContent(template.HTML(value.Value)).
 			OpenInNewTab().
 			SetTabTitle("Author Detail").
 			GetContent()

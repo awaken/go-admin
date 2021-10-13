@@ -145,8 +145,6 @@ func buildProject(cfgFile string) {
 		AccessLogPath:     rootPath + "/logs/access.log",
 		ErrorLogPath:      rootPath + "/logs/error.log",
 		InfoLogPath:       rootPath + "/logs/info.log",
-		BootstrapFilePath: rootPath + "/bootstrap.go",
-		GoModFilePath:     rootPath + "/go.mod",
 	})
 
 	if info.DriverName == "" && p.Driver != "" {

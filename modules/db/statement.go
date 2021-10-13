@@ -388,7 +388,7 @@ func (sql *SQL) LeftJoin(table string, fieldA string, operation string, fieldB s
 // *******************************
 
 // TxFn is the transaction callback function.
-type TxFn func(tx *dbsql.Tx) (error, map[string]interface{})
+type TxFn func(tx *dbsql.Tx) (map[string]interface{}, error)
 
 // WithTransaction call the callback function within the transaction and
 // catch the error.
@@ -409,7 +409,7 @@ func (sql *SQL) WithTransaction(fn TxFn) (res map[string]interface{}, err error)
 		}
 	}()
 
-	err, res = fn(tx)
+	res, err = fn(tx)
 	return
 }
 
@@ -432,7 +432,7 @@ func (sql *SQL) WithTransactionByLevel(level dbsql.IsolationLevel, fn TxFn) (res
 		}
 	}()
 
-	err, res = fn(tx)
+	res, err = fn(tx)
 	return
 }
 

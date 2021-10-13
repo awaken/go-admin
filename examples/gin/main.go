@@ -59,7 +59,6 @@ func main() {
 			Type: "fadeInUp",
 		},
 		ColorScheme:       adminlte.ColorschemeSkinBlack,
-		BootstrapFilePath: "./../datamodel/bootstrap.go",
 	}
 
 	template.AddComp(chartjs.NewChart())

@@ -12,17 +12,15 @@ type Generator func() (Service, error)
 
 func Register(k string, gen Generator) {
 	if _, ok := services[k]; ok {
-		panic("service has been registered")
+		panic("service has been already registered")
 	}
 	services[k] = gen
 }
 
 func GetServices() List {
-	var (
-		l   = make(List)
-		err error
-	)
+	l := make(List, len(services))
 	for k, gen := range services {
+		var err error
 		if l[k], err = gen(); err != nil {
 			panic("service initialize fail")
 		}
@@ -36,16 +34,15 @@ type Generators map[string]Generator
 
 type List map[string]Service
 
-func (g List) Get(k string) Service {
+func (g List) MustGet(k string) Service {
 	if v, ok := g[k]; ok {
 		return v
 	}
 	panic("service not found")
 }
 
-func (g List) GetOrNot(k string) (Service, bool) {
-	v, ok := g[k]
-	return v, ok
+func (g List) Get(k string) Service {
+	return g[k]
 }
 
 func (g List) Add(k string, service Service) {

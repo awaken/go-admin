@@ -288,7 +288,7 @@ func GenerateTables(outputPath, packageName string, tables []string, isNew bool)
 		lowerTable := strings.ToLower(tables[i])
 		if !strings.Contains(tablesContent, `"`+lowerTable+`"`) {
 			tableStr += fmt.Sprintf(`
-	"%s": Get%sTable, `, lowerTable, strings.Title(camelcase(tables[i])))
+	"%s": MustGet%sTable, `, lowerTable, strings.Title(camelcase(tables[i])))
 
 			if commentStr != "" {
 				commentStr += `

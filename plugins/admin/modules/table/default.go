@@ -1158,7 +1158,7 @@ func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, colum
 // db is a helper function return raw db connection.
 func (tb *DefaultTable) db() db.Connection {
 	if tb.dbObj == nil {
-		tb.dbObj = db.GetConnectionFromService(services.Get(tb.connectionDriver))
+		tb.dbObj = db.GetConnectionFromService(services.MustGet(tb.connectionDriver))
 	}
 	return tb.dbObj
 }

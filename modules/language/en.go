@@ -105,7 +105,7 @@ var en = LangSet{
 
 	"plugins":          "Plugins",
 	"plugin store":     "Plugin Store",
-	"get more plugins": "Get more plugins",
+	"get more plugins": "MustGet more plugins",
 	"uninstalled":      "Uninstalled",
 
 	"second":  "second",

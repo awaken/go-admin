@@ -100,11 +100,11 @@ func (plug *{{.PluginTitle}}) GetSettingPage() table.Generator {
 		})
 
 		formList.EnableAjaxData(types.AjaxData{
-			SuccessTitle:   language2.Get("install success"),
-			ErrorTitle:     language2.Get("install fail"),
+			SuccessTitle:   language2.MustGet("install success"),
+			ErrorTitle:     language2.MustGet("install fail"),
 			SuccessJumpURL: "...",
 		}).SetFormNewTitle(language2.GetHTML("{{.PluginName}} installation")).
-			SetTitle(language2.Get("{{.PluginName}} installation")).
+			SetTitle(language2.MustGet("{{.PluginName}} installation")).
 			SetFormNewBtnWord(language2.GetHTML("install"))
 
 		return
@@ -226,7 +226,7 @@ import (
 	"html/template"
 )
 
-func Get(key string) string {
+func MustGet(key string) string {
 	return language.GetWithScope(key, "{{.PluginName}}")
 }
 
