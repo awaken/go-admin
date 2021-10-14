@@ -286,13 +286,13 @@ type TableInfo struct {
 	Driver     string
 }
 
-func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parameters, columns []string, sqlFuncs ...func() *db.SQL) (Thead, string, string, string, []string, []FormField) {
+func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parameters, columnMap map[string]struct{}, sqlFuncs ...func() *db.SQL) (Thead, string, string, string, map[string]struct{}, []FormField) {
 	var (
-		fields     strings.Builder
-		joinFields strings.Builder
-		joins      strings.Builder
-		joinTables []string
-		sql        func() *db.SQL
+		fields       strings.Builder
+		joinFields   strings.Builder
+		joins        strings.Builder
+		joinTableMap map[string]struct{}
+		sql          func() *db.SQL
 	)
 	if len(sqlFuncs) > 0 { sql = sqlFuncs[0] }
 	if sql == nil { sql = db.NilSQL }
@@ -302,7 +302,7 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 	fields.Grow(256)
 
 	for _, field := range f {
-		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) && !field.Joins.Valid() {
+		if field.Field != info.PrimaryKey && utils.InMapT(columnMap, field.Field) && !field.Joins.Valid() {
 			fields.WriteString(info.Delimiter)
 			fields.WriteString(info.Table)
 			fields.WriteString(info.Delimiter2)
@@ -329,8 +329,12 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 			joinFields.WriteByte(',')
 			for _, join := range field.Joins {
 				joinTableName := join.GetTableName(info.Delimiter, info.Delimiter2)
-				if !modules.InArray(joinTables, joinTableName) {
-					joinTables = append(joinTables, joinTableName)
+				if _, ok := joinTableMap[joinTableName]; !ok {
+					if joinTableMap == nil {
+						joinTableMap = map[string]struct{}{ joinTableName: {} }
+					} else {
+						joinTableMap[joinTableName] = struct{}{}
+					}
 					if join.BaseTable == "" {
 						join.BaseTable = info.Table
 					}
@@ -353,9 +357,7 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 		if field.Filterable {
 			filterForm = append(filterForm, field.GetFilterFormFields(params, headField, sql())...)
 		}
-		if field.Hide {
-			continue
-		}
+		if field.Hide { continue }
 
 		thead = append(thead, TheadItem{
 			Head:       field.Head,
@@ -369,28 +371,30 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 		})
 	}
 
-	return thead, fields.String(), joinFields.String(), joins.String(), joinTables, filterForm
+	return thead, fields.String(), joinFields.String(), joins.String(), joinTableMap, filterForm
 }
 
-func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns []string) (Thead, string, string) {
+func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columnMap map[string]struct{}) (Thead, string, string) {
 	var (
-		fields     strings.Builder
-		joins      strings.Builder
-		joinTables []string
+		fields       strings.Builder
+		joins        strings.Builder
+		joinTableMap map[string]struct{}
 	)
 	thead := make(Thead, 0, len(f))
 	fields.Grow(256)
 
 	for _, field := range f {
-		if field.Field != info.PrimaryKey && modules.InArray(columns, field.Field) && !field.Joins.Valid() {
-			fields.WriteString(info.Delimiter)
-			fields.WriteString(info.Table)
-			fields.WriteString(info.Delimiter2)
-			fields.WriteByte('.')
-			fields.WriteString(info.Delimiter)
-			fields.WriteString(field.Field)
-			fields.WriteString(info.Delimiter2)
-			fields.WriteByte(',')
+		if field.Field != info.PrimaryKey {
+			if _, ok := columnMap[field.Field]; ok && !field.Joins.Valid() {
+				fields.WriteString(info.Delimiter)
+				fields.WriteString(info.Table)
+				fields.WriteString(info.Delimiter2)
+				fields.WriteByte('.')
+				fields.WriteString(info.Delimiter)
+				fields.WriteString(field.Field)
+				fields.WriteString(info.Delimiter2)
+				fields.WriteByte(',')
+			}
 		}
 
 		headField := field.Field
@@ -398,8 +402,13 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 		if field.Joins.Valid() {
 			headField = field.Joins.Last().GetTableName(info.Delimiter, info.Delimiter2) + parameter.FilterParamJoinInfix + field.Field
 			for _, join := range field.Joins {
-				if !modules.InArray(joinTables, join.GetTableName(info.Delimiter, info.Delimiter2)) {
-					joinTables = append(joinTables, join.GetTableName(info.Delimiter, info.Delimiter2))
+				joinTableName := join.GetTableName(info.Delimiter, info.Delimiter2)
+				if _, ok := joinTableMap[joinTableName]; !ok {
+					if joinTableMap == nil {
+						joinTableMap = map[string]struct{}{ joinTableName: {} }
+					} else {
+						joinTableMap[joinTableName] = struct{}{}
+					}
 					if join.BaseTable == "" {
 						join.BaseTable = info.Table
 					}
@@ -415,7 +424,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 					joins.WriteByte(' ')
 					joins.WriteString(join.TableAlias)
 					joins.WriteString(" ON ")
-					joins.WriteString(join.GetTableName(info.Delimiter, info.Delimiter2))
+					joins.WriteString(joinTableName)
 					joins.WriteByte('.')
 					joins.WriteString(info.Delimiter)
 					joins.WriteString(join.JoinField)
@@ -432,9 +441,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columns
 			}
 		}
 
-		if field.Hide {
-			continue
-		}
+		if field.Hide { continue }
 
 		thead = append(thead, TheadItem{
 			Head:       field.Head,
@@ -516,9 +523,7 @@ func GetJoinField(field string) string {
 
 func (j Joins) Valid() bool {
 	for _, e := range j {
-		if e.Valid() {
-			return true
-		}
+		if e.Valid() { return true }
 	}
 	return false
 }
@@ -559,8 +564,8 @@ func (t TabGroups) Valid() bool {
 }
 
 func NewTabGroups(items ...string) TabGroups {
-	var t = make(TabGroups, 0)
-	return append(t, items)
+	if len(items) == 0 { return nil }
+	return [][]string{ items }
 }
 
 func (t TabGroups) AddGroup(items ...string) TabGroups {
@@ -683,7 +688,7 @@ type Where struct {
 
 type Wheres []Where
 
-func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []interface{}, existKeys, columns []string) (string, []interface{}) {
+func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []interface{}, existKeys, columnMap map[string]struct{}) (string, []interface{}) {
 	var pwheres strings.Builder
 	hasWheres := wheres != ""
 	//pwheres := ""
@@ -697,20 +702,13 @@ func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []in
 		} else {
 			whField = wh.Field
 		}
-		//whFieldArr := strings.Split(wh.Field, ".")
-		//if len(whFieldArr) > 1 {
-		//	whField = whFieldArr[1]
-		//	whTable = whFieldArr[0]
-		//} else {
-		//	whField = whFieldArr[0]
-		//}
 
-		if modules.InArray(existKeys, whField) {
+		if _, ok := existKeys[whField]; ok {
 			continue
 		}
 
 		// TODO: support like operation and join table
-		if modules.InArray(columns, whField) {
+		if _, ok := columnMap[whField]; ok {
 			joinMark := ""
 			if i != last {
 				joinMark = whs[i + 1].Join

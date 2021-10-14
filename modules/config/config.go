@@ -44,22 +44,18 @@ type Database struct {
 }
 
 func (d Database) GetDSN() string {
-	if d.Dsn != "" {
-		return d.Dsn
-	}
-	if d.Driver == DriverMysql {
+	if d.Dsn != "" { return d.Dsn }
+	switch d.Driver {
+	case DriverMysql:
 		return d.User + ":" + d.Pwd + "@tcp(" + d.Host + ":" + d.Port + ")/" +
 			d.Name + d.ParamStr()
-	}
-	if d.Driver == DriverPostgresql {
-		return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s"+d.ParamStr(),
+	case DriverPostgresql:
+		return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s" + d.ParamStr(),
 			d.Host, d.Port, d.User, d.Pwd, d.Name)
-	}
-	if d.Driver == DriverMssql {
-		return fmt.Sprintf("user id=%s;password=%s;server=%s;port=%s;database=%s;"+d.ParamStr(),
+	case DriverMssql:
+		return fmt.Sprintf("user id=%s;password=%s;server=%s;port=%s;database=%s;" + d.ParamStr(),
 			d.User, d.Pwd, d.Host, d.Port, d.Name)
-	}
-	if d.Driver == DriverSqlite {
+	case DriverSqlite:
 		return d.File + d.ParamStr()
 	}
 	return ""
@@ -67,15 +63,14 @@ func (d Database) GetDSN() string {
 
 func (d Database) ParamStr() string {
 	p := ""
-	if d.Params == nil {
-		d.Params = make(map[string]string)
-	}
-	if d.Driver == DriverMysql || d.Driver == DriverSqlite {
-		if d.Driver == DriverMysql {
-			if _, ok := d.Params["charset"]; !ok {
-				d.Params["charset"] = "utf8mb4"
-			}
+	if d.Params == nil { d.Params = make(map[string]string) }
+	switch d.Driver {
+	case DriverMysql:
+		if _, ok := d.Params["charset"]; !ok {
+			d.Params["charset"] = "utf8mb4"
 		}
+		fallthrough
+	case DriverSqlite:
 		if len(d.Params) > 0 {
 			p = "?"
 			for k, v := range d.Params {
@@ -83,8 +78,7 @@ func (d Database) ParamStr() string {
 			}
 			p = p[:len(p)-1]
 		}
-	}
-	if d.Driver == DriverMssql {
+	case DriverMssql:
 		if _, ok := d.Params["encrypt"]; !ok {
 			d.Params["encrypt"] = "disable"
 		}
@@ -92,8 +86,7 @@ func (d Database) ParamStr() string {
 			p += k + "=" + v + ";"
 		}
 		p = p[:len(p)-1]
-	}
-	if d.Driver == DriverPostgresql {
+	case DriverPostgresql:
 		if _, ok := d.Params["sslmode"]; !ok {
 			d.Params["sslmode"] = "disable"
 		}
@@ -138,19 +131,17 @@ func (d DatabaseList) JSON() string {
 }
 
 func (d DatabaseList) Copy() DatabaseList {
-	c := make(DatabaseList)
-	for k, v := range d {
-		c[k] = v
-	}
-	return c
+	res := make(DatabaseList)
+	for k, v := range d { res[k] = v }
+	return res
 }
 
 func (d DatabaseList) Connections() []string {
 	conns := make([]string, len(d))
-	count := 0
+	i     := 0
 	for key := range d {
-		conns[count] = key
-		count++
+		conns[i] = key
+		i++
 	}
 	return conns
 }
@@ -400,15 +391,15 @@ type URLFormat struct {
 }
 
 func (f URLFormat) SetDefault() URLFormat {
-	f.Detail = utils.SetDefault(f.Detail, "", "/info/:__prefix/detail")
-	f.ShowEdit = utils.SetDefault(f.ShowEdit, "", "/info/:__prefix/edit")
+	f.Detail     = utils.SetDefault(f.Detail    , "", "/info/:__prefix/detail")
+	f.ShowEdit   = utils.SetDefault(f.ShowEdit  , "", "/info/:__prefix/edit")
 	f.ShowCreate = utils.SetDefault(f.ShowCreate, "", "/info/:__prefix/new")
-	f.Edit = utils.SetDefault(f.Edit, "", "/edit/:__prefix")
-	f.Create = utils.SetDefault(f.Create, "", "/new/:__prefix")
-	f.Delete = utils.SetDefault(f.Delete, "", "/delete/:__prefix")
-	f.Export = utils.SetDefault(f.Export, "", "/export/:__prefix")
-	f.Info = utils.SetDefault(f.Info, "", "/info/:__prefix")
-	f.Update = utils.SetDefault(f.Update, "", "/update/:__prefix")
+	f.Edit       = utils.SetDefault(f.Edit      , "", "/edit/:__prefix")
+	f.Create     = utils.SetDefault(f.Create    , "", "/new/:__prefix")
+	f.Delete     = utils.SetDefault(f.Delete    , "", "/delete/:__prefix")
+	f.Export     = utils.SetDefault(f.Export    , "", "/export/:__prefix")
+	f.Info       = utils.SetDefault(f.Info      , "", "/info/:__prefix")
+	f.Update     = utils.SetDefault(f.Update    , "", "/update/:__prefix")
 	return f
 }
 
@@ -424,9 +415,7 @@ type PageAnimation struct {
 }
 
 func (p PageAnimation) JSON() string {
-	if p.Type == "" {
-		return ""
-	}
+	if p.Type == "" { return "" }
 	return utils.JSON(p)
 }
 
@@ -437,20 +426,14 @@ type FileUploadEngine struct {
 }
 
 func (f FileUploadEngine) JSON() string {
-	if f.Name == "" {
-		return ""
-	}
-	if len(f.Config) == 0 {
-		f.Config = nil
-	}
+	if f.Name == "" { return "" }
+	if len(f.Config) == 0 { f.Config = nil }
 	return utils.JSON(f)
 }
 
 func GetFileUploadEngineFromJSON(m string) FileUploadEngine {
 	var f FileUploadEngine
-	if m == "" {
-		return f
-	}
+	if m == "" { return f }
 	_ = utils.JsonUnmarshal([]byte(m), &f)
 	return f
 }
@@ -607,8 +590,6 @@ func (c *Config) ToMap() map[string]string {
 				keyName = "url_prefix"
 			} else if keyName == "index" {
 				keyName = "index_url"
-			} else if keyName == "info_log" || keyName == "error_log" || keyName == "access_log" {
-				keyName += "_path"
 			}
 			m[keyName] = v.String()
 		case reflect.Int:
@@ -685,8 +666,6 @@ func (c *Config) Update(m map[string]string) error {
 				keyName = "url_prefix"
 			} else if keyName == "index" {
 				keyName = "index_url"
-			} else if keyName == "info_log" || keyName == "error_log" || keyName == "access_log" {
-				keyName += "_path"
 			}
 			if mv, ok := m[keyName]; ok {
 				if keyName == "info_log" || keyName == "error_log" || keyName == "access_log" {

@@ -33,22 +33,26 @@ func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix str
 	if f.HasError() {
 		if f.PageErrorHTML != "" {
 			h.HTML(ctx, auth.Auth(ctx),
-				types.Panel{Content: f.PageErrorHTML}, template.ExecuteOptions{Animation: param.Animation})
+				types.Panel{ Content: f.PageErrorHTML}, template.ExecuteOptions{ Animation: param.Animation })
 			return
 		}
 		h.HTML(ctx, auth.Auth(ctx),
 			template.WarningPanel(f.PageError.Error(),
-			template.GetPageTypeFromPageError(f.PageError)), template.ExecuteOptions{Animation: param.Animation})
+			template.GetPageTypeFromPageError(f.PageError)), template.ExecuteOptions{ Animation: param.Animation })
 		return
 	}
 
 	var (
 		user       = auth.Auth(ctx)
 		paramStr   = param.GetRouteParamStr()
-		newUrl     = modules.AorEmpty(panel.GetCanAdd(), h.routePathWithPrefix("show_new", prefix)+paramStr)
 		footerKind = "edit"
+		isAnim     = alert == "" || len(animation) > 0 && animation[0]
+		newUrl     string
 	)
 
+	if panel.GetCanAdd() {
+		newUrl = h.routePathWithPrefix("show_new", prefix) + paramStr
+	}
 	if newUrl == "" || !user.CheckPermissionByUrlMethod(newUrl, h.route("show_new").Method(), nil) {
 		footerKind = "edit_only"
 	}
@@ -59,10 +63,9 @@ func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix str
 		logger.Error("receive data error: ", err)
 		h.HTML(ctx, user, template.
 			WarningPanelWithDescAndTitle(err.Error(), f.Description, f.Title),
-			template.ExecuteOptions{Animation: alert == "" || ((len(animation) > 0) && animation[0])})
-
+			template.ExecuteOptions{ Animation: isAnim })
 		if isEdit {
-			ctx.AddHeader(constant.PjaxUrlHeader, h.routePathWithPrefix("show_edit", prefix)+
+			ctx.AddHeader(constant.PjaxUrlHeader, h.routePathWithPrefix("show_edit", prefix) +
 				param.DeletePK().GetRouteParamStr())
 		}
 		return
@@ -80,7 +83,7 @@ func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix str
 	isNotIframe := ctx.Query(constant.IframeKey) != "true"
 
 	hiddenFields := map[string]string{
-		form2.TokenKey:    h.authSrv().AddToken(),
+		form2.TokenKey   : h.authSrv().AddToken(),
 		form2.PreviousKey: infoUrl,
 	}
 
@@ -118,11 +121,11 @@ func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix str
 	}
 
 	h.HTML(ctx, user, types.Panel{
-		Content:     alert + content,
+		Content    : alert + content,
 		Description: template.HTML(formInfo.Description),
-		Title:       modules.AorBHTML(isNotIframe, template.HTML(formInfo.Title), ""),
+		Title      : modules.AorBHTML(isNotIframe, template.HTML(formInfo.Title), ""),
 		MiniSidebar: f.HideSideBar,
-	}, template.ExecuteOptions{Animation: alert == "" || ((len(animation) > 0) && animation[0]), NoCompress: f.NoCompress})
+	}, template.ExecuteOptions{ Animation : isAnim, NoCompress: f.NoCompress })
 
 	if isEdit {
 		ctx.AddHeader(constant.PjaxUrlHeader, showEditUrl)
@@ -197,7 +200,7 @@ func (h *Handler) EditForm(ctx *context.Context) {
 
 	if ctx.WantJSON() && !param.IsIframe {
 		response.OkWithData(ctx, map[string]interface{}{
-			"url":   param.PreviousPath,
+			"url"  : param.PreviousPath,
 			"token": h.authSrv().AddToken(),
 		})
 		return

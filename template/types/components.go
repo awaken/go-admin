@@ -235,20 +235,16 @@ type TheadItem struct {
 }
 
 func (t Thead) GroupBy(group [][]string) []Thead {
-	var res = make([]Thead, len(group))
-
+	res := make([]Thead, len(group))
 	for key, value := range group {
-		var newThead = make(Thead, 0)
-
+		newThead := make(Thead, 0, len(t))
 		for _, info := range t {
 			if modules.InArray(value, info.Field) {
 				newThead = append(newThead, info)
 			}
 		}
-
 		res[key] = newThead
 	}
-
 	return res
 }
 

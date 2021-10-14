@@ -178,3 +178,8 @@ func RecoveryToMsg(r interface{}) string {
 	if msg == "" { return "system error" }
 	return msg
 }
+
+func InMapT(m map[string]struct{}, key string) bool {
+	_, ok := m[key]
+	return ok
+}

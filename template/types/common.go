@@ -58,7 +58,7 @@ func CommaSplitFieldDisplay(model FieldModel) interface{} {
 	return strings.Split(model.Value, ",")
 }
 
-func CommaSplitPostFielter(model PostFieldModel) interface{} {
+func CommaSplitPostFilter(model PostFieldModel) interface{} {
 	return strings.Join(model.Value, ",")
 }
 

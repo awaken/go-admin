@@ -23,15 +23,14 @@ func (g *Guard) Export(ctx *context.Context) {
 		return
 	}
 
-	idStr := make([]string, 0)
-	ids := ctx.FormValue("id")
-	if ids != "" {
-		idStr = strings.Split(ctx.FormValue("id"), ",")
+	var ids []string
+	if id := ctx.FormValue("id"); id != "" {
+		ids = strings.Split(id, ",")
 	}
 
 	ctx.SetUserValue(exportParamKey, &ExportParam{
 		Panel:  panel,
-		Id:     idStr,
+		Id:     ids,
 		Prefix: prefix,
 		IsAll:  ctx.FormValue("is_all") == "true",
 	})

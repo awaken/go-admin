@@ -2,11 +2,11 @@ package controller
 
 import (
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/language"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
@@ -16,7 +16,6 @@ import (
 )
 
 func (h *Handler) ShowDetail(ctx *context.Context) {
-
 	var (
 		prefix    = ctx.Query(constant.PrefixKey)
 		id        = ctx.Query(constant.DetailPKKey)
@@ -26,7 +25,7 @@ func (h *Handler) ShowDetail(ctx *context.Context) {
 		detail    = panel.GetDetail()
 		info      = panel.GetInfo()
 		formModel = newPanel.GetForm()
-		fieldList = make(types.FieldList, 0)
+		fieldList types.FieldList
 	)
 
 	if len(detail.FieldList) == 0 {
@@ -63,16 +62,23 @@ func (h *Handler) ShowDetail(ctx *context.Context) {
 
 	paramStr := param.DeleteDetailPk().GetRouteParamStr()
 
-	editUrl := modules.AorEmpty(!info.IsHideEditButton, h.routePathWithPrefix("show_edit", prefix)+paramStr+
-		"&"+constant.EditPKKey+"="+ctx.Query(constant.DetailPKKey))
-	deleteUrl := modules.AorEmpty(!info.IsHideDeleteButton, h.routePathWithPrefix("delete", prefix)+paramStr)
-	infoUrl := h.routePathWithPrefix("info", prefix) + paramStr
-
-	editUrl = user.GetCheckPermissionByUrlMethod(editUrl, h.route("show_edit").Method())
-	deleteUrl = user.GetCheckPermissionByUrlMethod(deleteUrl, h.route("delete").Method())
+	var editUrl, deleteUrl, infoUrl string
+	if !info.IsHideEditButton {
+		editUrl = utils.StrConcat(h.routePathWithPrefix("show_edit", prefix), paramStr,
+			"&" + constant.EditPKKey+ "=", ctx.Query(constant.DetailPKKey))
+		if !user.CheckPermissionByUrlMethod(editUrl, h.route("show_edit").Method(), nil) {
+			editUrl = ""
+		}
+	}
+	if !info.IsHideDeleteButton {
+		deleteUrl = h.routePathWithPrefix("delete", prefix) + paramStr
+		if !user.CheckPermissionByUrlMethod(deleteUrl, h.route("delete").Method(), nil) {
+			deleteUrl = ""
+		}
+	}
+	infoUrl = h.routePathWithPrefix("info", prefix) + paramStr
 
 	deleteJs := ""
-
 	if deleteUrl != "" {
 		deleteJs = fmt.Sprintf(`<script>
 function DeletePost(id) {
@@ -84,8 +90,7 @@ function DeletePost(id) {
 			confirmButtonText: '%s',
 			closeOnConfirm: false,
 			cancelButtonText: '%s',
-		},
-		function () {
+		}, function() {
 			$.ajax({
 				method: 'post',
 				url: '%s',
@@ -93,30 +98,24 @@ function DeletePost(id) {
 					id: id
 				},
 				success: function (data) {
-					if (typeof (data) === "string") {
-						data = JSON.parse(data);
-					}
+					if(typeof (data) === "string") { data = JSON.parse(data) }
 					if (data.code === 200) {
-						location.href = '%s'
+						window.location.href = '%s'
 					} else {
 						swal(data.msg, '', 'error');
 					}
 				}
 			});
-		});
+		}
+	);
 }
-
-$('.delete-btn').on('click', function (event) {
-	DeletePost(%s)
-});
-
+$('.delete-btn').on('click', function(event) { DeletePost(%s) });
 </script>`, language.Get("are you sure to delete"), language.Get("yes"),
 			language.Get("cancel"), deleteUrl, infoUrl, id)
 	}
 
 	title := ""
-	desc := ""
-
+	desc  := ""
 	isNotIframe := ctx.Query(constant.IframeKey) != "true"
 
 	if isNotIframe {

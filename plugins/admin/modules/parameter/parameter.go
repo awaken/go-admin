@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 )
@@ -360,7 +359,7 @@ func (param Parameters) GetFixedParamStrWithoutSort() string {
 	return "&" + p.Encode()
 }
 
-func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, whereArgs []interface{}, columns, existKeys []string, filterProcess func(string, string, string) string) (string, []interface{}, []string) {
+func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, whereArgs []interface{}, columnMap, existKeys map[string]struct{}, filterProcess func(string, string, string) string) (string, []interface{}, map[string]struct{}) {
 	var multiKey map[string]struct{}
 	var sbWhr strings.Builder
 	sbWhr.Grow(len(wheres) + 128)
@@ -371,9 +370,12 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 		if p := strings.Index(key, FilterParamCountInfix); p >= 0 {
 			key = key[:p]
 			keyIndexSuffix = key[p:]
-			if multiKey == nil { multiKey = make(map[string]struct{}) }
-			multiKey[key] = struct{}{}
-		} else if _, ok := multiKey[key]; !ok && modules.InArray(existKeys, key) {
+			if multiKey == nil {
+				multiKey = map[string]struct{}{ key: {} }
+			} else {
+				multiKey[key] = struct{}{}
+			}
+		} else if !utils.InMapT(multiKey, key) && utils.InMapT(existKeys, key) {
 			continue
 		}
 		/*keyArr := strings.Split(key, FilterParamCountInfix)
@@ -432,7 +434,7 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
 				}
 			}
-		} else if modules.InArray(columns, key) {
+		} else if _, ok := columnMap[key]; ok {
 			if sbWhr.Len() > 0 { sbWhr.WriteString(" AND ") }
 			sbWhr.WriteString(table)
 			sbWhr.WriteByte('.')
@@ -466,7 +468,11 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			continue
 		}
 
-		existKeys = append(existKeys, key)
+		if existKeys == nil {
+			existKeys = map[string]struct{}{ key: {} }
+		} else {
+			existKeys[key] = struct{}{}
+		}
 	}
 
 	//if len(wheres) > 3 {
@@ -474,7 +480,6 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 	//}
 
 	for key, value := range param.OrConditions {
-		columns = strings.Split(key, ",")
 		op := "="
 		if strings.ContainsRune(value, '%') {
 			op = "like"
@@ -488,7 +493,7 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 		//	wheres += " and "
 		//}
 		//wheres += "("
-		for i, column := range columns {
+		for i, column := range strings.Split(key, ",") {
 			if i > 0 { sbWhr.WriteString(" OR ") }
 			if p := strings.Index(column, FilterParamJoinInfix); p >= 0 {
 				sbWhr.WriteString(column[:p])

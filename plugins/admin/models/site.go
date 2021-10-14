@@ -114,8 +114,7 @@ func (t SiteModel) AllToMapInterface() map[string]interface{} {
 
 var allowEmptyKeys = []string{
 	"animation_type", "custom_head_html", "custom_foot_html", "custom_404_html",
-	"custom_403_html", "custom_500_html", "footer_info", "bootstrap_file_path",
-	"info_log_path", "error_log_path", "access_log_path", "asset_url", "extra", "domain",
+	"custom_403_html", "custom_500_html", "footer_info", "asset_url", "extra", "domain",
 }
 
 func (t SiteModel) Update(v form.Values) error {

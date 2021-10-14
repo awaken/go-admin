@@ -43,8 +43,7 @@ func (s *SystemTable) link(url, content string) tmpl.HTML {
 }
 
 func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
-	isRootAuth     := auth.Auth(ctx).IsRootAdmin()
-	boolFilterType := types.BoolFilterType()
+	isRootAuth := auth.Auth(ctx).IsRootAdmin()
 
 	managerTable := NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 	info := managerTable.GetInfo().AddXssJsFilter().HideFilterArea()
@@ -53,8 +52,8 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable().FieldSortable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable().FieldSortable()
 	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable().FieldSortable()
-	info.AddField(lg("Disabled"), "disabled", db.Varchar).FieldFilterable(boolFilterType).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
-	info.AddField(lg("Root"), "root", db.Varchar).FieldFilterable(boolFilterType).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
+	info.AddField(lg("Disabled"), "disabled", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
+	info.AddField(lg("Root"), "root", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
 	info.AddField(lg("Roles"), "name", db.Varchar).
 		FieldJoin(types.Join{
 			Table:     "goadmin_role_users",
@@ -142,12 +141,12 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 	formList.AddField(lg("Nickname"), "name", db.Varchar, form.Text).
 		FieldHelpMsg(template.HTML(lg("Displayed name"))).FieldMust()
 	formList.AddField(lg("Email"), "email", db.Varchar, form.Email)
-	formList.AddField(lg("Disabled"), "disabled", db.Varchar, form.Switch).FieldOptions(boolFilterType.Options).
+	formList.AddField(lg("Disabled"), "disabled", db.Varchar, form.Switch).FieldOptions(types.BoolFieldOptions()).
 		FieldHelpMsg(template.HTML(lg("Deny login and access")))
-	r := formList.AddField(lg("Root"), "root", db.Varchar, form.Switch).FieldOptions(boolFilterType.Options).
+	r := formList.AddField(lg("Root"), "root", db.Varchar, form.Switch).FieldOptions(types.BoolFieldOptions()).
 		FieldHelpMsg(template.HTML(lg("Grant all permissions and prevent changes from non-root users")))
 	if !isRootAuth {
-		r.FieldDisableWhenCreate().FieldDisplayButCanNotEditWhenUpdate()
+		r.FieldDisableWhenCreate().FieldDisableWhenUpdate()
 	}
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
 	formList.AddField(lg("Roles"), "role_id", db.Varchar, form.Select).
@@ -361,8 +360,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 }
 
 func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable Table) {
-	isRootAuth     := auth.Auth(ctx).IsRootAdmin()
-	boolFilterType := types.BoolFilterType()
+	isRootAuth := auth.Auth(ctx).IsRootAdmin()
 
 	managerTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver))
 	info := managerTable.GetInfo().AddXssJsFilter().HideFilterArea()
@@ -371,8 +369,8 @@ func (s *SystemTable) GetNormalManagerTable(ctx *context.Context) (managerTable 
 	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable().FieldSortable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable().FieldSortable()
 	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable().FieldSortable()
-	info.AddField(lg("Disabled"), "disabled", db.Varchar).FieldFilterable(boolFilterType).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
-	info.AddField(lg("Root"), "root", db.Varchar).FieldFilterable(boolFilterType).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
+	info.AddField(lg("Disabled"), "disabled", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
+	info.AddField(lg("Root"), "root", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
 
 	info.AddField(lg("role"), "name", db.Varchar).
 		FieldJoin(types.Join{
@@ -591,7 +589,7 @@ func (s *SystemTable) GetPermissionTable(ctx *context.Context) (permissionTable 
 	formList.AddField(lg("Slug"), "slug", db.Varchar, form.Text).FieldHelpMsg(template.HTML(lg("should be unique"))).FieldMust()
 	formList.AddField(lg("Method"), "http_method", db.Varchar, form.Select).FieldOptions(types.HttpMethodFieldOptions).
 		FieldDisplay(types.CommaSplitFieldDisplay).
-		FieldPostFilterFn(types.CommaSplitPostFielter).
+		FieldPostFilterFn(types.CommaSplitPostFilter).
 		FieldHelpMsg(template.HTML(lg("all method if empty")))
 
 	formList.AddField(lg("Path"), "http_path", db.Varchar, form.TextArea).
@@ -871,6 +869,9 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 
 	info.SetTable("goadmin_menu").SetTitle(lg("Menus")).//SetDescription(lg("Menus")).
 		SetDeleteFn(func(idArr []string) error {
+			if allowChanges {
+				return errors.New("permission denied")
+			}
 			ids := interfaces(idArr)
 
 			_, txErr := s.connection().WithTransaction(func(tx *sql.Tx) (map[string]interface{}, error) {
@@ -944,11 +945,9 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 	formList.AddField(lg("Parent"), "parent_id", db.Int, form.SelectSingle).
 		FieldOptions(parentIDOptions).
 		FieldDisplay(func(model types.FieldModel) interface{} {
-			var menuItem []string
-			if model.ID == "" { return menuItem }
+			if model.ID == "" { return []string(nil) }
 			menuModel, _ := s.table("goadmin_menu").Select("parent_id").Find(model.ID)
-			menuItem = append(menuItem, strconv.FormatInt(menuModel["parent_id"].(int64), 10))
-			return menuItem
+			return []string{ strconv.Itoa(int(menuModel["parent_id"].(int64))) }
 		})
 	formList.AddField(lg("Title"), "title", db.Varchar, form.Text).FieldMust()
 	formList.AddField(lg("Header"), "header", db.Varchar, form.Text)
@@ -960,12 +959,13 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 		FieldDisplay(func(model types.FieldModel) interface{} {
 			var roles []string
 			if model.ID == "" { return roles }
-			roleModel, _ := s.table("goadmin_role_menu").
+			roleModels, _ := s.table("goadmin_role_menu").
 				Select("role_id").
 				Where("menu_id", "=", model.ID).
 				All()
-			for _, v := range roleModel {
-				roles = append(roles, strconv.FormatInt(v["role_id"].(int64), 10))
+			roles = make([]string, len(roleModels))
+			for i, v := range roleModels {
+				roles[i] = strconv.Itoa(int(v["role_id"].(int64)))
 			}
 			return roles
 		})
@@ -1039,10 +1039,6 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	formList.AddField(lgWithConfigScore("Extra"), "extra", db.Varchar, form.TextArea)
 	formList.AddField(lgWithConfigScore("Logo"), "logo", db.Varchar, form.Code).FieldMust()
 	formList.AddField(lgWithConfigScore("Mini logo"), "mini_logo", db.Varchar, form.Code).FieldMust()
-	if s.cfg.IsNotProductionEnvironment() {
-		formList.AddField(lgWithConfigScore("bootstrap file path"), "bootstrap_file_path", db.Varchar, form.Text)
-		formList.AddField(lgWithConfigScore("go mod file path"), "go_mod_file_path", db.Varchar, form.Text)
-	}
 	formList.AddField(lgWithConfigScore("Session life time"), "session_life_time", db.Varchar, form.Number).
 		FieldMust().
 		FieldHelpMsg(template.HTML(lgWithConfigScore("must bigger than 900 seconds")))
@@ -1097,9 +1093,6 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	formList.AddField(lgWithConfigScore("Cdn URL"), "asset_url", db.Varchar, form.Text).
 		FieldHelpMsg(template.HTML(lgWithConfigScore("Do not modify when you have not set up all assets")))
 
-	formList.AddField(lgWithConfigScore("Info log path"), "info_log_path", db.Varchar, form.Text)
-	formList.AddField(lgWithConfigScore("Error log path"), "error_log_path", db.Varchar, form.Text)
-	formList.AddField(lgWithConfigScore("Access log path"), "access_log_path", db.Varchar, form.Text)
 	formList.AddField(lgWithConfigScore("Info log off"), "info_log_off", db.Varchar, form.Switch).
 		FieldOptions(boolFieldOptions)
 	formList.AddField(lgWithConfigScore("Error log off"), "error_log_off", db.Varchar, form.Switch).
@@ -1184,13 +1177,12 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 
 	formList.HideBackButton().HideContinueEditCheckBox().HideContinueNewCheckBox()
 	formList.SetTabGroups(types.NewTabGroups("id", "debug", "env", "language", "theme", "color_scheme",
-		"asset_url", "title", "login_title", "session_life_time", "bootstrap_file_path", "go_mod_file_path", "no_limit_login_ip",
+		"asset_url", "title", "login_title", "session_life_time", "no_limit_login_ip",
 		"operation_log_off", "allow_del_operation_log", "hide_config_center_entrance", "hide_app_info_entrance", "hide_tool_entrance",
 		"hide_plugin_entrance", "animation_type",
 		"animation_duration", "animation_delay", "file_upload_engine", "extra").
 		AddGroup("access_log_off", "access_assets_log_off", "info_log_off", "error_log_off", "sql_log", "logger_level",
-			"info_log_path", "error_log_path",
-			"access_log_path", "logger_rotate_max_size", "logger_rotate_max_backups",
+			"logger_rotate_max_size", "logger_rotate_max_backups",
 			"logger_rotate_max_age", "logger_rotate_compress",
 			"logger_encoder_encoding", "logger_encoder_time_key", "logger_encoder_level_key", "logger_encoder_name_key",
 			"logger_encoder_caller_key", "logger_encoder_message_key", "logger_encoder_stacktrace_key", "logger_encoder_level",

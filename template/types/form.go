@@ -11,7 +11,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	form2 "github.com/GoAdminGroup/go-admin/template/types/form"
 	"html/template"
@@ -171,9 +170,9 @@ type FormField struct {
 	PostFilterFn PostFieldFilterFn `json:"-"`
 }
 
-func (f *FormField) GetRawValue(columns []string, v interface{}) string {
-	isJSON := len(columns) == 0
-	if isJSON || modules.InArray(columns, f.Field) {
+func (f *FormField) GetRawValue(columnMap map[string]struct{}, v interface{}) string {
+	isJSON := len(columnMap) == 0
+	if isJSON || utils.InMapT(columnMap, f.Field) {
 		return db.GetValueFromDatabaseType(f.TypeName, v, isJSON).String()
 	}
 	return ""
@@ -224,11 +223,11 @@ func (f *FormField) allowAdd() bool {
 	return !f.NotAllowAdd
 }
 
-func (f *FormField) updateValue(id, val string, res map[string]interface{}, typ PostType, sql *db.SQL) *FormField {
+func (f *FormField) updateValue(id, val string, row map[string]interface{}, typ PostType, sql *db.SQL) *FormField {
 	m := FieldModel{
 		ID:       id,
 		Value:    val,
-		Row:      res,
+		Row:      row,
 		PostType: typ,
 	}
 
@@ -1485,7 +1484,7 @@ func (f *FormPanel) SetInsertFn(fn FormPostFn) *FormPanel {
 	return f
 }
 
-func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map[string]interface{}, sql func() *db.SQL) ([]FormFields, []string) {
+func (f *FormPanel) GroupFieldWithValue(pk, id string, columnMap map[string]struct{}, res map[string]interface{}, sql func() *db.SQL) ([]FormFields, []string) {
 	groupFormList := make([]FormFields, len(f.TabGroups))
 	groupHeaders  := make([]string    , len(f.TabGroups))
 	existField    := make(map[string]struct{}, len(f.TabGroups))
@@ -1501,7 +1500,7 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 				}
 				if field.FormType.IsTable() {
 					for z, tf := range field.TableFields {
-						rowValue := tf.GetRawValue(columns, res[tf.Field])
+						rowValue := tf.GetRawValue(columnMap, res[tf.Field])
 						if tf.Field == pk {
 							hasPK = true
 						}
@@ -1515,7 +1514,7 @@ func (f *FormPanel) GroupFieldWithValue(pk, id string, columns []string, res map
 					if field.Field == pk {
 						hasPK = true
 					}
-					rowValue := field.GetRawValue(columns, res[field.Field])
+					rowValue := field.GetRawValue(columnMap, res[field.Field])
 					if _, ok := existField[field.Field]; ok {
 						field.Field += "_ga_group_" + strconv.Itoa(j)
 					}
@@ -1584,7 +1583,7 @@ func (f *FormPanel) GroupField(sqls ...func() *db.SQL) ([]FormFields, []string) 
 	return groupFormList, groupHeaders
 }
 
-func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[string]interface{}, sql func() *db.SQL) FormFields {
+func (f *FormPanel) FieldsWithValue(pk, id string, columnMap map[string]struct{}, res map[string]interface{}, sql func() *db.SQL) FormFields {
 	if sql == nil { sql = db.NilSQL }
 	list  := make(FormFields, 0, len(f.FieldList))
 	hasPK := false
@@ -1593,7 +1592,7 @@ func (f *FormPanel) FieldsWithValue(pk, id string, columns []string, res map[str
 			if !ff.Hide {
 				ff.Hide = ff.EditHide
 			}
-			rowValue := ff.GetRawValue(columns, res[ff.Field])
+			rowValue := ff.GetRawValue(columnMap, res[ff.Field])
 			if ff.FatherField != "" {
 				f.FieldList.FindTableField(ff.Field, ff.FatherField).UpdateValue(id, rowValue, res, sql())
 			} else if ff.FormType.IsTable() {

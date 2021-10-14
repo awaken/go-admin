@@ -10,9 +10,7 @@ import (
 
 func InArray(arr []string, str string) bool {
 	for _, v := range arr {
-		if v == str {
-			return true
-		}
+		if v == str { return true }
 	}
 	return false
 }
@@ -38,13 +36,9 @@ func FilterField(field, delimiter, delimiter2 string) string {
 }
 
 func InArrayWithoutEmpty(arr []string, str string) bool {
-	if len(arr) == 0 {
-		return true
-	}
+	if len(arr) == 0 { return true }
 	for _, v := range arr {
-		if v == str {
-			return true
-		}
+		if v == str { return true }
 	}
 	return false
 }
@@ -52,9 +46,7 @@ func InArrayWithoutEmpty(arr []string, str string) bool {
 func RemoveBlankFromArray(s []string) []string {
 	r := make([]string, 0, len(s))
 	for _, str := range s {
-		if str != "" {
-			r = append(r, str)
-		}
+		if str != "" { r = append(r, str) }
 	}
 	return r
 }
@@ -65,30 +57,22 @@ func Uuid() string {
 }
 
 func SetDefault(source, def string) string {
-	if source == "" {
-		return def
-	}
+	if source == "" { return def }
 	return source
 }
 
 func GetPage(page string) int {
-	if page == "" {
-		return 1
-	}
+	if page == "" { return 1 }
 	pageInt, _ := strconv.Atoi(page)
 	return pageInt
 }
 
 func AorEmpty(condition bool, a string) string {
-	if condition {
-		return a
-	}
+	if condition { return a }
 	return ""
 }
 
 func AorBHTML(condition bool, a, b template.HTML) template.HTML {
-	if condition {
-		return a
-	}
+	if condition { return a }
 	return b
 }

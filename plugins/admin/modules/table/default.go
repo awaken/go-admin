@@ -243,25 +243,23 @@ func (tb *DefaultTable) GetDataWithIds(params parameter.Parameters) (PanelInfo, 
 	}, nil
 }
 
-func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columns Columns) map[string]types.InfoItem {
+func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params parameter.Parameters, columnMap map[string]struct{}) map[string]types.InfoItem {
 	tempModelData := map[string]types.InfoItem{
 		"__goadmin_edit_params"  : {},
 		"__goadmin_delete_params": {},
 		"__goadmin_detail_params": {},
 	}
 	var typeName db.DatabaseType
-	headField := ""
-	editParams := ""
+	headField    := ""
+	editParams   := ""
 	deleteParams := ""
 	detailParams := ""
-	noColumns := len(columns) == 0
+	noColumns    := len(columnMap) == 0
 
 	primaryKeyValue := db.GetValueFromDatabaseType(tb.PrimaryKey.Type, res[tb.PrimaryKey.Name], noColumns)
 
 	for _, field := range tb.Info.FieldList {
-		if field.Hide {
-			continue
-		}
+		if field.Hide { continue }
 
 		validJoin := field.Joins.Valid()
 		if validJoin {
@@ -283,10 +281,10 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 		combinedValue := db.GetValueFromDatabaseType(typeName, res[headField], noColumns).String()
 
 		fieldModel := types.FieldModel{
-			ID:  primaryKeyValue.String(),
+			ID : primaryKeyValue.String(),
 			Row: res,
 		}
-		if noColumns || validJoin || modules.InArray(columns, headField) {
+		if noColumns || validJoin || utils.InMapT(columnMap, headField) {
 			fieldModel.Value = combinedValue
 		}
 
@@ -298,7 +296,7 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 
 		tempModelData[headField] = types.InfoItem{
 			Content: template.HTML(valueStr),
-			Value:   combinedValue,
+			Value  : combinedValue,
 		}
 
 		if field.IsEditParam {
@@ -343,7 +341,7 @@ func (tb *DefaultTable) getTempModelData(res map[string]interface{}, params para
 
 	tempModelData[tb.PrimaryKey.Name] = types.InfoItem{
 		Content: valueHtml,
-		Value:   primaryKeyValue.String(),
+		Value  : primaryKeyValue.String(),
 	}
 
 	return tempModelData
@@ -363,7 +361,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 	queryStmt.WriteString(" %s")
 	//queryStmt = "select %s from %s %s %s %s order by " + modules.Delimiter(delim, delim2, "%s") + " %s"
 
-	columns, _ := tb.getColumns(tb.Info.Table)
+	columnMap, _ := tb.getColumnMap(tb.Info.Table)
 
 	thead, fields, joins := tb.Info.FieldList.GetThead(types.TableInfo{
 		Table:      tb.Info.Table,
@@ -371,7 +369,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 		Delimiter2: delim2,
 		Driver:     tb.connectionDriver,
 		PrimaryKey: tb.PrimaryKey.Name,
-	}, params, columns)
+	}, params, columnMap)
 
 	{
 		var sb strings.Builder
@@ -398,15 +396,15 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 		//groupBy = " GROUP BY " + tb.Info.Table + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
 	}
 
-	wheres, whereArgs, existKeys := params.Statement("", tb.Info.Table, delim, delim2, nil, columns, nil, tb.Info.FieldList.GetFieldFilterProcessValue)
-	wheres, whereArgs = tb.Info.Wheres.Statement(wheres, delim, delim2, whereArgs, existKeys, columns)
+	wheres, whereArgs, existKeys := params.Statement("", tb.Info.Table, delim, delim2, nil, columnMap, nil, tb.Info.FieldList.GetFieldFilterProcessValue)
+	wheres, whereArgs = tb.Info.Wheres.Statement(wheres, delim, delim2, whereArgs, existKeys, columnMap)
 	wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
 	if wheres != "" {
 		wheres = "WHERE " + wheres
 	}
 
-	if !modules.InArray(columns, params.SortField) {
+	if _, ok := columnMap[params.SortField]; !ok {
 		params.SortField = tb.PrimaryKey.Name
 	}
 
@@ -421,7 +419,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 
 	infoList := make([]map[string]types.InfoItem, 0, len(res))
 	for i, e := range res {
-		infoList[i] = tb.getTempModelData(e, params, columns)
+		infoList[i] = tb.getTempModelData(e, params, columnMap)
 	}
 
 	return PanelInfo{
@@ -471,12 +469,11 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		}
 	}
 
-	columns, _ := tb.getColumns(tb.Info.Table)
+	columnMap, _ := tb.getColumnMap(tb.Info.Table)
+	thead, fields, joinFields, joins, joinTableMap, filterForm := tb.getTheadAndFilterForm(params, columnMap)
 
-	thead, fields, joinFields, joins, joinTables, filterForm := tb.getTheadAndFilterForm(params, columns)
-
-	fields += pk
-	allFields := fields
+	fields      += pk
+	allFields   := fields
 	groupFields := fields
 
 	if joinFields != "" {
@@ -487,14 +484,14 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 					f := modules.Delimiter(delim, delim2, field.Field)
 					headField  := utils.StrConcat(table, ".", f)
 					casting    := utils.StrConcat("CAST(", headField, " AS NVARCHAR(MAX))")
-					allFields   = strings.ReplaceAll(allFields, headField, utils.StrConcat(casting, " as ", f))
+					allFields   = strings.ReplaceAll(allFields, headField, utils.StrConcat(casting, " AS ", f))
 					groupFields = strings.ReplaceAll(groupFields, headField, casting)
 				}
 			}
 		}
 	}
 
-	if !modules.InArray(columns, params.SortField) {
+	if _, ok := columnMap[params.SortField]; !ok {
 		params.SortField = tb.PrimaryKey.Name
 	}
 
@@ -502,7 +499,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		wheres    = ""
 		whereArgs []interface{}
 		args      []interface{}
-		existKeys []string
+		existKeys map[string]struct{}
 	)
 
 	if len(ids) > 0 {
@@ -523,10 +520,10 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		//wheres = wheres[:len(wheres)-1]
 	} else {
 		// parameter
-		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, conn.GetDelimiter(), conn.GetDelimiter2(), whereArgs, columns, existKeys,
-			tb.Info.FieldList.GetFieldFilterProcessValue)
+		wheres, whereArgs, existKeys = params.Statement(wheres, tb.Info.Table, conn.GetDelimiter(), conn.GetDelimiter2(),
+			whereArgs, columnMap, existKeys, tb.Info.FieldList.GetFieldFilterProcessValue)
 		// pre query
-		wheres, whereArgs = tb.Info.Wheres.Statement(wheres, conn.GetDelimiter(), conn.GetDelimiter2(), whereArgs, existKeys, columns)
+		wheres, whereArgs = tb.Info.Wheres.Statement(wheres, conn.GetDelimiter(), conn.GetDelimiter2(), whereArgs, existKeys, columnMap)
 		wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
 		if wheres != "" {
@@ -541,7 +538,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 	}
 
 	groupBy := ""
-	if len(joinTables) > 0 {
+	if len(joinTableMap) > 0 {
 		var sb strings.Builder
 		sb.Grow(64)
 		sb.WriteString("GROUP BY ")
@@ -573,7 +570,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	infoList := make([]map[string]types.InfoItem, len(res))
 	for i, e := range res {
-		infoList[i] = tb.getTempModelData(e, params, columns)
+		infoList[i] = tb.getTempModelData(e, params, columnMap)
 	}
 
 	// TODO: use the dialect
@@ -589,7 +586,19 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 		logger.LogSQL(countCmd, nil)
 
-		if tb.connectionDriver == "postgresql" {
+		switch tb.connectionDriver {
+		case db.DriverPostgresql:
+			if tb.connectionDriverMode == "h2" || config.GetDatabases().GetDefault().DriverMode == "h2" {
+				size = int(total[0]["count(*)"].(int64))
+			} else {
+				size = int(total[0]["count"].(int64))
+			}
+		case db.DriverMssql:
+			size = int(total[0]["size"].(int64))
+		default:
+			size = int(total[0]["count(*)"].(int64))
+		}
+		/*if tb.connectionDriver == db.DriverPostgresql {
 			if tb.connectionDriverMode == "h2" {
 				size = int(total[0]["count(*)"].(int64))
 			} else if config.GetDatabases().GetDefault().DriverMode == "h2" {
@@ -601,7 +610,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 			size = int(total[0]["size"].(int64))
 		} else {
 			size = int(total[0]["count(*)"].(int64))
-		}
+		}*/
 	}
 
 	return PanelInfo{
@@ -617,7 +626,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 func elapsedQueryTime(benchmark utils.Benchmark) string {
 	elapsed := benchmark.ElapsedMillis()
 	var sb strings.Builder
-	sb.Grow(64)
+	sb.Grow(32)
 	sb.WriteString("<b>")
 	sb.WriteString(language.Get("query time"))
 	sb.WriteString("</b>: ")
@@ -626,18 +635,16 @@ func elapsedQueryTime(benchmark utils.Benchmark) string {
 }
 
 func getDataRes(list []map[string]interface{}, _ int) map[string]interface{} {
-	if len(list) > 0 {
-		return list[0]
-	}
+	if len(list) > 0 { return list[0] }
 	return nil
 }
 
 // GetDataWithId query the single row of data.
 func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, error) {
 	var (
-		res     map[string]interface{}
-		columns Columns
-		id      = param.PK()
+		res       map[string]interface{}
+		columnMap map[string]struct{}
+		id        = param.PK()
 	)
 
 	if tb.getDataFun != nil {
@@ -649,7 +656,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 	} else if tb.Info.GetDataFn != nil {
 		res = getDataRes(tb.Info.GetDataFn(param))
 	} else {
-		columns, _ = tb.getColumns(tb.Form.Table)
+		columnMap, _ = tb.getColumnMap(tb.Form.Table)
 		var (
 			queryStmt, fields, joins, joinFields, groupBy strings.Builder
 			pk         string
@@ -683,7 +690,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 		for _, formField := range tb.Form.FieldList {
 			validJoin := formField.Joins.Valid()
 
-			if formField.Field != pk && modules.InArray(columns, formField.Field) && !validJoin {
+			if formField.Field != pk && utils.InMapT(columnMap, formField.Field) && !validJoin {
 				if fields.Len() > 0 { fields.WriteByte(',') }
 				fields.WriteString(tableName)
 				fields.WriteByte('.')
@@ -815,7 +822,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 	)
 
 	if len(tb.Form.TabGroups) > 0 {
-		groupFormList, groupHeaders = tb.Form.GroupFieldWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sqlObjOrNil)
+		groupFormList, groupHeaders = tb.Form.GroupFieldWithValue(tb.PrimaryKey.Name, id, columnMap, res, tb.sqlObjOrNil)
 		return FormInfo{
 			FieldList:         tb.Form.FieldList,
 			GroupFieldList:    groupFormList,
@@ -826,7 +833,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 	}
 
 	return FormInfo{
-		FieldList:         tb.Form.FieldsWithValue(tb.PrimaryKey.Name, id, columns, res, tb.sqlObjOrNil),
+		FieldList:         tb.Form.FieldsWithValue(tb.PrimaryKey.Name, id, columnMap, res, tb.sqlObjOrNil),
 		GroupFieldList:    groupFormList,
 		GroupFieldHeaders: groupHeaders,
 		Title:             tb.Form.Title,
@@ -970,7 +977,7 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 	var (
 		exceptString  map[string]struct{}
 		value         = make(dialect.H)
-		columns, auto = tb.getColumns(tb.Form.Table)
+		columnMap, auto = tb.getColumnMap(tb.Form.Table)
 		fun           types.PostFieldFilterFn
 	)
 
@@ -994,12 +1001,12 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 		}
 	}
 
-	dataList = dataList.RemoveRemark()
+	dataList.RemoveRemark()
 
 	for k, v := range dataList {
 		k = strings.ReplaceAll(k, "[]", "")
 		if _, ok := exceptString[k]; !ok {
-			if modules.InArray(columns, k) {
+			if _, ok := columnMap[k]; ok {
 				field := tb.Form.FieldList.FindByFieldName(k)
 				delim := ","
 				if field != nil {
@@ -1020,13 +1027,6 @@ func (tb *DefaultTable) getInjectValueFromFormValue(dataList form.Values, typ ty
 					case 1 : value[k] = vv[0]
 					default: value[k] = strings.Join(vv, delim)
 					}
-					/*if len(vv) > 1 {
-						value[k] = strings.Join(vv, delim)
-					} else if len(vv) > 0 {
-						value[k] = vv[0]
-					} else {
-						value[k] = ""
-					}*/
 				}
 			} else {
 				field := tb.Form.FieldList.FindByFieldName(k)
@@ -1145,14 +1145,14 @@ func (tb *DefaultTable) delete(table, key string, values []string) error {
 	return tb.sql().Table(table).WhereIn(key, vals).Delete()
 }
 
-func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, columns Columns) (types.Thead, string, string, string, []string, []types.FormField) {
+func (tb *DefaultTable) getTheadAndFilterForm(params parameter.Parameters, columnMap map[string]struct{}) (types.Thead, string, string, string, map[string]struct{}, []types.FormField) {
 	return tb.Info.FieldList.GetTheadAndFilterForm(types.TableInfo{
 		Table:      tb.Info.Table,
 		Delimiter:  tb.delimiter(),
 		Delimiter2: tb.delimiter2(),
 		Driver:     tb.connectionDriver,
 		PrimaryKey: tb.PrimaryKey.Name,
-	}, params, columns, tb.sqlObjOrNil)
+	}, params, columnMap, tb.sqlObjOrNil)
 }
 
 // db is a helper function return raw db connection.

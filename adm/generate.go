@@ -34,36 +34,29 @@ var systemGoAdminTables = []string{
 }
 
 func generating(cfgFile, connName string) {
-
 	clear(runtime.GOOS)
 	cliInfo()
 
 	var (
 		info = new(dbInfo)
-
 		connection, packageName, outputPath, generatePermissionFlag string
-
 		chooseTables = make([]string, 0)
-
 		cfgModel *ini.File
 		err      error
 	)
 
 	if cfgFile != "" {
 		cfgModel, err = ini.Load(cfgFile)
-
 		if err != nil {
 			panic(errors.New("wrong config file path"))
 		}
 
 		languageCfg, err := cfgModel.GetSection("language")
-
 		if err == nil {
 			setDefaultLangSet(languageCfg.Key("language").Value())
 		}
 
 		modelCfgModel, exist2 := cfgModel.GetSection("model")
-
 		if exist2 == nil {
 			connection = modelCfgModel.Key("connection").Value()
 			packageName = modelCfgModel.Key("package").Value()
@@ -84,7 +77,6 @@ func generating(cfgFile, connName string) {
 	// step 2. show tables
 	if len(chooseTables) == 0 {
 		tables, err := db.WithDriver(conn).Table(info.Database).ShowTables()
-
 		if err != nil {
 			panic(err)
 		}
