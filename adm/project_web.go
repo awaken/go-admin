@@ -206,14 +206,14 @@ func buildProjectWeb(port string) {
 					Path:   "./uploads",
 					Prefix: "uploads",
 				},
-				Language:          p.Language,
-				UrlPrefix:         p.Prefix,
-				IndexUrl:          "/",
-				Logo:              template.HTML(r.PostFormValue("sidebar_logo")),
-				LoginLogo:         template.HTML(r.PostFormValue("login_page_logo")),
-				MiniLogo:          template.HTML(r.PostFormValue("sidebar_min_logo")),
-				Title:             r.PostFormValue("web_title"),
-				Databases:         dbList,
+				Language:  p.Language,
+				UrlPrefix: p.Prefix,
+				IndexUrl:  "/",
+				Logo:      template.HTML(r.PostFormValue("sidebar_logo")),
+				LoginLogo: template.HTML(r.PostFormValue("login_page_logo")),
+				MiniLogo:  template.HTML(r.PostFormValue("sidebar_min_logo")),
+				Title:     r.PostFormValue("web_title"),
+				Databases: dbList,
 			})
 
 			installProjectTmpl(p, cfg, "", info)

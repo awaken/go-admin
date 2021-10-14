@@ -139,9 +139,9 @@ func buildProject(cfgFile string) {
 			Path:   "./uploads",
 			Prefix: "uploads",
 		},
-		Language:          p.Language,
-		UrlPrefix:         p.Prefix,
-		IndexUrl:          "/",
+		Language:  p.Language,
+		UrlPrefix: p.Prefix,
+		IndexUrl:  "/",
 	})
 
 	if info.DriverName == "" && p.Driver != "" {

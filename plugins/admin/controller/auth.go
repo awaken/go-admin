@@ -51,7 +51,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		return
 	}
 	if user.IsDisabled() {
-		response.BadRequest(ctx, "request denied due to disabled user")
+		response.BadRequest(ctx, "disabled account")
 		return
 	}
 

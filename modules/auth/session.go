@@ -160,11 +160,9 @@ func (driver *DBDriver) Load(sid string) (map[string]interface{}, error) {
 	if db.CheckError(err, db.QUERY) {
 		return nil, err
 	}
-
 	if sesModel == nil {
 		return map[string]interface{}{}, nil
 	}
-
 	var values map[string]interface{}
 	err = utils.JsonUnmarshal([]byte(sesModel["values"].(string)), &values)
 	return values, err

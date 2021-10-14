@@ -236,7 +236,7 @@ func (t UserModel) WithRoles() UserModel {
 	return t
 }
 
-func (t UserModel) GetAllRoleId() []interface{} {
+func (t UserModel) AllRoleIds() []interface{} {
 	ids := make([]interface{}, len(t.Roles))
 	for i, role := range t.Roles {
 		ids[i] = role.Id
@@ -249,7 +249,7 @@ func (t UserModel) WithPermissions() UserModel {
 	var permissions []map[string]interface{}
 	var err         error
 
-	roleIds := t.GetAllRoleId()
+	roleIds := t.AllRoleIds()
 	if len(roleIds) > 0 {
 		permissions, err = t.Table("goadmin_role_permissions").
 			LeftJoin("goadmin_permissions", "goadmin_permissions.id", "=", "goadmin_role_permissions.permission_id").
@@ -310,7 +310,7 @@ func (t UserModel) WithMenus() UserModel {
 			Select("menu_id", "parent_id").
 			All()
 	} else {
-		rolesId := t.GetAllRoleId()
+		rolesId := t.AllRoleIds()
 		if len(rolesId) > 0 {
 			menuIdsModel, err = t.Table("goadmin_role_menu").
 				LeftJoin("goadmin_menu", "goadmin_menu.id", "=", "goadmin_role_menu.menu_id").

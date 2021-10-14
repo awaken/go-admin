@@ -27,7 +27,7 @@ func Auth(ctx *context.Context) models.UserModel {
 // Check check username and password and return the user model.
 func Check(username, password string, conn db.Connection) (models.UserModel, bool) {
 	user := models.User().SetConn(conn).FindByUserName(username)
-	if !user.IsValid() || !comparePassword(password, user.Password) {
+	if user.IsEmpty() || !comparePassword(password, user.Password) {
 		return user, false
 	}
 	//user.UpdatePwd(EncodePassword([]byte(password)))			// uncomment to enforce security: rewrite new hashed password at each successful access
@@ -85,7 +85,7 @@ func InitCSRFTokenSrv(conn db.Connection) (string, service.Service) {
 		Where("values", "=", "__csrf_token__").
 		All()
 	if db.CheckError(err, db.QUERY) {
-		logger.Error("cannot retrieve csrf token from db: ", err)
+		logger.Error("cannot retrieve csrf tokens from db: ", err)
 	}
 	tokens := make(CSRFToken, len(list))
 	for _, elem := range list {
