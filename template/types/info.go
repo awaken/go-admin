@@ -117,9 +117,7 @@ func (r FieldModelValue) Value() string {
 }
 
 func (r FieldModelValue) First() string {
-	if len(r) > 0 {
-		return r[0]
-	}
+	if len(r) > 0 { return r[0] }
 	return ""
 }
 
@@ -529,9 +527,7 @@ func (j Joins) Valid() bool {
 }
 
 func (j Joins) Last() Join {
-	if len(j) > 0 {
-		return j[len(j) - 1]
-	}
+	if len(j) > 0 { return j[len(j) - 1] }
 	return Join{}
 }
 
@@ -753,30 +749,32 @@ type WhereRaw struct {
 	Args []interface{}
 }
 
-func (wh WhereRaw) check() int {
-	index := 0
-	n     := len(wh.Raw)
-	for i, ch := range wh.Raw {
-		if ch == ' ' {
+func (wh WhereRaw) nextBoolTokenAt() int {
+	idx := 0
+	n   := len(wh.Raw)
+	for i, c := range wh.Raw {
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' { continue }
+		if c == 'a' || c == 'A' {
+			if n < i + 3 {				// look for "and"
+				break
+			} else if c2 := wh.Raw[i+1]; c2 == 'n' || c2 == 'N' {
+				if c3 := wh.Raw[i+2]; c3 == 'd' || c3 == 'D' {
+					idx = i + 3
+				}
+			}
 			continue
 		}
-		if ch == 'a' {
-			if n < i + 3 {
-				break
-			} else if wh.Raw[i+1] == 'n' && wh.Raw[i+2] == 'd' {
-				index = i + 3
-			}
-		} else if ch == 'o' {
+		if c == 'o' || c == 'O' { // look for "or"
 			if n < i + 2 {
 				break
-			} else if wh.Raw[i+1] == 'r' {
-				index = i + 2
+			} else if c2 := wh.Raw[i+1]; c2 == 'r' || c2 == 'R' {
+				idx = i + 2
 			}
-		} else {
-			break
+			continue
 		}
+		break
 	}
-	return index
+	return idx
 }
 
 func (wh WhereRaw) Statement(wheres string, whereArgs []interface{}) (string, []interface{}) {
@@ -784,11 +782,11 @@ func (wh WhereRaw) Statement(wheres string, whereArgs []interface{}) (string, []
 		return wheres, whereArgs
 	}
 	if wheres == "" {
-		wheres = wh.Raw[wh.check():] + " "
-	} else if wh.check() != 0 {
+		wheres = wh.Raw[wh.nextBoolTokenAt():] + " "
+	} else if wh.nextBoolTokenAt() != 0 {
 		wheres = utils.StrConcat(wheres, wh.Raw, " ")
 	} else {
-		wheres = utils.StrConcat(wheres, " and ", wh.Raw, " ")
+		wheres = utils.StrConcat(wheres, " AND ", wh.Raw, " ")
 	}
 	return wheres, append(whereArgs, wh.Args...)
 }
@@ -1396,9 +1394,7 @@ func (i *InfoPanel) FieldFilterOptions(options FieldOptions) *InfoPanel {
 
 func (i *InfoPanel) FieldFilterOptionsFromTable(table, textFieldName, valueFieldName string, process ...OptionTableQueryProcessFn) *InfoPanel {
 	var fn OptionTableQueryProcessFn
-	if len(process) > 0 {
-		fn = process[0]
-	}
+	if len(process) > 0 { fn = process[0] }
 	i.FieldList[i.curFieldListIndex].FilterFormFields[0].OptionTable = OptionTable{
 		Table:          table,
 		TextField:      textFieldName,
@@ -1713,9 +1709,7 @@ func (i *InfoPanel) HideCheckBoxColumn() *InfoPanel {
 
 func (i *InfoPanel) HideColumn(n int) *InfoPanel {
 	i.AddCSS(template.CSS(fmt.Sprintf(`
-	.box-body table.table tbody tr td:nth-child(%v), .box-body table.table tbody tr th:nth-child(%v) {
-		display: none;
-	}`, n, n)))
+	.box-body table.table tbody tr td:nth-child(%v), .box-body table.table tbody tr th:nth-child(%v) { display: none }`, n, n)))
 	return i
 }
 

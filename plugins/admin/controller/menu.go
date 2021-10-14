@@ -248,7 +248,9 @@ func (h *Handler) MenuOrder(ctx *context.Context) {
 }
 
 func (h *Handler) getMenuInfoPanel(ctx *context.Context, plugName string, alert template2.HTML) {
-	user := auth.Auth(ctx)
+	user        := auth.Auth(ctx)
+	allowEdit   := user.IsSuperAdmin()
+	allowDelete := user.IsRootAdmin()
 
 	if plugName == "" {
 		plugName = ctx.Query("__plugin_name")
@@ -256,44 +258,47 @@ func (h *Handler) getMenuInfoPanel(ctx *context.Context, plugName string, alert 
 
 	tree := aTree().
 		SetTree((menu.GetGlobalMenu(user, h.conn, ctx.Lang(), plugName)).List).
-		SetEditUrl(h.routePath("menu_edit_show")).
 		SetUrlPrefix(h.config.Prefix()).
-		SetDeleteUrl(h.routePath("menu_delete")).
-		SetOrderUrl(h.routePath("menu_order")).
-		GetContent()
+		SetOrderUrl(h.routePath("menu_order"))
+	if allowEdit {
+		tree.SetEditUrl(h.routePath("menu_edit_show"))
+	}
+	if allowDelete {
+		tree.SetDeleteUrl(h.routePath("menu_delete"))
+	}
 
 	var (
 		header   = aTree().GetTreeHeader()
-		box      = aBox().SetHeader(header).SetBody(tree).GetContent()
+		box      = aBox().SetHeader(header).SetBody(tree.GetContent()).GetContent()
 		col1     = aCol().SetSize(types.SizeMD(6)).SetContent(box).GetContent()
+		col2     template.HTML
 		panel    = h.table("menu", ctx)
 		formInfo = panel.GetNewFormInfo()
 	)
 
-	newForm := menuFormContent(aForm().
-		SetPrefix(h.config.PrefixFixSlash()).
-		SetUrl(h.routePath("menu_new")).
-		SetPrimaryKey(panel.GetPrimaryKey().Name).
-		SetHiddenFields(map[string]string{
-			form2.TokenKey:    h.authSrv().AddToken(),
-			form2.PreviousKey: h.routePath("menu") + getMenuPlugNameParams(plugName),
-		}).
-		SetOperationFooter(formFooter("menu", false, false, false,
-			panel.GetForm().FormNewBtnWord)).
-		SetTitle("New").
-		SetContent(formInfo.FieldList).
-		SetTabContents(formInfo.GroupFieldList).
-		SetTabHeaders(formInfo.GroupFieldHeaders))
+	if allowEdit {
+		newForm := menuFormContent(aForm().
+			SetPrefix(h.config.PrefixFixSlash()).
+			SetUrl(h.routePath("menu_new")).
+			SetPrimaryKey(panel.GetPrimaryKey().Name).
+			SetHiddenFields(map[string]string{
+				form2.TokenKey:    h.authSrv().AddToken(),
+				form2.PreviousKey: h.routePath("menu") + getMenuPlugNameParams(plugName),
+			}).
+			SetOperationFooter(formFooter("menu", false, false, false,
+				panel.GetForm().FormNewBtnWord)).
+			SetTitle("New").
+			SetContent(formInfo.FieldList).
+			SetTabContents(formInfo.GroupFieldList).
+			SetTabHeaders(formInfo.GroupFieldHeaders))
 
-	col2 := aCol().SetSize(types.SizeMD(6)).SetContent(newForm).GetContent()
-
+		col2 = aCol().SetSize(types.SizeMD(6)).SetContent(newForm).GetContent()
+	}
 	row := aRow().SetContent(col1 + col2).GetContent()
 
 	h.HTMLPlug(ctx, user, types.Panel{
-		Content:     alert + row,
+		Content    : alert + row,
+		Title      : "Menu",
 		Description: "",
-		Title:       "Menu",
-		//Description: "Menus Manage",
-		//Title:       "Menus Manage",
 	}, plugName)
 }

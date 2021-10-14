@@ -50,6 +50,10 @@ func (h *Handler) Auth(ctx *context.Context) {
 		response.BadRequest(ctx, errMsg)
 		return
 	}
+	if user.IsDisabled() {
+		response.BadRequest(ctx, "request denied due to disabled user")
+		return
+	}
 
 	err := auth.SetCookie(ctx, user, h.conn)
 	if err != nil {

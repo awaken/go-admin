@@ -351,15 +351,23 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 	conn   := tb.db()
 	delim  := conn.GetDelimiter()
 	delim2 := conn.GetDelimiter2()
+	dl     := len(delim) + len(delim2)
+	pkl    := dl + len(tb.PrimaryKey.Name)
 
+	const q1 = "SELECT %s FROM %s %s %s %s ORDER BY "
+	const q2 = "%s"
+	const q3 = " %s"
 	var queryStmt strings.Builder
-	queryStmt.Grow(256)
-	queryStmt.WriteString("SELECT %s FROM %s %s %s %s ORDER BY ")
+	queryStmt.Grow(len(q1) + len(q2) * 2 + 1 + len(q3) + dl)
+	queryStmt.WriteString(q1)
 	queryStmt.WriteString(delim)
-	queryStmt.WriteString("%s")
+	queryStmt.WriteString(q2)
 	queryStmt.WriteString(delim2)
-	queryStmt.WriteString(" %s")
-	//queryStmt = "select %s from %s %s %s %s order by " + modules.Delimiter(delim, delim2, "%s") + " %s"
+	queryStmt.WriteByte('.')
+	queryStmt.WriteString(delim)
+	queryStmt.WriteString(q2)
+	queryStmt.WriteString(delim2)
+	queryStmt.WriteString(q3)
 
 	columnMap, _ := tb.getColumnMap(tb.Info.Table)
 
@@ -373,7 +381,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 
 	{
 		var sb strings.Builder
-		sb.Grow(256)
+		sb.Grow(len(fields) + len(tb.Info.Table) + 1 + pkl)
 		sb.WriteString(fields)
 		sb.WriteString(tb.Info.Table)
 		sb.WriteByte('.')
@@ -381,22 +389,22 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 		sb.WriteString(tb.PrimaryKey.Name)
 		sb.WriteString(delim2)
 		fields = sb.String()
-		//fields += tb.Info.Table + "." + modules.FilterField(tb.PrimaryKey.Name, delim, delim2)
 	}
 
 	var groupBy strings.Builder
 	if joins != "" {
-		groupBy.Grow(64)
-		groupBy.WriteString("GROUP BY ")
+		const g = "GROUP BY "
+		groupBy.Grow(len(g) + 1 + len(tb.Info.Table) + pkl)
+		groupBy.WriteString(g)
 		groupBy.WriteString(tb.Info.Table)
 		groupBy.WriteByte('.')
 		groupBy.WriteString(delim)
 		groupBy.WriteString(tb.PrimaryKey.Name)
 		groupBy.WriteString(delim2)
-		//groupBy = " GROUP BY " + tb.Info.Table + "." + modules.Delimiter(delim, delim2, tb.PrimaryKey.Name)
 	}
 
-	wheres, whereArgs, existKeys := params.Statement("", tb.Info.Table, delim, delim2, nil, columnMap, nil, tb.Info.FieldList.GetFieldFilterProcessValue)
+	wheres, whereArgs, existKeys := params.Statement("", tb.Info.Table, delim, delim2,
+		nil, columnMap, nil, tb.Info.FieldList.GetFieldFilterProcessValue)
 	wheres, whereArgs = tb.Info.Wheres.Statement(wheres, delim, delim2, whereArgs, existKeys, columnMap)
 	wheres, whereArgs = tb.Info.WhereRaws.Statement(wheres, whereArgs)
 
@@ -408,8 +416,9 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 		params.SortField = tb.PrimaryKey.Name
 	}
 
-	queryCmd := fmt.Sprintf(queryStmt.String(), fields, tb.Info.Table, joins, wheres, groupBy.String(), params.SortField, params.SortType)
-	logger.LogSQL(queryCmd, nil)
+	queryCmd := fmt.Sprintf(queryStmt.String(), fields, tb.Info.Table, joins,
+		wheres, groupBy.String(), tb.Info.Table, params.SortField, params.SortType)
+	logger.LogSQL(queryCmd, whereArgs)
 
 	res, err := conn.QueryWithConnection(tb.connection, queryCmd, whereArgs...)
 
@@ -417,7 +426,7 @@ func (tb *DefaultTable) getAllDataFromDatabase(params parameter.Parameters) (Pan
 		return PanelInfo{}, err
 	}
 
-	infoList := make([]map[string]types.InfoItem, 0, len(res))
+	infoList := make([]map[string]types.InfoItem, len(res))
 	for i, e := range res {
 		infoList[i] = tb.getTempModelData(e, params, columnMap)
 	}
@@ -449,23 +458,23 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 
 	if len(ids) > 0 {
 		countExtra := ""
-		if isMssql { countExtra = "as [size]" }
+		if isMssql { countExtra = " AS [size]" }
 		// %s means: fields, table, join table, pk values, group by, order by field,  order by type
-		queryStmt = utils.StrConcat("select %s from ", placeholder, " %s where ", pk, " in (%s) %s ORDER BY %s.", placeholder, " %s")
+		queryStmt = utils.StrConcat("SELECT %s FROM ", placeholder, " %s WHERE ", pk, " IN (%s) %s ORDER BY %s.", placeholder, " %s")
 		// %s means: table, join table, pk values
-		countStmt = utils.StrConcat("select count(*) ", countExtra, " from ", placeholder, " %s where ", pk, " in (%s)")
+		countStmt = utils.StrConcat("SELECT count(*)", countExtra, " FROM ", placeholder, " %s WHERE ", pk, " IN (%s)")
 	} else {
 		if isMssql {
 			// %s means: order by field, order by type, fields, table, join table, wheres, group by
-			queryStmt = utils.StrConcat("SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s.", placeholder, " %s) as ROWNUMBER_, %s from ",
+			queryStmt = utils.StrConcat("SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s.", placeholder, " %s) AS ROWNUMBER_, %s FROM ",
 				placeholder, "%s %s %s ) as TMP_ WHERE TMP_.ROWNUMBER_ > ? AND TMP_.ROWNUMBER_ <= ?")
 			// %s means: table, join table, wheres
-			countStmt = utils.StrConcat("select count(*) as [size] from (select count(*) as [size] from ", placeholder, " %s %s %s) src")
+			countStmt = utils.StrConcat("SELECT count(*) AS [size] FROM (SELECT count(*) AS [size] FROM ", placeholder, " %s %s %s) src")
 		} else {
 			// %s means: fields, table, join table, wheres, group by, order by field, order by type
-			queryStmt = utils.StrConcat("select %s from ", placeholder, "%s %s %s order by ", placeholder, ".", placeholder, " %s LIMIT ? OFFSET ?")
+			queryStmt = utils.StrConcat("SELECT %s FROM ", placeholder, "%s %s %s ORDER BY ", placeholder, ".", placeholder, " %s LIMIT ? OFFSET ?")
 			// %s means: table, join table, wheres
-			countStmt = utils.StrConcat("select count(*) from (select ", pk, " from ", placeholder, " %s %s %s) src")
+			countStmt = utils.StrConcat("SELECT count(*) FROM (SELECT ", pk, " FROM ", placeholder, " %s %s %s) src")
 		}
 	}
 

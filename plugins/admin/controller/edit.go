@@ -8,7 +8,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
@@ -72,9 +71,9 @@ func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix str
 	}
 
 	showEditUrl := h.routePathWithPrefix("show_edit", prefix) + param.DeletePK().GetRouteParamStr()
-	infoUrl := h.routePathWithPrefix("info", prefix) + param.DeleteField(constant.EditPKKey).GetRouteParamStr()
-	editUrl := h.routePathWithPrefix("edit", prefix)
-	referer := ctx.Referer()
+	infoUrl     := h.routePathWithPrefix("info", prefix) + param.DeleteField(constant.EditPKKey).GetRouteParamStr()
+	editUrl     := h.routePathWithPrefix("edit", prefix)
+	referer     := ctx.Referer()
 
 	if referer != "" && !utils.IsInfoUrl(referer) && !utils.IsEditUrl(referer, ctx.Query(constant.PrefixKey)) {
 		infoUrl = referer
@@ -120,10 +119,13 @@ func (h *Handler) showForm(ctx *context.Context, alert template.HTML, prefix str
 		content = f.Wrapper(content)
 	}
 
+	title := ""
+	if isNotIframe { title = formInfo.Title }
+
 	h.HTML(ctx, user, types.Panel{
 		Content    : alert + content,
 		Description: template.HTML(formInfo.Description),
-		Title      : modules.AorBHTML(isNotIframe, template.HTML(formInfo.Title), ""),
+		Title      : template.HTML(title),
 		MiniSidebar: f.HideSideBar,
 	}, template.ExecuteOptions{ Animation : isAnim, NoCompress: f.NoCompress })
 

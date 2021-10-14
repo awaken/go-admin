@@ -187,7 +187,6 @@ func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, plugi
 		menus    []map[string]interface{}
 		plugName string
 	)
-
 	if len(pluginNames) > 0 {
 		plugName = pluginNames[0]
 	}
@@ -213,10 +212,9 @@ func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, plugi
 	}
 
 	menuOptions := make([]map[string]string, len(menus))
-
 	for i, menu := range menus {
 		menuOptions[i] = map[string]string{
-			"id":    strconv.Itoa(int(menu["id"].(int64))),
+			"id"   : strconv.Itoa(int(menu["id"].(int64))),
 			"title": language.GetWithLang(menu["title"].(string), lang),
 		}
 	}
@@ -239,20 +237,20 @@ func GetGlobalMenu(user models.UserModel, conn db.Connection, lang string, plugi
 }
 
 func constructMenuTree(menus []map[string]interface{}, parentID int64, langParam string) []Item {
-	var branch []Item
-	var title string
+	branch := make([]Item, 0, len(menus))
 
 	for _, menu := range menus {
 		if parentID == menu["parent_id"].(int64) {
+			var title string
 			if menu["type"].(int64) == 1 {
 				title = language.Get(menu["title"].(string))
 			} else {
 				title = menu["title"].(string)
 			}
 
-			menuId := menu["id"].(int64)
+			menuId    := menu["id"].(int64)
 			header, _ := menu["header"].(string)
-			uri := menu["uri"].(string)
+			uri       := menu["uri"].(string)
 
 			if langParam != "" {
 				var sb strings.Builder

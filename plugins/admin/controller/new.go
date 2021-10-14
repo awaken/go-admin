@@ -8,7 +8,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
@@ -77,12 +76,15 @@ func (h *Handler) showNewForm(ctx *context.Context, alert template.HTML, prefix,
 		content = f.Wrapper(content)
 	}
 
+	title := ""
+	if isNotIframe { title = f.Title }
+
 	h.HTML(ctx, user, types.Panel{
 		Content:     alert + content,
 		Description: template.HTML(f.Description),
-		Title:       modules.AorBHTML(isNotIframe, template.HTML(f.Title), ""),
+		Title:       template.HTML(title),
 		MiniSidebar: f.HideSideBar,
-	}, template.ExecuteOptions{Animation: alert == ""})
+	}, template.ExecuteOptions{ Animation: alert == "" })
 
 	if isNew {
 		ctx.AddHeader(constant.PjaxUrlHeader, showNewUrl)

@@ -1,13 +1,13 @@
 package parameter
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 type Parameters struct {
@@ -63,7 +63,9 @@ var operators = map[string]string{
 	"free": "free",
 }
 
-var keyMap = map[string]struct{}{ Page: {}, PageSize: {}, Sort: {}, Columns: {}, Prefix: {}, Pjax: {}, form.NoAnimationKey: {} }
+var globKeyMap = map[string]struct{}{
+	Page: {}, PageSize: {}, Sort: {}, Columns: {}, Prefix: {}, Pjax: {}, form.NoAnimationKey: {},
+}
 
 func BaseParam() Parameters {
 	return Parameters{ Page: "1", PageSize: "10", PageInt: 1, PageSizeInt: 10, Fields: make(map[string][]string) }
@@ -91,14 +93,14 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 		animation = false
 	}
 
-	fields := make(map[string][]string)
+	fields := make(map[string][]string, 8)
 
 	for key, value := range values {
 		if len(value) > 0 && value[0] != "" {
-			if _, ok := keyMap[key]; !ok {
+			if _, ok := globKeyMap[key]; !ok {
 				if key == SortType {
 					if value[0] != sortTypeDesc && value[0] != sortTypeAsc {
-						fields[key] = []string{sortTypeDesc}
+						fields[key] = []string{ sortTypeDesc }
 					}
 				} else {
 					if strings.Contains(key, FilterParamOperatorSuffix) &&
@@ -111,13 +113,13 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 		}
 	}
 
-	columnsArr := make([]string, 0)
+	var columnsArr []string
 	if columns != "" {
 		columns, _ = url.QueryUnescape(columns)
 		columnsArr = strings.Split(columns, ",")
 	}
 
-	pageInt, _ := strconv.Atoi(page)
+	pageInt    , _ := strconv.Atoi(page)
 	pageSizeInt, _ := strconv.Atoi(pageSize)
 
 	return Parameters{
@@ -137,9 +139,7 @@ func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 
 func GetParamFromURL(urlStr string, defaultPageSize int, defaultSortType, primaryKey string) Parameters {
 	u, err := url.Parse(urlStr)
-	if err != nil {
-		return BaseParam()
-	}
+	if err != nil { return BaseParam() }
 	return GetParam(u, defaultPageSize, primaryKey, defaultSortType)
 }
 
@@ -150,9 +150,7 @@ func (param Parameters) WithPKs(id ...string) Parameters {
 
 func (param Parameters) PKs() []string {
 	pk := param.GetFieldValue(PrimaryKey)
-	if pk == "" {
-		return nil
-	}
+	if pk == "" { return nil }
 	return strings.Split(pk, ",")
 }
 
@@ -178,9 +176,9 @@ func (param Parameters) WithURLPath(path string) Parameters {
 
 func (param Parameters) WithIsAll(isAll bool) Parameters {
 	if isAll {
-		param.Fields[IsAll] = []string{True}
+		param.Fields[IsAll] = []string{ True }
 	} else {
-		param.Fields[IsAll] = []string{False}
+		param.Fields[IsAll] = []string{ False }
 	}
 	return param
 }
@@ -238,9 +236,7 @@ func (param Parameters) GetFieldValuesStr(field string) string {
 
 func (param Parameters) GetFieldOperator(field, suffix string) string {
 	op := param.GetFieldValue(field + FilterParamOperatorSuffix + suffix)
-	if op == "" {
-		return "eq"
-	}
+	if op == "" { return "eq" }
 	return op
 }
 
@@ -277,7 +273,7 @@ func (param Parameters) URLNoAnimation(page string) string {
 }
 
 func (param Parameters) GetRouteParamStrWithoutPageSize(page string) string {
-	p := make(url.Values)
+	p := make(url.Values, 4 + len(param.Fields))
 	p.Add(Sort, param.SortField)
 	p.Add(Page, page)
 	p.Add(SortType, param.SortType)
@@ -291,9 +287,7 @@ func (param Parameters) GetRouteParamStrWithoutPageSize(page string) string {
 }
 
 func (param Parameters) GetFixedParamStrFromCache() url.Values {
-	if param.cacheFixedStr != nil {
-		return param.cacheFixedStr
-	}
+	if param.cacheFixedStr != nil { return param.cacheFixedStr }
 	p := param.GetFixedParamStr()
 	param.cacheFixedStr = p
 	return p
@@ -306,7 +300,7 @@ func (param Parameters) GetLastPageRouteParamStr(cache ...bool) string {
 	} else {
 		p = param.GetFixedParamStr()
 	}
-	p.Add(Page, strconv.Itoa(param.PageInt-1))
+	p.Add(Page, strconv.Itoa(param.PageInt - 1))
 	return "?" + p.Encode()
 }
 
@@ -317,12 +311,12 @@ func (param Parameters) GetNextPageRouteParamStr(cache ...bool) string {
 	} else {
 		p = param.GetFixedParamStr()
 	}
-	p.Add(Page, strconv.Itoa(param.PageInt+1))
+	p.Add(Page, strconv.Itoa(param.PageInt + 1))
 	return "?" + p.Encode()
 }
 
 func (param Parameters) GetFixedParamStr() url.Values {
-	p := make(url.Values)
+	p := make(url.Values, 4 + len(param.Fields))
 	p.Add(Sort, param.SortField)
 	p.Add(PageSize, param.PageSize)
 	p.Add(SortType, param.SortType)
@@ -336,7 +330,7 @@ func (param Parameters) GetFixedParamStr() url.Values {
 }
 
 func (param Parameters) GetFixedParamStrWithoutColumnsAndPage() string {
-	p := make(url.Values)
+	p := make(url.Values, 4)
 	p.Add(Sort, param.SortField)
 	p.Add(PageSize, param.PageSize)
 	if len(param.Columns) > 0 {
@@ -347,7 +341,7 @@ func (param Parameters) GetFixedParamStrWithoutColumnsAndPage() string {
 }
 
 func (param Parameters) GetFixedParamStrWithoutSort() string {
-	p := make(url.Values)
+	p := make(url.Values, 3 + len(param.Columns))
 	p.Add(PageSize, param.PageSize)
 	for key, value := range param.Fields {
 		p[key] = value

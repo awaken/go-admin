@@ -142,9 +142,6 @@ func buildProject(cfgFile string) {
 		Language:          p.Language,
 		UrlPrefix:         p.Prefix,
 		IndexUrl:          "/",
-		AccessLogPath:     rootPath + "/logs/access.log",
-		ErrorLogPath:      rootPath + "/logs/error.log",
-		InfoLogPath:       rootPath + "/logs/info.log",
 	})
 
 	if info.DriverName == "" && p.Driver != "" {

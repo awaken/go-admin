@@ -277,14 +277,15 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 
 	var interval []int
 	autoRefresh := info.AutoRefresh != uint(0)
-	if autoRefresh {
-		interval = []int{ int(info.AutoRefresh) }
-	}
+	if autoRefresh { interval = []int{ int(info.AutoRefresh) } }
+
+	title := ""
+	if isNotIframe { title = panelInfo.Title }
 
 	return h.Execute(ctx, user, types.Panel{
 		Content:         content,
-		Description:     template2.HTML(panelInfo.Description),
-		Title:           modules.AorBHTML(isNotIframe, template2.HTML(panelInfo.Title), ""),
+		Description:     template.HTML(panelInfo.Description),
+		Title:           template.HTML(title),
 		MiniSidebar:     info.HideSideBar,
 		AutoRefresh:     autoRefresh,
 		RefreshInterval: interval,

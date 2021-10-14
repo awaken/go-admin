@@ -768,10 +768,7 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 		Deletable:  allowDelete,
 		Exportable: true,
 		Connection: "default",
-		PrimaryKey: PrimaryKey{
-			Type: db.Int,
-			Name: DefaultPrimaryKeyName,
-		},
+		PrimaryKey: PrimaryKey{ Type: db.Int, Name: DefaultPrimaryKeyName },
 	})
 
 	info := opTable.GetInfo().AddXssJsFilter().
@@ -805,21 +802,20 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 	users, _ := s.table(config.GetAuthUserTable()).Select("id", "name").All()
 	options := make(types.FieldOptions, len(users))
 	for k, user := range users {
-		options[k].Value = fmt.Sprintf("%v", user["id"])
-		options[k].Text = fmt.Sprintf("%v", user["name"])
+		options[k].Value = fmt.Sprintf("%v", user["id"  ])
+		options[k].Text  = fmt.Sprintf("%v", user["name"])
 	}
 	info.AddSelectBox(language.Get("User"), options, action.FieldFilter("user_id"))
 	info.AddSelectBox(language.Get("Method"), types.FieldOptions{
-		{Value: "GET", Text: "GET"},
-		{Value: "POST", Text: "POST"},
-		{Value: "OPTIONS", Text: "OPTIONS"},
-		{Value: "PUT", Text: "PUT"},
-		{Value: "HEAD", Text: "HEAD"},
-		{Value: "DELETE", Text: "DELETE"},
+		{ Value: "GET"    , Text: "GET"     },
+		{ Value: "POST"   , Text: "POST"    },
+		{ Value: "OPTIONS", Text: "OPTIONS" },
+		{ Value: "PUT"    , Text: "PUT"     },
+		{ Value: "HEAD"   , Text: "HEAD"    },
+		{ Value: "DELETE" , Text: "DELETE"  },
 	}, action.FieldFilter("method"))
 
-	info.SetTable("goadmin_operation_log").
-		SetTitle(lg("Audit Log"))//.SetDescription(lg("operation log"))
+	info.SetTable("goadmin_operation_log").SetTitle(lg("Audit Log"))//.SetDescription(lg("operation log"))
 
 	formList := opTable.GetForm().AddXssJsFilter()
 
@@ -832,44 +828,41 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 	formList.AddField(lg("Updated At"), "updated_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 	formList.AddField(lg("Created At"), "created_at", db.Timestamp, form.Default).FieldDisableWhenCreate()
 
-	formList.SetTable("goadmin_operation_log").
-		SetTitle(lg("Audit Log"))//.SetDescription(lg("operation log"))
+	formList.SetTable("goadmin_operation_log").SetTitle(lg("Audit Log"))//.SetDescription(lg("operation log"))
 
 	return
 }
 
 func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
-	allowChanges := auth.Auth(ctx).IsSuperAdmin()
+	user        := auth.Auth(ctx)
+	allowEdit   := user.IsSuperAdmin()
+	allowDelete := user.IsRootAdmin()
 
 	cfg := DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver)
-	if !allowChanges {
-		cfg.CanAdd = false
-		cfg.Editable = false
-		cfg.Deletable = false
-	}
+	cfg.CanAdd    = allowEdit
+	cfg.Editable  = allowEdit
+	cfg.Deletable = allowDelete
 
 	menuTable = NewDefaultTable(cfg)
-
 	name := ctx.Query("__plugin_name")
 
 	info := menuTable.GetInfo().AddXssJsFilter().HideFilterArea().Where("plugin_name", "=", name)
-	if !allowChanges {
-		info.HideNewButton().HideEditButton().HideDeleteButton()
-	}
+	if !allowEdit { info.HideNewButton().HideEditButton() }
+	if !allowDelete { info.HideDeleteButton() }
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
 	info.AddField(lg("Parent"), "parent_id", db.Int)
-	info.AddField(lg("Title"), "title", db.Varchar)
+	info.AddField(lg("Title"), "title", db.Varchar).FieldSortable()
 	info.AddField(lg("Icon"), "icon", db.Varchar)
 	info.AddField(lg("URI"), "uri", db.Varchar)
-	info.AddField(lg("Role"), "roles", db.Varchar)
+	info.AddField(lg("Role"), "roles", db.Varchar).FieldSortable()
 	info.AddField(lg("Header"), "header", db.Varchar)
 	info.AddField(lg("Created At"), "created_at", db.Timestamp)
-	info.AddField(lg("Updated At"), "updated_at", db.Timestamp)
+	info.AddField(lg("Updated At"), "updated_at", db.Timestamp).FieldSortable()
 
 	info.SetTable("goadmin_menu").SetTitle(lg("Menus")).//SetDescription(lg("Menus")).
 		SetDeleteFn(func(idArr []string) error {
-			if allowChanges {
+			if !allowDelete {
 				return errors.New("permission denied")
 			}
 			ids := interfaces(idArr)
@@ -897,11 +890,7 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 			return txErr
 		})
 
-	parentIDOptions := types.FieldOptions{
-		{	Text:  "ROOT",
-			Value: "0",
-		},
-	}
+	parentIDOptions := types.FieldOptions{{	Text: "ROOT", Value: "0" }}
 
 	allMenus, _ := s.connection().Table("goadmin_menu").
 		Where("parent_id", "=", 0).
@@ -928,7 +917,7 @@ func (s *SystemTable) GetMenuTable(ctx *context.Context) (menuTable Table) {
 			menuId := menu["id"].(int64)
 			parentIDOptions = append(parentIDOptions, types.FieldOption{
 				TextHTML: "&nbsp;&nbsp;┝  " + language.GetFromHtml(template.HTML(menu["title"].(string))),
-				Value:    strconv.Itoa(int(menuId)),
+				Value   : strconv.Itoa(int(menuId)),
 			})
 			cols := secondLevelMenusCol.Where("parent_id", "=", menuId)
 			for _, col := range cols {
@@ -982,20 +971,15 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	siteTable = NewDefaultTable(DefaultConfigWithDriver(config.GetDatabases().GetDefault().Driver).
 		SetOnlyUpdateForm().
 		SetGetDataFun(func(params parameter.Parameters) (i []map[string]interface{}, i2 int) {
-			return []map[string]interface{}{models.Site().SetConn(s.conn).AllToMapInterface()}, 1
+			return []map[string]interface{}{ models.Site().SetConn(s.conn).AllToMapInterface() }, 1
 		}))
-
-	boolFieldOptions := types.FieldOptions{
-		{Text: lgWithConfigScore("true"), Value: "true"},
-		{Text: lgWithConfigScore("false"), Value: "false"},
-	}
 
 	formList := siteTable.GetForm().AddXssJsFilter()
 	formList.AddField("ID", "id", db.Varchar, form.Default).FieldDefault("1").FieldHide()
 	formList.AddField(lgWithConfigScore("Site off"), "site_off", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Debug"), "debug", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Env"), "env", db.Varchar, form.Default).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return s.cfg.Env
@@ -1003,14 +987,14 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 
 	langOps := make(types.FieldOptions, len(language.Langs))
 	for k, t := range language.Langs {
-		langOps[k] = types.FieldOption{Text: lgWithConfigScore(t, "language"), Value: t}
+		langOps[k] = types.FieldOption{ Text: lgWithConfigScore(t, "language"), Value: t }
 	}
 	formList.AddField(lgWithConfigScore("Language"), "language", db.Varchar, form.SelectSingle).
 		FieldDisplay(func(value types.FieldModel) interface{} {
 			return language.FixedLanguageKey(value.Value)
 		}).
 		FieldOptions(langOps)
-	themes := template.Themes()
+	themes    := template.Themes()
 	themesOps := make(types.FieldOptions, len(themes))
 	for k, t := range themes {
 		themesOps[k] = types.FieldOption{Text: t, Value: t}
@@ -1050,19 +1034,19 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	formList.AddField(lgWithConfigScore("Footer info"), "footer_info", db.Varchar, form.Code)
 	formList.AddField(lgWithConfigScore("Login logo"), "login_logo", db.Varchar, form.Code)
 	formList.AddField(lgWithConfigScore("No limit login IP"), "no_limit_login_ip", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Access log off"), "operation_log_off", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Allow delete operation log"), "allow_del_operation_log", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Hide config center entrance"), "hide_config_center_entrance", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Hide app info entrance"), "hide_app_info_entrance", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Hide tool entrance"), "hide_tool_entrance", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Hide plugin entrance"), "hide_plugin_entrance", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Animation type"), "animation_type", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: "", Value: ""},
@@ -1094,15 +1078,15 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 		FieldHelpMsg(template.HTML(lgWithConfigScore("Do not modify when you have not set up all assets")))
 
 	formList.AddField(lgWithConfigScore("Info log off"), "info_log_off", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Error log off"), "error_log_off", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Access log off"), "access_log_off", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Access assets log off"), "access_assets_log_off", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("SQL log on"), "sql_log", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions)
+		FieldOptions(types.BoolFieldOptions())
 	formList.AddField(lgWithConfigScore("Log level"), "logger_level", db.Varchar, form.SelectSingle).
 		FieldOptions(types.FieldOptions{
 			{Text: "Debug", Value: "-1"},
@@ -1118,7 +1102,7 @@ func (s *SystemTable) GetSiteTable(ctx *context.Context) (siteTable Table) {
 	formList.AddField(lgWithConfigScore("Logger rotate max age"), "logger_rotate_max_age", db.Varchar, form.Number).
 		FieldDisplay(defaultFilterFn("30", "0"))
 	formList.AddField(lgWithConfigScore("Logger rotate compress"), "logger_rotate_compress", db.Varchar, form.Switch).
-		FieldOptions(boolFieldOptions).
+		FieldOptions(types.BoolFieldOptions()).
 		FieldDisplay(defaultFilterFn("false"))
 
 	formList.AddField(lgWithConfigScore("Logger rotate encoder encoding"), "logger_encoder_encoding", db.Varchar, form.SelectSingle).

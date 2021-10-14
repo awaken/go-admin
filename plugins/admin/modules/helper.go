@@ -1,11 +1,9 @@
 package modules
 
 import (
-	"html/template"
+	uuid "github.com/satori/go.uuid"
 	"strconv"
 	"strings"
-
-	uuid "github.com/satori/go.uuid"
 )
 
 func InArray(arr []string, str string) bool {
@@ -22,7 +20,6 @@ func Delimiter(del, del2, s string) string {
 	sb.WriteString(s)
 	sb.WriteString(del2)
 	return sb.String()
-	//return del + s + del2
 }
 
 func FilterField(field, delimiter, delimiter2 string) string {
@@ -32,7 +29,6 @@ func FilterField(field, delimiter, delimiter2 string) string {
 	sb.WriteString(field)
 	sb.WriteString(delimiter2)
 	return sb.String()
-	//return delimiter + field + delimiter2
 }
 
 func InArrayWithoutEmpty(arr []string, str string) bool {
@@ -70,9 +66,4 @@ func GetPage(page string) int {
 func AorEmpty(condition bool, a string) string {
 	if condition { return a }
 	return ""
-}
-
-func AorBHTML(condition bool, a, b template.HTML) template.HTML {
-	if condition { return a }
-	return b
 }

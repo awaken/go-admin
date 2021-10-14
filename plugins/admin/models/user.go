@@ -14,8 +14,7 @@ import (
 
 // UserModel is user model structure.
 type UserModel struct {
-	Base `json:"-"`
-
+	Base                            `json:"-"`
 	Id            int64             `json:"id"`
 	Name          string            `json:"name"`
 	UserName      string            `json:"user_name"`
@@ -29,10 +28,8 @@ type UserModel struct {
 	Roles         []RoleModel       `json:"role"`
 	Level         string            `json:"level"`
 	LevelName     string            `json:"level_name"`
-
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-
+	CreatedAt     string            `json:"created_at"`
+	UpdatedAt     string            `json:"updated_at"`
 	cacheReplacer *strings.Replacer
 }
 
@@ -108,29 +105,20 @@ func (t UserModel) HideUserCenterEntrance() bool {
 func (t UserModel) Template(str string) string {
 	if t.cacheReplacer == nil {
 		t.cacheReplacer = strings.NewReplacer("{{.AuthId}}", strconv.Itoa(int(t.Id)),
-			"{{.AuthName}}", t.Name, "{{.AuthUserName}}", t.UserName)
+			"{{.AuthName}}", t.Name, "{{.AuthUsername}}", t.UserName)
 	}
 	return t.cacheReplacer.Replace(str)
 }
 
 func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams url.Values) bool {
-	if t.IsSuperAdmin() {
-		return true
-	}
-
+	if t.IsSuperAdmin() { return true }
 	// path, _ = url.PathUnescape(path)
-	if path == "" {
-		return false
-	}
-
-	if utils.IsLogoutUrl(path) {
-		return true
-	}
+	if path == "" { return false }
+	if utils.IsLogoutUrl(path) { return true }
 
 	if path != "/" && path[len(path)-1] == '/' {
 		path = path[:len(path)-1]
 	}
-
 	path = utils.PkReplacer.Replace(path)
 
 	path, params := getParam(path)
@@ -150,9 +138,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 
 	for _, v := range t.Permissions {
 		if v.HttpMethod[0] == "" || inMethodArr(v.HttpMethod, method) {
-			if v.HttpPath[0] == "*" {
-				return true
-			}
+			if v.HttpPath[0] == "*" { return true }
 
 			for _, httpPath := range v.HttpPath {
 				matchPath := config.Url(t.Template(httpPath))
@@ -191,36 +177,18 @@ func getParam(u string) (string, url.Values) {
 		return u[:p], m
 	}
 	return u, nil
-	/*m := make(url.Values)
-	urr := strings.Split(u, "?")
-	if len(urr) > 1 {
-		m, _ = url.ParseQuery(urr[1])
-	}
-	return urr[0], m*/
 }
 
 func (t UserModel) checkParam(src, comp url.Values) bool {
-	if len(comp) == 0 {
-		return true
-	}
-	if len(src) == 0 {
-		return false
-	}
+	if len(comp) == 0 { return true  }
+	if len(src ) == 0 { return false }
 	for key, value := range comp {
 		v, ok := src[key]
-		if !ok {
-			return false
-		}
-		if len(value) == 0 {
-			continue
-		}
-		if len(v) == 0 {
-			return false
-		}
+		if !ok { return false }
+		if len(value) == 0 { continue }
+		if len(v) == 0 { return false }
 		for i, e := range v {
-			if e != t.Template(value[i]) {
-				return false
-			}
+			if e != t.Template(value[i]) { return false }
 		}
 	}
 	return true
@@ -228,9 +196,7 @@ func (t UserModel) checkParam(src, comp url.Values) bool {
 
 func inMethodArr(arr []string, str string) bool {
 	for _, method := range arr {
-		if strings.EqualFold(method, str) {
-			return true
-		}
+		if strings.EqualFold(method, str) { return true }
 	}
 	return false
 }
@@ -248,14 +214,17 @@ func (t UserModel) UpdateAvatar(avatar string) {
 
 // WithRoles query the role info of the user.
 func (t UserModel) WithRoles() UserModel {
-	roleModel, _ := t.Table("goadmin_role_users").
+	if t.Roles != nil { return t }
+
+	roleModels, _ := t.Table("goadmin_role_users").
 		LeftJoin("goadmin_roles", "goadmin_roles.id", "=", "goadmin_role_users.role_id").
 		Where("user_id", "=", t.Id).
 		Select("goadmin_roles.id", "goadmin_roles.name", "goadmin_roles.slug", "goadmin_roles.created_at", "goadmin_roles.updated_at").
 		All()
 
-	for _, role := range roleModel {
-		t.Roles = append(t.Roles, Role().MapToModel(role))
+	t.Roles = make([]RoleModel, len(roleModels))
+	for i, role := range roleModels {
+		t.Roles[i] = Role().MapToModel(role)
 	}
 
 	if len(t.Roles) > 0 {
@@ -305,7 +274,11 @@ func (t UserModel) WithPermissions() UserModel {
 		logger.Errorf("cannot retrieve user permissions (related to user %s): %v", t.UserName, err)
 	}
 
-	permissions = append(permissions, userPermissions...)
+	if permissions == nil {
+		permissions = userPermissions
+	} else {
+		permissions = append(permissions, userPermissions...)
+	}
 	t.Permissions = make([]PermissionModel, 0, len(permissions))
 
 	for _, perm := range permissions {
@@ -326,6 +299,8 @@ func (t UserModel) WithPermissions() UserModel {
 
 // WithMenus query the menu info of the user.
 func (t UserModel) WithMenus() UserModel {
+	if t.MenuIds != nil { return t }
+
 	var menuIdsModel []map[string]interface{}
 	var err error
 
@@ -383,14 +358,14 @@ func (t UserModel) New(username, password, name, email, disabled, root, avatar s
 		"avatar"   : avatar,
 	})
 
-	t.Id = id
+	t.Id       = id
 	t.UserName = username
 	t.Password = password
-	t.Name = name
-	t.Email = email
+	t.Name     = name
+	t.Email    = email
 	t.Disabled = disabled
-	t.Root = root
-	t.Avatar = avatar
+	t.Root     = root
+	t.Avatar   = avatar
 
 	return t, err
 }
@@ -425,12 +400,13 @@ func (t UserModel) Update(username, password, name, email, disabled, root, avata
 }
 
 // UpdatePwd update the password of the user model.
-func (t UserModel) UpdatePwd(password string) UserModel {
-	_, _ = t.Table(t.TableName).
+func (t UserModel) UpdatePwd(password string) (UserModel, error) {
+	_, err := t.Table(t.TableName).
 		Where("id", "=", t.Id).
 		Update(dialect.H{ "password": password })
+	if err != nil { return t, err }
 	t.Password = password
-	return t
+	return t, nil
 }
 
 // CheckRole check the role of the user model.
@@ -451,14 +427,12 @@ func (t UserModel) DeleteRoles() error {
 
 // AddRole add a role of the user model.
 func (t UserModel) AddRole(roleId string) (int64, error) {
-	if roleId != "" {
-		if !t.CheckRoleId(roleId) {
-			return t.Table("goadmin_role_users").
-				Insert(dialect.H{
-					"role_id": roleId,
-					"user_id": t.Id,
-				})
-		}
+	if roleId != "" && !t.CheckRoleId(roleId) {
+		return t.Table("goadmin_role_users").
+			Insert(dialect.H{
+				"role_id": roleId,
+				"user_id": t.Id,
+			})
 	}
 	return 0, nil
 }
@@ -466,9 +440,7 @@ func (t UserModel) AddRole(roleId string) (int64, error) {
 // CheckRole check the role of the user.
 func (t UserModel) CheckRole(slug string) bool {
 	for _, role := range t.Roles {
-		if role.Slug == slug {
-			return true
-		}
+		if role.Slug == slug { return true }
 	}
 	return false
 }
@@ -485,9 +457,7 @@ func (t UserModel) CheckPermissionById(permissionId string) bool {
 // CheckPermission check the permission of the user.
 func (t UserModel) CheckPermission(permission string) bool {
 	for _, perm := range t.Permissions {
-		if perm.Slug == permission {
-			return true
-		}
+		if perm.Slug == permission { return true }
 	}
 	return false
 }
@@ -501,28 +471,26 @@ func (t UserModel) DeletePermissions() error {
 
 // AddPermission add a permission of the user model.
 func (t UserModel) AddPermission(permissionId string) (int64, error) {
-	if permissionId != "" {
-		if !t.CheckPermissionById(permissionId) {
-			return t.Table("goadmin_user_permissions").
-				Insert(dialect.H{
-					"permission_id": permissionId,
-					"user_id"      : t.Id,
-				})
-		}
+	if permissionId != "" && !t.CheckPermissionById(permissionId) {
+		return t.Table("goadmin_user_permissions").
+			Insert(dialect.H{
+				"permission_id": permissionId,
+				"user_id"      : t.Id,
+			})
 	}
 	return 0, nil
 }
 
 // MapToModel get the user model from given map.
 func (t UserModel) MapToModel(m map[string]interface{}) UserModel {
-	t.Id, _ = m["id"].(int64)
-	t.Name, _ = m["name"].(string)
-	t.UserName, _ = m["username"].(string)
-	t.Password, _ = m["password"].(string)
-	t.Email, _ = m["email"].(string)
-	t.Disabled, _ = m["disabled"].(string)
-	t.Root, _ = m["root"].(string)
-	t.Avatar, _ = m["avatar"].(string)
+	t.Id       , _ = m["id"].(int64)
+	t.Name     , _ = m["name"].(string)
+	t.UserName , _ = m["username"].(string)
+	t.Password , _ = m["password"].(string)
+	t.Email    , _ = m["email"].(string)
+	t.Disabled , _ = m["disabled"].(string)
+	t.Root     , _ = m["root"].(string)
+	t.Avatar   , _ = m["avatar"].(string)
 	t.CreatedAt, _ = m["created_at"].(string)
 	t.UpdatedAt, _ = m["updated_at"].(string)
 	return t
