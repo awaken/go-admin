@@ -1,25 +1,23 @@
 package controller
 
 import (
-	"github.com/GoAdminGroup/go-admin/modules/utils"
-	template2 "html/template"
-	"net/url"
-
 	"github.com/GoAdminGroup/go-admin/context"
 	"github.com/GoAdminGroup/go-admin/modules/auth"
 	"github.com/GoAdminGroup/go-admin/modules/db"
 	"github.com/GoAdminGroup/go-admin/modules/errors"
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/menu"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
-	form2 "github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/guard"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/parameter"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/response"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/table"
 	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
+	"net/url"
 )
 
 // ShowMenu show menu info page.
@@ -43,17 +41,13 @@ func getPlugNameFromReferer(ctx *context.Context) string {
 }
 
 func getMenuPlugNameParams(plugName string) string {
-	params := ""
-	if plugName != "" {
-		params = "?__plugin_name=" + plugName
-	}
-	return params
+	if plugName != "" { return "?__plugin_name=" + plugName }
+	return ""
 }
 
 func (h *Handler) showNewMenu(ctx *context.Context, err error) {
-
 	var (
-		alert template2.HTML
+		alert template.HTML
 
 		panel    = h.table("menu", ctx)
 		formInfo = panel.GetNewFormInfo()
@@ -74,20 +68,19 @@ func (h *Handler) showNewMenu(ctx *context.Context, err error) {
 			SetPrimaryKey(panel.GetPrimaryKey().Name).
 			SetUrl(h.routePath("menu_edit")).
 			SetHiddenFields(map[string]string{
-				form2.TokenKey:    h.authSrv().AddToken(),
-				form2.PreviousKey: h.routePath("menu") + getMenuPlugNameParams(plugName),
+				form.TokenKey:    h.authSrv().AddToken(),
+				form.PreviousKey: h.routePath("menu") + getMenuPlugNameParams(plugName),
 			}).
 			SetOperationFooter(formFooter("new", false, false, false,
 				panel.GetForm().FormNewBtnWord)),
 			false, ctx.IsIframe(), false, ""),
-		Description: template2.HTML(panel.GetForm().Description),
-		Title:       template2.HTML(panel.GetForm().Title),
+		Description: template.HTML(panel.GetForm().Description),
+		Title:       template.HTML(panel.GetForm().Title),
 	}, plugName)
 }
 
 // ShowEditMenu show edit menu page.
 func (h *Handler) ShowEditMenu(ctx *context.Context) {
-
 	plugName := getPlugNameFromReferer(ctx)
 
 	if ctx.Query("id") == "" {
@@ -113,16 +106,13 @@ func (h *Handler) ShowEditMenu(ctx *context.Context) {
 }
 
 func (h *Handler) showEditMenu(ctx *context.Context, plugName string, formInfo table.FormInfo, err error) {
-
-	var alert template2.HTML
-
+	var alert template.HTML
 	if err != nil {
 		alert = aAlert().Warning(err.Error())
 	}
 
 	params := getMenuPlugNameParams(plugName)
-
-	panel := h.table("menu", ctx)
+	panel  := h.table("menu", ctx)
 
 	h.HTMLPlug(ctx, auth.Auth(ctx), types.Panel{
 		Content: alert + formContent(aForm().
@@ -135,11 +125,11 @@ func (h *Handler) showEditMenu(ctx *context.Context, plugName string, formInfo t
 			SetOperationFooter(formFooter("edit", false, false, false,
 				panel.GetForm().FormEditBtnWord)).
 			SetHiddenFields(map[string]string{
-				form2.TokenKey:    h.authSrv().AddToken(),
-				form2.PreviousKey: h.routePath("menu") + params,
+				form.TokenKey:    h.authSrv().AddToken(),
+				form.PreviousKey: h.routePath("menu") + params,
 			}), false, ctx.IsIframe(), false, ""),
-		Description: template2.HTML(formInfo.Description),
-		Title:       template2.HTML(formInfo.Title),
+		Description: template.HTML(formInfo.Description),
+		Title:       template.HTML(formInfo.Title),
 	}, plugName)
 }
 
@@ -151,7 +141,6 @@ func (h *Handler) DeleteMenu(ctx *context.Context) {
 
 // EditMenu edit the menu of given id.
 func (h *Handler) EditMenu(ctx *context.Context) {
-
 	param := guard.GetMenuEditParam(ctx)
 	params := getMenuPlugNameParams(param.PluginName)
 
@@ -198,7 +187,6 @@ func (h *Handler) EditMenu(ctx *context.Context) {
 
 // NewMenu create a new menu item.
 func (h *Handler) NewMenu(ctx *context.Context) {
-
 	param := guard.GetMenuNewParam(ctx)
 	params := getMenuPlugNameParams(param.PluginName)
 
@@ -238,7 +226,6 @@ func (h *Handler) NewMenu(ctx *context.Context) {
 
 // MenuOrder change the order of menu items.
 func (h *Handler) MenuOrder(ctx *context.Context) {
-
 	var data []map[string]interface{}
 	_ = utils.JsonUnmarshal([]byte(ctx.FormValue("_order")), &data)
 
@@ -247,7 +234,7 @@ func (h *Handler) MenuOrder(ctx *context.Context) {
 	response.Ok(ctx)
 }
 
-func (h *Handler) getMenuInfoPanel(ctx *context.Context, plugName string, alert template2.HTML) {
+func (h *Handler) getMenuInfoPanel(ctx *context.Context, plugName string, alert template.HTML) {
 	user        := auth.Auth(ctx)
 	allowEdit   := user.IsSuperAdmin()
 	allowDelete := user.IsRootAdmin()
@@ -282,11 +269,10 @@ func (h *Handler) getMenuInfoPanel(ctx *context.Context, plugName string, alert 
 			SetUrl(h.routePath("menu_new")).
 			SetPrimaryKey(panel.GetPrimaryKey().Name).
 			SetHiddenFields(map[string]string{
-				form2.TokenKey:    h.authSrv().AddToken(),
-				form2.PreviousKey: h.routePath("menu") + getMenuPlugNameParams(plugName),
+				form.TokenKey   : h.authSrv().AddToken(),
+				form.PreviousKey: h.routePath("menu") + getMenuPlugNameParams(plugName),
 			}).
-			SetOperationFooter(formFooter("menu", false, false, false,
-				panel.GetForm().FormNewBtnWord)).
+			SetOperationFooter(formFooter("menu", !allowEdit, !allowEdit, !allowEdit, panel.GetForm().FormNewBtnWord)).
 			SetTitle("New").
 			SetContent(formInfo.FieldList).
 			SetTabContents(formInfo.GroupFieldList).

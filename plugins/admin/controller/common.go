@@ -275,47 +275,43 @@ func isPjax(ctx *context.Context) bool {
 	return ctx.IsPjax()
 }
 
-func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord template.HTML) template.HTML {
+func formFooter(page string, hiddenEdit, hiddenNew, hiddenReset bool, btnWord template.HTML) template.HTML {
 	col1 := aCol().SetSize(types.SizeMD(2)).GetContent()
+	var checkBoxs, checkBoxJS template.HTML
 
-	var (
-		checkBoxs  template.HTML
-		checkBoxJS template.HTML
+	editCheckBox := template.HTML(utils.StrConcat(`
+		<label class="pull-right" style="margin: 5px 10px 0 0;">
+			<input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> `, language.Get("continue editing"), `
+		</label>`))
+	newCheckBox := template.HTML(utils.StrConcat(`
+		<label class="pull-right" style="margin: 5px 10px 0 0;">
+			<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> `, language.Get("continue creating"), `
+		</label>`))
 
-		editCheckBox = template.HTML(utils.StrConcat(`
-			<label class="pull-right" style="margin: 5px 10px 0 0;">
-				<input type="checkbox" class="continue_edit" style="position: absolute; opacity: 0;"> `, language.Get("continue editing"), `
-			</label>`))
-		newCheckBox = template.HTML(utils.StrConcat(`
-			<label class="pull-right" style="margin: 5px 10px 0 0;">
-				<input type="checkbox" class="continue_new" style="position: absolute; opacity: 0;"> `, language.Get("continue creating"), `
-			</label>`))
+	editWithNewCheckBoxJs := template.HTML(`$('.continue_edit').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
+	if (this.checked) {
+		$('.continue_new').iCheck('uncheck');
+		$('input[name="` + form.PreviousKey + `"]').val(location.href)
+	} else {
+		$('input[name="` + form.PreviousKey + `"]').val(previous_url_goadmin)
+	}
+});	`)
 
-		editWithNewCheckBoxJs = template.HTML(`$('.continue_edit').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
-		if (this.checked) {
-			$('.continue_new').iCheck('uncheck');
-			$('input[name="` + form.PreviousKey + `"]').val(location.href)
-		} else {
-			$('input[name="` + form.PreviousKey + `"]').val(previous_url_goadmin)
-		}
-	});	`)
-
-		newWithEditCheckBoxJs = template.HTML(`$('.continue_new').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
-		if (this.checked) {
-			$('.continue_edit').iCheck('uncheck');
-			$('input[name="` + form.PreviousKey + `"]').val(location.href.replace('/edit', '/new'))
-		} else {
-			$('input[name="` + form.PreviousKey + `"]').val(previous_url_goadmin)
-		}
+	newWithEditCheckBoxJs := template.HTML(`$('.continue_new').iCheck({checkboxClass: 'icheckbox_minimal-blue'}).on('ifChanged', function (event) {
+	if (this.checked) {
+		$('.continue_edit').iCheck('uncheck');
+		$('input[name="` + form.PreviousKey + `"]').val(location.href.replace('/edit', '/new'))
+	} else {
+		$('input[name="` + form.PreviousKey + `"]').val(previous_url_goadmin)
+	}
 	});`)
-	)
 
 	if page == "edit" {
-		if isHideNew {
+		if hiddenNew {
 			newCheckBox = ""
 			newWithEditCheckBoxJs = ""
 		}
-		if isHideEdit {
+		if hiddenEdit {
 			editCheckBox = ""
 			editWithNewCheckBoxJs = ""
 		}
@@ -325,7 +321,7 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 	`, string(editWithNewCheckBoxJs), string(newWithEditCheckBoxJs), `
 </script>
 `))
-	} else if page == "edit_only" && !isHideEdit {
+	} else if page == "edit_only" && !hiddenEdit {
 		checkBoxs = editCheckBox
 		checkBoxJS = template.HTML(`<script>
 	let previous_url_goadmin = $('input[name="` + form.PreviousKey + `"]').attr("value")
@@ -338,7 +334,7 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 	});
 </script>
 `)
-	} else if page == "new" && !isHideNew {
+	} else if page == "new" && !hiddenNew {
 		checkBoxs = newCheckBox
 		checkBoxJS = template.HTML(`<script>
 	let previous_url_goadmin = $('input[name="` + form.PreviousKey + `"]').attr("value")
@@ -361,7 +357,7 @@ func formFooter(page string, isHideEdit, isHideNew, isHideReset bool, btnWord te
 		SetOrientationRight().
 		GetContent()
 	btn2 := template.HTML("")
-	if !isHideReset {
+	if !hiddenReset {
 		btn2 = aButton().
 			SetType("reset").
 			AddClass("reset").
