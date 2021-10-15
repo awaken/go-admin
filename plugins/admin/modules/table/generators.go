@@ -23,7 +23,6 @@ import (
 	"github.com/GoAdminGroup/go-admin/template/types/action"
 	"github.com/GoAdminGroup/go-admin/template/types/form"
 	"github.com/GoAdminGroup/html"
-	tmpl "html/template"
 	"net/url"
 	"strconv"
 	"strings"
@@ -38,7 +37,7 @@ func NewSystemTable(conn db.Connection, cfg *config.Config) *SystemTable {
 	return &SystemTable{ conn: conn, cfg: cfg }
 }
 
-func (s *SystemTable) link(url, content string) tmpl.HTML {
+func (s *SystemTable) link(url, content string) template.HTML {
 	return link(s.cfg.Url(url), content)
 }
 
@@ -52,8 +51,8 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 	info.AddField(lg("Username"), "username", db.Varchar).FieldFilterable().FieldSortable()
 	info.AddField(lg("Nickname"), "name", db.Varchar).FieldFilterable().FieldSortable()
 	info.AddField(lg("Email"), "email", db.Varchar).FieldFilterable().FieldSortable()
-	info.AddField(lg("Disabled"), "disabled", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
-	info.AddField(lg("Root"), "root", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay).FieldSortable()
+	info.AddField(lg("Disabled"), "disabled", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay)
+	info.AddField(lg("Root"), "root", db.Varchar).FieldFilterable(types.BoolFilterType()).FieldDisplay(types.BoolFieldDisplay)
 	info.AddField(lg("Roles"), "name", db.Varchar).
 		FieldJoin(types.Join{
 			Table:     "goadmin_role_users",
@@ -87,6 +86,8 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 	info.SetTable("goadmin_users").SetTitle(lg("Users")).//SetDescription(lg("Users")).
 		SetDeleteFn(func(idArr []string) error {
 			ids := interfaces(idArr)
+			if len(ids) == 0 { return nil }
+
 			if !isRootAuth {
 				userModels, _ := s.table("goadmin_users").
 					Select("id").
@@ -98,7 +99,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 					ids = append(ids, strconv.Itoa(int(userModel["id"].(int64))))
 				}
 				if len(ids) == 0 {
-					return errors.New("root user removal is denied")
+					return errors.New("You are not allowed to delete any Root user")
 				}
 			}
 
@@ -143,11 +144,15 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 	formList.AddField(lg("Email"), "email", db.Varchar, form.Email)
 	formList.AddField(lg("Disabled"), "disabled", db.Varchar, form.Switch).FieldOptions(types.BoolFieldOptions()).
 		FieldHelpMsg(template.HTML(lg("Deny login and access")))
-	r := formList.AddField(lg("Root"), "root", db.Varchar, form.Switch).FieldOptions(types.BoolFieldOptions()).
-		FieldHelpMsg(template.HTML(lg("Grant all permissions and prevent changes from non-root users")))
-	if !isRootAuth {
-		r.FieldDisableWhenCreate().FieldDisableWhenUpdate()
+	var rootWidget *types.FormPanel
+	if isRootAuth {
+		rootWidget = formList.AddField(lg("Root"), "root", db.Varchar, form.Switch).FieldOptions(types.BoolFieldOptions())
+	} else {
+		rootWidget = formList.AddField(lg("Root"), "root", db.Varchar, form.Default).
+			FieldDisplay(types.BoolFieldDisplay).
+			FieldDisplayButCanNotEditWhenUpdate().FieldDisableWhenCreate()
 	}
+	rootWidget.FieldHelpMsg(template.HTML(lg("Grant all permissions and prevent changes from non-root users")))
 	formList.AddField(lg("Avatar"), "avatar", db.Varchar, form.File)
 	formList.AddField(lg("Roles"), "role_id", db.Varchar, form.Select).
 		FieldOptionsFromTable("goadmin_roles", "slug", "id").
@@ -190,12 +195,18 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 
 	formList.SetUpdateFn(func(values form2.Values) error {
 		if values.IsEmpty("username") {
-			return errors.New("username cannot be empty")
+			return errors.New("Username cannot be empty")
 		}
 
-		user := models.UserWithId(values.Get("id")).SetConn(s.conn)
-		if !isRootAuth && user.IsRootAdmin() {
-			return errors.New("root user update is denied")
+		var user models.UserModel
+		id := values.Get("id")
+		if isRootAuth {
+			user = models.UserWithId(id)
+		} else {
+			user = models.User().SetConn(s.conn).Find(id)
+			if user.IsRootAdmin() {
+				return errors.New("You are not allowed to edit any Root user")
+			}
 		}
 
 		password, err := passwordFromValues(values)
@@ -780,7 +791,7 @@ func (s *SystemTable) GetOpTable(ctx *context.Context) (opTable Table) {
 
 	info.AddField("ID", "id", db.Int).FieldSortable()
 	info.AddField("User ID", "user_id", db.Int).FieldHide()
-	info.AddField(lg("Name"), "name", db.Varchar).FieldJoin(types.Join{
+	info.AddField(lg("User"), "name", db.Varchar).FieldJoin(types.Join{
 		Table:     config.GetAuthUserTable(),
 		JoinField: "id",
 		Field:     "user_id",
@@ -1741,7 +1752,7 @@ func lgWithConfigScore(v string, score ...string) string {
 	return language.GetWithScope(v, scores...)
 }
 
-func link(url, content string) tmpl.HTML {
+func link(url, content string) template.HTML {
 	return html.AEl().
 		SetAttr("href", url).
 		SetContent(template.HTML(lg(content))).
@@ -1774,11 +1785,11 @@ func (s *SystemTable) connection() *db.SQL {
 }
 
 func interfaces(arr []string) []interface{} {
-	var iarr = make([]interface{}, len(arr))
+	res := make([]interface{}, len(arr))
 	for i, v := range arr {
-		iarr[i] = v
+		res[i] = v
 	}
-	return iarr
+	return res
 }
 
 func addSwitchForTool(formList *types.FormPanel, head, field, def string, row ...int) {

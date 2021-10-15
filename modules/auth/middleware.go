@@ -12,13 +12,16 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/language"
 	"github.com/GoAdminGroup/go-admin/modules/logger"
 	"github.com/GoAdminGroup/go-admin/modules/page"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
-	template2 "github.com/GoAdminGroup/go-admin/template"
+	"github.com/GoAdminGroup/go-admin/template"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"net/http"
 	"net/url"
 	"strings"
 )
+
+const defaultUserIDSesKey = "user_id"
 
 // Invoker contains the callback functions which are used
 // in the route middleware.
@@ -38,14 +41,13 @@ func Middleware(conn db.Connection) context.Handler {
 func DefaultInvoker(conn db.Connection) *Invoker {
 	return &Invoker{
 		prefix: config.Prefix(),
+
 		authFailCallback: func(ctx *context.Context) {
 			if ctx.Request.URL.Path == config.Url(config.GetLoginUrl()) {
 				return
 			}
 			if ctx.Request.URL.Path == config.Url("/logout") {
-				ctx.Write(302, map[string]string{
-					"Location": config.Url(config.GetLoginUrl()),
-				}, ``)
+				ctx.Write(302, map[string]string{ "Location": config.Url(config.GetLoginUrl()) }, ``)
 				return
 			}
 
@@ -65,22 +67,22 @@ func DefaultInvoker(conn db.Connection) *Invoker {
 				ctx.Write(302, map[string]string{ "Location": u }, ``)
 			} else {
 				msg := language.Get("invalid web session, please login again")
-				ctx.HTML(http.StatusOK, `<script>
-	if (typeof(swal) === "function") {
+				ctx.HTML(http.StatusOK, utils.StrConcat(`<script>
+	if(typeof(swal) === "function") {
 		swal({
 			type: "info",
-			title: "`+language.Get("login info")+`",
-			text: "`+msg+`",
+			title: "`, language.Get("login info"), `",
+			text: "`, msg, `",
 			showCancelButton: false,
 			confirmButtonColor: "#3c8dbc",
-			confirmButtonText: '`+language.Get("got it")+`',
-        })
-		setTimeout(function(){ location.href = "`+u+`"; }, 3000);
+			confirmButtonText: '`, language.Get("got it"), `',
+        });
+		setTimeout(function(){ location.href = "`, u, `" }, 3000)
 	} else {
-		alert("`+msg+`")
-		location.href = "`+u+`"
+		alert("`, msg, `");
+		location.href = "`, u, `"
     }
-</script>`)
+</script>`))
 			}
 		},
 		permissionDenyCallback: func(ctx *context.Context) {
@@ -91,7 +93,7 @@ func DefaultInvoker(conn db.Connection) *Invoker {
 				})
 			} else {
 				page.SetPageContent(ctx, Auth(ctx), func(ctx interface{}) (types.Panel, error) {
-					return template2.WarningPanel(errors.PermissionDenied, template2.NoPermission403Page), nil
+					return template.WarningPanel(errors.PermissionDenied, template.NoPermission403Page), nil
 				}, conn)
 			}
 		},
@@ -125,19 +127,16 @@ type MiddlewareCallback func(ctx *context.Context)
 func (invoker *Invoker) Middleware() context.Handler {
 	return func(ctx *context.Context) {
 		user, authOk, permissionOk := Filter(ctx, invoker.conn)
-
 		if authOk && permissionOk {
 			ctx.SetUserValue("user", user)
 			ctx.Next()
 			return
 		}
-
 		if !authOk {
 			invoker.authFailCallback(ctx)
 			ctx.Abort()
 			return
 		}
-
 		if !permissionOk {
 			ctx.SetUserValue("user", user)
 			invoker.permissionDenyCallback(ctx)
@@ -150,33 +149,26 @@ func (invoker *Invoker) Middleware() context.Handler {
 // Filter retrieve the user model from Context and check the permission
 // at the same time.
 func Filter(ctx *context.Context, conn db.Connection) (models.UserModel, bool, bool) {
-	var (
-		id float64
-		ok bool
+	user := models.User()
 
-		user     = models.User()
-		ses, err = InitSession(ctx, conn)
-	)
-
+	ses, err := InitSession(ctx, conn)
 	if err != nil {
 		logger.Error("retrieve auth user failed", err)
 		return user, false, false
 	}
 
-	if id, ok = ses.Get("user_id").(float64); !ok {
+	id, ok := ses.Get(defaultUserIDSesKey).(float64)
+	if !ok {
 		return user, false, false
 	}
 
 	user, ok = GetCurUserByID(int64(id), conn)
-
 	if !ok {
 		return user, false, false
 	}
 
 	return user, true, CheckPermissions(user, ctx.Request.URL.String(), ctx.Method(), ctx.PostForm())
 }
-
-const defaultUserIDSesKey = "user_id"
 
 // GetUserID return the user id from the session.
 func GetUserID(sesKey string, conn db.Connection) int64 {
@@ -192,42 +184,30 @@ func GetUserID(sesKey string, conn db.Connection) int64 {
 }
 
 // GetCurUser return the user model.
-func GetCurUser(sesKey string, conn db.Connection) (user models.UserModel, ok bool) {
-
+func GetCurUser(sesKey string, conn db.Connection) (models.UserModel, bool) {
 	if sesKey == "" {
-		ok = false
-		return
+		return models.UserModel{}, false
 	}
-
 	id := GetUserID(sesKey, conn)
 	if id == -1 {
-		ok = false
-		return
+		return models.UserModel{}, false
 	}
 	return GetCurUserByID(id, conn)
 }
 
 // GetCurUserByID return the user model of given user id.
-func GetCurUserByID(id int64, conn db.Connection) (user models.UserModel, ok bool) {
-
-	user = models.User().SetConn(conn).Find(id)
-
+func GetCurUserByID(id int64, conn db.Connection) (models.UserModel, bool) {
+	user := models.User().SetConn(conn).Find(id)
 	if user.IsEmpty() {
-		ok = false
-		return
+		return user, false
 	}
-
 	if user.Avatar == "" || config.GetStore().Prefix == "" {
 		user.Avatar = ""
 	} else {
 		user.Avatar = config.GetStore().URL(user.Avatar)
 	}
-
 	user = user.WithRoles().WithPermissions().WithMenus()
-
-	ok = user.HasMenu()
-
-	return
+	return user, user.HasMenu()
 }
 
 // CheckPermissions check the permission of the user.

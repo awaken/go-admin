@@ -6,16 +6,18 @@ package config
 
 import (
 	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/logger"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
 	"html/template"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
-	"sync/atomic"
+)
 
-	"github.com/GoAdminGroup/go-admin/modules/logger"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
-	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
+var (
+	_global *Config
 )
 
 // Database is a type of database connection config.
@@ -733,11 +735,6 @@ func (c *Config) EraseSens() *Config {
 	return c
 }
 
-var (
-	_global = new(Config)
-	count   uint32
-)
-
 func SetDefault(cfg *Config) *Config {
 	cfg.Title = utils.SetDefault(cfg.Title, "", "Flower")
 	cfg.LoginTitle = utils.SetDefault(cfg.LoginTitle, "", "Flower")
@@ -755,8 +752,7 @@ func SetDefault(cfg *Config) *Config {
 	cfg.FileUploadEngine.Name = utils.SetDefault(cfg.FileUploadEngine.Name, "", "local")
 	cfg.Env = utils.SetDefault(cfg.Env, "", EnvProd)
 	if cfg.SessionLifeTime == 0 {
-		// default two hours
-		cfg.SessionLifeTime = 7200
+		cfg.SessionLifeTime = 12 * 3600		// default twelve hours
 	}
 	cfg.SetupPrefix()
 	cfg.URLFormat = cfg.URLFormat.SetDefault()
@@ -765,9 +761,6 @@ func SetDefault(cfg *Config) *Config {
 
 // Initialize initialize the config.
 func Initialize(cfg *Config) *Config {
-	if atomic.AddUint32(&count, 1) != 1 {
-		panic("can not initialize config twice")
-	}
 	initLogger(SetDefault(cfg))
 	_global = cfg
 	return _global
@@ -853,10 +846,10 @@ func Get() *Config {
 
 func GetDatabases() DatabaseList {
 	list := make(DatabaseList, len(_global.Databases))
-	for k := range _global.Databases {
+	for k, d := range _global.Databases {
 		list[k] = Database{
-			Driver:     _global.Databases[k].Driver,
-			DriverMode: _global.Databases[k].DriverMode,
+			Driver    : d.Driver,
+			DriverMode: d.DriverMode,
 		}
 	}
 	return list
@@ -1099,7 +1092,7 @@ func (s *Service) Name() string {
 }
 
 func SrvWithConfig(c *Config) *Service {
-	return &Service{c}
+	return &Service{ C: c }
 }
 
 func GetService(s interface{}) *Config {

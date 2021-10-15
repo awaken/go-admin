@@ -14,23 +14,24 @@ import (
 
 // UserModel is user model structure.
 type UserModel struct {
-	Base                            `json:"-"`
-	Id            int64             `json:"id"`
-	Name          string            `json:"name"`
-	UserName      string            `json:"user_name"`
-	Password      string            `json:"password"`
-	Email         string            `json:"email"`
-	Avatar        string            `json:"avatar"`
-	Disabled      string            `json:"disabled"`
-	Root          string            `json:"root"`
-	Permissions   []PermissionModel `json:"permissions"`
-	MenuIds       []int64           `json:"menu_ids"`
-	Roles         []RoleModel       `json:"role"`
-	Level         string            `json:"level"`
-	LevelName     string            `json:"level_name"`
-	CreatedAt     string            `json:"created_at"`
-	UpdatedAt     string            `json:"updated_at"`
-	cacheReplacer *strings.Replacer
+	Base                           `json:"-"`
+	Id           int64             `json:"id"`
+	Name         string            `json:"name"`
+	UserName     string            `json:"user_name"`
+	Password     string            `json:"password"`
+	Email        string            `json:"email"`
+	Avatar       string            `json:"avatar"`
+	Disabled     string            `json:"disabled"`
+	Root         string            `json:"root"`
+	Permissions  []PermissionModel `json:"permissions"`
+	MenuIds      []int64           `json:"menu_ids"`
+	Roles        []RoleModel       `json:"role"`
+	Level        string            `json:"level"`
+	LevelName    string            `json:"level_name"`
+	CreatedAt    string            `json:"created_at"`
+	UpdatedAt    string            `json:"updated_at"`
+	authReplacer *strings.Replacer
+	fullReplacer *strings.Replacer
 }
 
 // User return a default user model.
@@ -102,12 +103,19 @@ func (t UserModel) HideUserCenterEntrance() bool {
 	return t.IsVisitor() && config.GetHideVisitorUserCenterEntrance()
 }
 
-func (t UserModel) Template(str string) string {
-	if t.cacheReplacer == nil {
-		t.cacheReplacer = strings.NewReplacer("{{.AuthId}}", strconv.Itoa(int(t.Id)),
-			"{{.AuthName}}", t.Name, "{{.AuthUsername}}", t.UserName)
+func (t UserModel) AuthTemplate(str string) string {
+	if t.authReplacer == nil {
+		t.authReplacer = strings.NewReplacer("{{.AuthId}}", strconv.Itoa(int(t.Id)), "{{.AuthUser}}", t.UserName)
 	}
-	return t.cacheReplacer.Replace(str)
+	return t.authReplacer.Replace(str)
+}
+
+func (t UserModel) FullTemplate(str string) string {
+	if t.fullReplacer == nil {
+		t.fullReplacer = strings.NewReplacer("{{.UserId}}", strconv.Itoa(int(t.Id)), "{{.Username}}", t.UserName,
+			"{{.Email}}", t.Email, "{{.Name}}", t.Name)
+	}
+	return t.fullReplacer.Replace(str)
 }
 
 func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams url.Values) bool {
@@ -141,7 +149,7 @@ func (t UserModel) CheckPermissionByUrlMethod(path, method string, formParams ur
 			if v.HttpPath[0] == "*" { return true }
 
 			for _, httpPath := range v.HttpPath {
-				matchPath := config.Url(t.Template(httpPath))
+				matchPath := config.Url(t.AuthTemplate(httpPath))
 				matchPath, matchParams := getParam(matchPath)
 
 				if matchPath == path {
@@ -188,7 +196,7 @@ func (t UserModel) checkParam(src, comp url.Values) bool {
 		if len(value) == 0 { continue }
 		if len(v) == 0 { return false }
 		for i, e := range v {
-			if e != t.Template(value[i]) { return false }
+			if e != t.AuthTemplate(value[i]) { return false }
 		}
 	}
 	return true

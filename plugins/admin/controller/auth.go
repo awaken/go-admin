@@ -38,7 +38,7 @@ func (h *Handler) Auth(ctx *context.Context) {
 		username := ctx.FormValue("username")
 		password := ctx.FormValue("password")
 		if username == "" || password == "" {
-			response.BadRequest(ctx, "wrong password or username")
+			response.BadRequest(ctx, "wrong username or password")
 			return
 		}
 		user, ok = auth.Check(username, password, h.conn)
