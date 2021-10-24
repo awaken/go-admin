@@ -13,9 +13,9 @@ func (mysql) GetName() string {
 }
 
 func (mysql) ShowColumns(table string) string {
-	return "show columns in " + table
+	return "SHOW COLUMNS IN " + table
 }
 
 func (mysql) ShowTables() string {
-	return "show tables"
+	return "SHOW TABLES"
 }

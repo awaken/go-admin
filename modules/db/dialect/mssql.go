@@ -4,7 +4,9 @@
 
 package dialect
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type mssql struct {
 	commonDialect
@@ -15,9 +17,9 @@ func (mssql) GetName() string {
 }
 
 func (mssql) ShowColumns(table string) string {
-	return fmt.Sprintf("select column_name, data_type from information_schema.columns where table_name = '%s'", table)
+	return fmt.Sprintf("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '%s'", table)
 }
 
 func (mssql) ShowTables() string {
-	return "select * from information_schema.TABLES"
+	return "SELECT * FROM information_schema.TABLES"
 }

@@ -54,17 +54,9 @@ func (db *Mysql) InitDB(cfgs map[string]config.Database) Connection {
 	db.Configs = cfgs
 	db.Once.Do(func() {
 		for conn, cfg := range cfgs {
-
 			sqlDB, err := sql.Open("mysql", cfg.GetDSN())
+			if err != nil { panic(err) }
 
-			if err != nil {
-				if sqlDB != nil {
-					_ = sqlDB.Close()
-				}
-				panic(err)
-			}
-
-			// Largest set up the database connection reduce time wait
 			sqlDB.SetMaxIdleConns(cfg.MaxIdleCon)
 			sqlDB.SetMaxOpenConns(cfg.MaxOpenCon)
 

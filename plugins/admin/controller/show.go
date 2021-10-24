@@ -113,6 +113,7 @@ func (h *Handler) showTable(ctx *context.Context, prefix string, params paramete
 			template.ExecuteOptions{Animation: params.Animation})
 	}
 
+	_ = urls[6]
 	editUrl, newUrl, deleteUrl, exportUrl, detailUrl, infoUrl,
 		updateUrl := urls[0], urls[1], urls[2], urls[3], urls[4], urls[5], urls[6]
 

@@ -5,33 +5,33 @@ import "html/template"
 type FilterOperator string
 
 const (
-	FilterOperatorLike           FilterOperator = "like"
+	FilterOperatorLike           FilterOperator = "LIKE"
 	FilterOperatorGreater        FilterOperator = ">"
 	FilterOperatorGreaterOrEqual FilterOperator = ">="
 	FilterOperatorEqual          FilterOperator = "="
 	FilterOperatorNotEqual       FilterOperator = "!="
 	FilterOperatorLess           FilterOperator = "<"
 	FilterOperatorLessOrEqual    FilterOperator = "<="
-	FilterOperatorFree           FilterOperator = "free"
+	FilterOperatorFree           FilterOperator = "FREE"
 )
 
 func GetOperatorFromValue(value string) FilterOperator {
 	switch value {
-	case "like":
+	case "LIKE", "like":
 		return FilterOperatorLike
-	case "gr":
+	case "GR", "gr":
 		return FilterOperatorGreater
-	case "gq":
+	case "GQ", "gq":
 		return FilterOperatorGreaterOrEqual
-	case "eq":
+	case "EQ", "eq":
 		return FilterOperatorEqual
-	case "ne":
+	case "NE", "ne":
 		return FilterOperatorNotEqual
-	case "le":
+	case "LE", "le":
 		return FilterOperatorLess
-	case "lq":
+	case "LQ", "lq":
 		return FilterOperatorLessOrEqual
-	case "free":
+	case "FREE", "free":
 		return FilterOperatorFree
 	default:
 		return FilterOperatorEqual
@@ -41,23 +41,23 @@ func GetOperatorFromValue(value string) FilterOperator {
 func (o FilterOperator) Value() string {
 	switch o {
 	case FilterOperatorLike:
-		return "like"
+		return "LIKE"
 	case FilterOperatorGreater:
-		return "gr"
+		return "GR"
 	case FilterOperatorGreaterOrEqual:
-		return "gq"
+		return "GQ"
 	case FilterOperatorEqual:
-		return "eq"
+		return "EQ"
 	case FilterOperatorNotEqual:
-		return "ne"
+		return "NE"
 	case FilterOperatorLess:
-		return "le"
+		return "LE"
 	case FilterOperatorLessOrEqual:
-		return "lq"
+		return "LQ"
 	case FilterOperatorFree:
-		return "free"
+		return "FREE"
 	default:
-		return "eq"
+		return "EQ"
 	}
 }
 

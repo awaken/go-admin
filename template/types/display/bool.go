@@ -1,11 +1,10 @@
 package display
 
 import (
-	"strings"
-
 	"github.com/GoAdminGroup/go-admin/template/icon"
 	"github.com/GoAdminGroup/go-admin/template/types"
 	"github.com/GoAdminGroup/html"
+	"strings"
 )
 
 type Bool struct {
@@ -18,30 +17,21 @@ func init() {
 
 func (b *Bool) Get(args ...interface{}) types.FieldFilterFn {
 	return func(value types.FieldModel) interface{} {
+		pass := icon.IconWithStyle(icon.Check , html.Style{ "color": "green" })
+		fail := icon.IconWithStyle(icon.Remove, html.Style{ "color": "red"   })
 		params := args[0].([]string)
-		pass := icon.IconWithStyle(icon.Check, html.Style{
-			"color": "green",
-		})
-		fail := icon.IconWithStyle(icon.Remove, html.Style{
-			"color": "red",
-		})
-		if len(params) == 0 {
-			if value.Value == "0" || strings.ToLower(value.Value) == "false" {
-				return fail
-			}
+		switch len(params) {
+		case 0:
+			if value.Value == "0" || strings.ToLower(value.Value) == "false" { return fail }
 			return pass
-		} else if len(params) == 1 {
-			if value.Value == params[0] {
-				return pass
-			}
+		case 1:
+			if value.Value == params[0] { return pass }
 			return fail
-		} else {
-			if value.Value == params[0] {
-				return pass
-			}
-			if value.Value == params[1] {
-				return fail
-			}
+		}
+		_ = params[1]
+		switch value.Value {
+		case params[0]: return pass
+		case params[1]: return fail
 		}
 		return ""
 	}

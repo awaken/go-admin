@@ -20,9 +20,7 @@ type Postgresql struct {
 // GetPostgresqlDB return the global postgresql connection.
 func GetPostgresqlDB() *Postgresql {
 	return &Postgresql{
-		Base: Base{
-			DbList: make(map[string]*sql.DB),
-		},
+		Base: Base{ DbList: make(map[string]*sql.DB) },
 	}
 }
 
@@ -43,7 +41,7 @@ func (db *Postgresql) GetDelimiter2() string {
 
 // GetDelimiters implements the method Connection.GetDelimiters.
 func (db *Postgresql) GetDelimiters() []string {
-	return []string{`"`, `"`}
+	return []string{ `"`, `"` }
 }
 
 // QueryWithConnection implements the method Connection.QueryWithConnection.
@@ -81,13 +79,14 @@ func (db *Postgresql) ExecWith(tx *sql.Tx, conn, query string, args ...interface
 }
 
 func filterQuery(query string) string {
-	queCount := strings.Count(query, "?")
-	for i := 1; i < queCount+1; i++ {
-		query = strings.Replace(query, "?", "$"+strconv.Itoa(i), 1)
+	n := strings.Count(query, "?") + 1
+	for i := 1; i < n; i++ {
+		query = strings.Replace(query, "?", "$" + strconv.Itoa(i), 1)
 	}
 	query = strings.ReplaceAll(query, "`", "")
 	// TODO: add " to the keyword
-	return strings.ReplaceAll(query, "by order ", `by "order" `)
+	query = strings.ReplaceAll(query, "by order ", `by "order" `)
+	return strings.ReplaceAll(query, "BY order ", `BY "order" `)
 }
 
 // InitDB implements the method Connection.InitDB.
@@ -95,14 +94,8 @@ func (db *Postgresql) InitDB(cfgList map[string]config.Database) Connection {
 	db.Configs = cfgList
 	db.Once.Do(func() {
 		for conn, cfg := range cfgList {
-
 			sqlDB, err := sql.Open("postgres", cfg.GetDSN())
-			if err != nil {
-				if sqlDB != nil {
-					_ = sqlDB.Close()
-				}
-				panic(err)
-			}
+			if err != nil { panic(err) }
 
 			sqlDB.SetMaxIdleConns(cfg.MaxIdleCon)
 			sqlDB.SetMaxOpenConns(cfg.MaxOpenCon)

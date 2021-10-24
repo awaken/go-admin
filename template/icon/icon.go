@@ -8,13 +8,11 @@ import (
 )
 
 func Icon(class string, num ...int) template.HTML {
-	space := template.HTML("")
+	res := html.IEl().SetClass("icon fa", class).Get()
 	if len(num) > 0 {
-		for i := 0; i < num[0]; i++ {
-			space += "&nbsp;"
-		}
+		return res + template.HTML(strings.Repeat("&nbsp;", num[0]))
 	}
-	return html.IEl().SetClass("icon fa", class).Get() + space
+	return res
 }
 
 func IconWithStyle(class string, style html.Style, num ...int) template.HTML {
@@ -27,9 +25,7 @@ func IconWithStyle(class string, style html.Style, num ...int) template.HTML {
 	sb.WriteString(string(i.Get()))
 
 	if len(num) > 0 {
-		for n := num[0]; n > 0; n-- {
-			sb.WriteString("&nbsp;")
-		}
+		sb.WriteString(strings.Repeat("&nbsp;", num[0]))
 	}
 
 	return template.HTML(sb.String())

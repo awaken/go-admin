@@ -1,6 +1,9 @@
 package selection
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+)
 
 type Data struct {
 	Results    Options    `json:"results"`
@@ -108,7 +111,7 @@ func (s StringArg) Type() ArgType {
 }
 
 func (s StringArg) Wrap(ss string) string {
-	return `"` + ss + `"`
+	return utils.StrConcat(`"`, ss, `"`)
 }
 
 type IntArg BaseArg
@@ -125,15 +128,16 @@ func (s OperationArg) Type() ArgType {
 
 func If(operation, arg Arg, next *Function) Function {
 	return Function{
-		Format: `if (%s ` + operation.Wrap("%s") + " " + arg.Wrap("%s") + `) {
+		Format: utils.StrConcat(`if(%s `, operation.Wrap("%s"), " ", arg.Wrap("%s"), `) {
 	%s
 }
-`,
+`),
 		Next: next,
 		Args: []Arg{operation, arg},
 		P: func(f string, args []Arg, next *Function) string {
+			_ = args[2]
 			return fmt.Sprintf(f, args[0], args[1], args[2],
-				next.P(next.Format, append([]Arg{args[0]}, next.Args...), next.Next))
+				next.P(next.Format, append([]Arg{ args[0] }, next.Args...), next.Next))
 		},
 	}
 }
@@ -152,6 +156,7 @@ func Add(arg Arg) Function {
 		Format: `%s += ` + arg.Wrap("%s"),
 		Args:   []Arg{arg},
 		P: func(f string, args []Arg, next *Function) string {
+			_ = args[1]
 			return fmt.Sprintf(f, args[0], args[1])
 		},
 	}
@@ -162,6 +167,7 @@ func AddFront(arg Arg) Function {
 		Format: `%s = ` + arg.Wrap("%s") + ` + %s`,
 		Args:   []Arg{arg},
 		P: func(f string, args []Arg, next *Function) string {
+			_ = args[1]
 			return fmt.Sprintf(f, args[0], args[1], args[0])
 		},
 	}

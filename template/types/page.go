@@ -269,10 +269,8 @@ func (p Panel) AddJS(js template.JS) Panel {
 }
 
 func (p Panel) GetContent(params ...bool) Panel {
-	var (
-		animation, style, remove = "", "", ""
-		ani = config.GetAnimation()
-	)
+	animation, style, remove := "", "", ""
+	ani := config.GetAnimation()
 
 	if ani.Type != "" && (len(params) < 2 || params[1]) {
 		animation = utils.StrConcat(` class='pjax-container-content animated `, ani.Type, `'`)
@@ -285,28 +283,24 @@ func (p Panel) GetContent(params ...bool) Panel {
 		if style != "" {
 			style = utils.StrConcat(` style="`, style, `"`)
 		}
+		// Fix Animate.css
 		remove = utils.StrConcat(`<script>
-		$('.pjax-container-content .modal.fade').on('show.bs.modal', function (event) {
-            // Fix Animate.css
-			$('.pjax-container-content').removeClass('`, ani.Type, `');
-        });
-		</script>`)
+$('.pjax-container-content .modal.fade').on('show.bs.modal', function(event){
+	$('.pjax-container-content').removeClass('`, ani.Type, `')
+});
+</script>`)
 	}
 
 	var ms, ar string
 	if p.MiniSidebar {
-		ms = `<script>$("body").addClass("sidebar-collapse")</script>`
+		ms = `<script>$('body').addClass('sidebar-collapse')</script>`
 	}
 	if p.AutoRefresh {
 		refreshTime := 60
 		if len(p.RefreshInterval) > 0 {
 			refreshTime = p.RefreshInterval[0]
 		}
-		ar = utils.StrConcat(`<script>
-window.setTimeout(function(){
-	$.pjax.reload('#pjax-container');
-}, `, strconv.Itoa(refreshTime * 1000), `);
-</script>`)
+		ar = utils.StrConcat(`<script>setTimeout(function(){ $.pjax.reload('#pjax-container') }, `, strconv.Itoa(refreshTime * 1000), `);</script>`)
 	}
 
 	p.Content = template.HTML(utils.StrConcat(`<div`, animation, style, ">", string(p.Content), "</div>", remove, ms, ar))

@@ -102,13 +102,13 @@ func (ajax *AjaxAction) ChangeHTMLWhenSuccess(identify string, text ...string) *
 		}
 	}
 	if !strings.ContainsRune(identify, '$') {
-		identify = utils.StrConcat(`$("`, identify, `")`)
+		identify = utils.StrConcat(`$('`, identify, `')`)
 	}
 	ajax.SuccessJS = template.JS(utils.StrConcat(`
 	if(data.code === 0) {
-		if(`, identify, `.is("input")) {
+		if(`, identify, `.is('input')) {
 			`, identify, `.val(`, data, `);
-		} else if(`, identify, `.is("select")) {
+		} else if(`, identify, `.is('select')) {
 			`, identify, `.val(`, data, `);
 		} else {
 			`, identify, `.html(`, data, `);

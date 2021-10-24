@@ -6,7 +6,7 @@ package dialect
 
 import (
 	"fmt"
-	"strings"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 type postgresql struct {
@@ -22,10 +22,10 @@ func (postgresql) ShowTables() string {
 }
 
 func (postgresql) ShowColumns(table string) string {
-	tableArr := strings.Split(table, ".")
-	if len(tableArr) > 1 {
-		return fmt.Sprintf("select * from information_schema.columns where table_name = '%s' and table_schema = '%s'", tableArr[1], tableArr[0])
+	name1, name2 := utils.StrSplitByte2(table, '.')
+	if name2 != "" {
+		return fmt.Sprintf("SELECT * FROM information_schema.columns WHERE table_name = '%s' AND table_schema = '%s'", name2, name1)
 	} else {
-		return fmt.Sprintf("select * from information_schema.columns where table_name = '%s'", table)
+		return fmt.Sprintf("SELECT * FROM information_schema.columns WHERE table_name = '%s'", table)
 	}
 }

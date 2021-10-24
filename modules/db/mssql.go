@@ -7,11 +7,11 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"strconv"
 	"strings"
 
 	"github.com/GoAdminGroup/go-admin/modules/config"
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 // Mssql is a Connection of mssql.
@@ -22,9 +22,7 @@ type Mssql struct {
 // GetMssqlDB return the global mssql connection.
 func GetMssqlDB() *Mssql {
 	return &Mssql{
-		Base: Base{
-			DbList: make(map[string]*sql.DB),
-		},
+		Base: Base{ DbList: make(map[string]*sql.DB) },
 	}
 }
 
@@ -40,7 +38,7 @@ func (db *Mssql) GetDelimiter2() string {
 
 // GetDelimiters implements the method Connection.GetDelimiters.
 func (db *Mssql) GetDelimiters() []string {
-	return []string{"[", "]"}
+	return []string{ "[", "]" }
 }
 
 // Name implements the method Connection.Name.
@@ -48,29 +46,20 @@ func (db *Mssql) Name() string {
 	return "mssql"
 }
 
-// TODO: 整理优化
+// TODO: organize and optimize
 
 func replaceStringFunc(pattern, src string, rpl func(s string) string) (string, error) {
-
 	r, err := utils.CachedRex(pattern)
-	if err != nil {
-		return "", err
-	}
-
-	bytes := r.ReplaceAllFunc([]byte(src), func(bytes []byte) []byte {
-		return []byte(rpl(string(bytes)))
+	if err != nil { return "", err }
+	buf := r.ReplaceAllFunc([]byte(src), func(buf []byte) []byte {
+		return []byte(rpl(string(buf)))
 	})
-
-	return string(bytes), nil
+	return string(buf), nil
 }
 
 func replace(pattern string, replace, src []byte) ([]byte, error) {
-
 	r, err := utils.CachedRex(pattern)
-	if err != nil {
-		return nil, err
-	}
-
+	if err != nil { return nil, err }
 	return r.ReplaceAll(src, replace), nil
 }
 
@@ -81,17 +70,13 @@ func replaceString(pattern, rep, src string) (string, error) {
 
 func matchAllString(pattern string, src string) ([][]string, error) {
 	r, err := utils.CachedRex(pattern)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	return r.FindAllStringSubmatch(src, -1), nil
 }
 
 func isMatch(pattern string, src []byte) bool {
 	r, err := utils.CachedRex(pattern)
-	if err != nil {
-		return false
-	}
+	if err != nil { return false }
 	return r.Match(src)
 }
 
@@ -101,14 +86,12 @@ func isMatchString(pattern string, src string) bool {
 
 func matchString(pattern string, src string) ([]string, error) {
 	r, err := utils.CachedRex(pattern)
-	if err != nil {
-		return nil, err
-	}
+	if err != nil { return nil, err }
 	return r.FindStringSubmatch(src), nil
 }
 
-// 从Gf框架复制
-// 在执行sql之前对sql进行进一步处理
+// copy from Gf frame
+// perform further processing on sql before executing sql
 func (db *Mssql) handleSqlBeforeExec(query string) string {
 	index := 0
 	str, _ := replaceStringFunc("\\?", query, func(s string) string {
@@ -121,92 +104,99 @@ func (db *Mssql) handleSqlBeforeExec(query string) string {
 	return db.parseSql(str)
 }
 
-//将MYSQL的SQL语法转换为MSSQL的语法
-//1.由于mssql不支持limit写法所以需要对mysql中的limit用法做转换
+// convert MYSQL SQL grammar to MSSQL grammar
+// since mssql does not support limit writing, you need to convert the limit usage in mysql
 func (db *Mssql) parseSql(sql string) string {
-	//下面的正则表达式匹配出SELECT和INSERT的关键字后分别做不同的处理，如有LIMIT则将LIMIT的关键字也匹配出
-	patten := `^\s*(?i)(SELECT)|(LIMIT\s*(\d+)\s*,\s*(\d+))`
-	if !isMatchString(patten, sql) {
+	// the following regular expressions match the keywords of SELECT and INSERT and do different processing respectively. If there is LIMIT, the keywords of LIMIT are also matched
+	pattern := `^\s*(?i)(SELECT)|(LIMIT\s*(\d+)\s*,\s*(\d+))`
+	if !isMatchString(pattern, sql) {
 		//fmt.Println("not matched..")
 		return sql
 	}
 
-	res, err := matchAllString(patten, sql)
+	match, err := matchAllString(pattern, sql)
 	if err != nil {
 		//fmt.Println("MatchString error.", err)
 		return ""
 	}
 
-	index := 0
-	keyword := strings.TrimSpace(res[index][0])
-	keyword = strings.ToUpper(keyword)
+	keyword := strings.ToUpper(strings.TrimSpace(match[0][0]))
 
-	index++
 	switch keyword {
 	case "SELECT":
-		//不含LIMIT关键字则不处理
-		if len(res) < 2 || (!strings.HasPrefix(res[index][0], "LIMIT") && !strings.HasPrefix(res[index][0], "limit")) {
+		if len(match) < 2 {
 			break
 		}
 
-		//不含LIMIT则不处理
+		m1  := match[1]
+		m10 := m1[0]
+
+		// do not process if the LIMIT keyword is not included
+		if !strings.HasPrefix(m10, "LIMIT") && !strings.HasPrefix(m10, "limit") {
+			break
+		}
+		// do not process if LIMIT is not included
 		if !isMatchString("((?i)SELECT)(.+)((?i)LIMIT)", sql) {
 			break
 		}
 
-		//判断SQL中是否含有order by
-		selectStr := ""
-		orderbyStr := ""
+		// determine whether the SQL contains order by
+		selectStr, orderbyStr  := "", ""
 		haveOrderby := isMatchString("((?i)SELECT)(.+)((?i)ORDER BY)", sql)
 		if haveOrderby {
-			//取order by 前面的字符串
+			// take the string in front of order by
 			queryExpr, _ := matchString("((?i)SELECT)(.+)((?i)ORDER BY)", sql)
-
-			if len(queryExpr) != 4 || !strings.EqualFold(queryExpr[1], "SELECT") || !strings.EqualFold(queryExpr[3], "ORDER BY") {
+			if len(queryExpr) != 4 {
+				break
+			}
+			_ = queryExpr[3]
+			if !strings.EqualFold(queryExpr[1], "SELECT") || !strings.EqualFold(queryExpr[3], "ORDER BY") {
 				break
 			}
 			selectStr = queryExpr[2]
-
-			//取order by表达式的值
+			// take the value of the order by expression
 			orderbyExpr, _ := matchString("((?i)ORDER BY)(.+)((?i)LIMIT)", sql)
-			if len(orderbyExpr) != 4 || !strings.EqualFold(orderbyExpr[1], "ORDER BY") || !strings.EqualFold(orderbyExpr[3], "LIMIT") {
+			if len(orderbyExpr) != 4 {
+				break
+			}
+			_ = orderbyStr[3]
+			if !strings.EqualFold(orderbyExpr[1], "ORDER BY") || !strings.EqualFold(orderbyExpr[3], "LIMIT") {
 				break
 			}
 			orderbyStr = orderbyExpr[2]
 		} else {
 			queryExpr, _ := matchString("((?i)SELECT)(.+)((?i)LIMIT)", sql)
-			if len(queryExpr) != 4 || !strings.EqualFold(queryExpr[1], "SELECT") || !strings.EqualFold(queryExpr[3], "LIMIT") {
+			if len(queryExpr) != 4 {
+				break
+			}
+			_ = queryExpr[3]
+			if !strings.EqualFold(queryExpr[1], "SELECT") || !strings.EqualFold(queryExpr[3], "LIMIT") {
 				break
 			}
 			selectStr = queryExpr[2]
 		}
 
-		//取limit后面的取值范围
+		// take the value range after limit
 		first, limit := 0, 0
-		for i := 1; i < len(res[index]); i++ {
-			if strings.TrimSpace(res[index][i]) == "" {
-				continue
-			}
-
-			if strings.HasPrefix(res[index][i], "LIMIT") || strings.HasPrefix(res[index][i], "limit") {
-				first, _ = strconv.Atoi(res[index][i+1])
-				limit, _ = strconv.Atoi(res[index][i+2])
+		for i, v := range m1[1:] {
+			if strings.HasPrefix(v, "LIMIT") || strings.HasPrefix(v, "limit") {
+				if i + 2 < len(m1) {
+					first, _ = strconv.Atoi(m1[i + 1])
+					limit, _ = strconv.Atoi(m1[i + 2])
+				}
 				break
 			}
 		}
 
 		if haveOrderby {
-			sql = fmt.Sprintf("SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s) as ROWNUMBER_, %s   ) as TMP_ WHERE TMP_.ROWNUMBER_ > %d AND TMP_.ROWNUMBER_ <= %d", orderbyStr, selectStr, first, limit)
+			sql = fmt.Sprintf("SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY %s) as ROWNUMBER_, %s) as TMP_ WHERE TMP_.ROWNUMBER_ > %d AND TMP_.ROWNUMBER_ <= %d", orderbyStr, selectStr, first, limit)
 		} else {
-			if first == 0 {
-				first = limit
-			} else {
-				first = limit - first
-			}
-			sql = fmt.Sprintf("SELECT * FROM (SELECT TOP %d * FROM (SELECT TOP %d %s) as TMP1_ ) as TMP2_ ", first, limit, selectStr)
+			sql = fmt.Sprintf("SELECT * FROM (SELECT TOP %d * FROM (SELECT TOP %d %s) as TMP1_ ) as TMP2_ ", limit - first, limit, selectStr)
 		}
+
 	default:
 	}
+
 	return sql
 }
 
@@ -253,17 +243,8 @@ func (db *Mssql) InitDB(cfgs map[string]config.Database) Connection {
 	db.Configs = cfgs
 	db.Once.Do(func() {
 		for conn, cfg := range cfgs {
-
 			sqlDB, err := sql.Open("sqlserver", cfg.GetDSN())
-
-			if sqlDB == nil {
-				panic("invalid connection")
-			}
-
-			if err != nil {
-				_ = sqlDB.Close()
-				panic(err.Error())
-			}
+			if err != nil { panic(err) }
 
 			sqlDB.SetMaxIdleConns(cfg.MaxIdleCon)
 			sqlDB.SetMaxOpenConns(cfg.MaxOpenCon)

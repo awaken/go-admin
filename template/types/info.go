@@ -338,8 +338,10 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 					}
 					joins.WriteString(" LEFT JOIN ")
 					joins.WriteString(modules.FilterField(join.Table, info.Delimiter, info.Delimiter2))
-					joins.WriteByte(' ')
-					joins.WriteString(join.TableAlias)
+					if join.TableAlias != "" {
+						joins.WriteByte(' ')
+						joins.WriteString(join.TableAlias)
+					}
 					joins.WriteString(" ON ")
 					joins.WriteString(joinTableName)
 					joins.WriteByte('.')
@@ -374,24 +376,24 @@ func (f FieldList) GetTheadAndFilterForm(info TableInfo, params parameter.Parame
 
 func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columnMap map[string]struct{}) (Thead, string, string) {
 	var (
-		fields       strings.Builder
-		joins        strings.Builder
+		sbFields     strings.Builder
+		sbJoins      strings.Builder
 		joinTableMap map[string]struct{}
 	)
 	thead := make(Thead, 0, len(f))
-	fields.Grow(256)
+	sbFields.Grow(256)
 
 	for _, field := range f {
 		if field.Field != info.PrimaryKey {
 			if _, ok := columnMap[field.Field]; ok && !field.Joins.Valid() {
-				fields.WriteString(info.Delimiter)
-				fields.WriteString(info.Table)
-				fields.WriteString(info.Delimiter2)
-				fields.WriteByte('.')
-				fields.WriteString(info.Delimiter)
-				fields.WriteString(field.Field)
-				fields.WriteString(info.Delimiter2)
-				fields.WriteByte(',')
+				sbFields.WriteString(info.Delimiter)
+				sbFields.WriteString(info.Table)
+				sbFields.WriteString(info.Delimiter2)
+				sbFields.WriteByte('.')
+				sbFields.WriteString(info.Delimiter)
+				sbFields.WriteString(field.Field)
+				sbFields.WriteString(info.Delimiter2)
+				sbFields.WriteByte(',')
 			}
 		}
 
@@ -410,31 +412,33 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columnM
 					if join.BaseTable == "" {
 						join.BaseTable = info.Table
 					}
-					if joins.Len() == 0 {
-						joins.Grow(256)
+					if sbJoins.Len() == 0 {
+						sbJoins.Grow(256)
 					} else {
-						joins.WriteByte(' ')
+						sbJoins.WriteByte(' ')
 					}
-					joins.WriteString("LEFT JOIN ")
-					joins.WriteString(info.Delimiter)
-					joins.WriteString(join.Table)
-					joins.WriteString(info.Delimiter2)
-					joins.WriteByte(' ')
-					joins.WriteString(join.TableAlias)
-					joins.WriteString(" ON ")
-					joins.WriteString(joinTableName)
-					joins.WriteByte('.')
-					joins.WriteString(info.Delimiter)
-					joins.WriteString(join.JoinField)
-					joins.WriteString(info.Delimiter2)
-					joins.WriteByte('=')
-					joins.WriteString(info.Delimiter)
-					joins.WriteString(join.BaseTable)
-					joins.WriteString(info.Delimiter2)
-					joins.WriteByte('.')
-					joins.WriteString(info.Delimiter)
-					joins.WriteString(join.Field)
-					joins.WriteString(info.Delimiter2)
+					sbJoins.WriteString("LEFT JOIN ")
+					sbJoins.WriteString(info.Delimiter)
+					sbJoins.WriteString(join.Table)
+					sbJoins.WriteString(info.Delimiter2)
+					if join.TableAlias != "" {
+						sbJoins.WriteByte(' ')
+						sbJoins.WriteString(join.TableAlias)
+					}
+					sbJoins.WriteString(" ON ")
+					sbJoins.WriteString(joinTableName)
+					sbJoins.WriteByte('.')
+					sbJoins.WriteString(info.Delimiter)
+					sbJoins.WriteString(join.JoinField)
+					sbJoins.WriteString(info.Delimiter2)
+					sbJoins.WriteByte('=')
+					sbJoins.WriteString(info.Delimiter)
+					sbJoins.WriteString(join.BaseTable)
+					sbJoins.WriteString(info.Delimiter2)
+					sbJoins.WriteByte('.')
+					sbJoins.WriteString(info.Delimiter)
+					sbJoins.WriteString(join.Field)
+					sbJoins.WriteString(info.Delimiter2)
 				}
 			}
 		}
@@ -453,7 +457,7 @@ func (f FieldList) GetThead(info TableInfo, params parameter.Parameters, columnM
 		})
 	}
 
-	return thead, fields.String(), joins.String()
+	return thead, sbFields.String(), sbJoins.String()
 }
 
 func (f FieldList) GetFieldFilterProcessValue(key, value, keyIndex string) string {
@@ -462,10 +466,9 @@ func (f FieldList) GetFieldFilterProcessValue(key, value, keyIndex string) strin
 	if keyIndex != "" {
 		index, _ = strconv.Atoi(keyIndex)
 	}
-	if field.FilterFormFields != nil && len(field.FilterFormFields) > index {
-		if field.FilterFormFields[index].ProcessFn != nil {
-			value = field.FilterFormFields[index].ProcessFn(value)
-		}
+	if field.FilterFormFields != nil && index < len(field.FilterFormFields) {
+		fn := field.FilterFormFields[index].ProcessFn
+		if fn != nil { value = fn(value) }
 	}
 	return value
 }
@@ -539,14 +542,9 @@ func (j Join) GetTableName(delimiter ...string) string {
 	if j.TableAlias != "" {
 		return j.TableAlias
 	}
-	if len(delimiter) > 0 {
-		var sb strings.Builder
-		sb.Grow(len(delimiter[0]) + len(j.Table) + len(delimiter[1]))
-		sb.WriteString(delimiter[0])
-		sb.WriteString(j.Table)
-		sb.WriteString(delimiter[1])
-		return sb.String()
-		//return delimiter[0] + j.Table + delimiter[1]
+	if len(delimiter) > 1 {
+		_ = delimiter[1]
+		return utils.StrConcat(delimiter[0], j.Table, delimiter[1])
 	}
 	return j.Table
 }
@@ -705,10 +703,6 @@ func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []in
 
 		// TODO: support like operation and join table
 		if _, ok := columnMap[whField]; ok {
-			joinMark := ""
-			if i != last {
-				joinMark = whs[i + 1].Join
-			}
 			if hasWheres {
 				hasWheres = false
 				pwheres.WriteString(wheres)
@@ -726,9 +720,13 @@ func (whs Wheres) Statement(wheres, delimiter, delimiter2 string, whereArgs []in
 			pwheres.WriteString(delimiter2)
 			pwheres.WriteByte(' ')
 			pwheres.WriteString(wh.Operator)
-			pwheres.WriteString(" ? ")
-			pwheres.WriteString(joinMark)
-			pwheres.WriteByte(' ')
+			pwheres.WriteString(" ?")
+			if i != last {
+				if joinMark := whs[i + 1].Join; joinMark != "" {
+					pwheres.WriteByte(' ')
+					pwheres.WriteString(joinMark)
+				}
+			}
 			//pwheres += modules.FilterField(whField, delimiter, delimiter2) + " " + wh.Operator + " ? " + joinMark + " "
 			whereArgs = append(whereArgs, wh.Arg)
 		}

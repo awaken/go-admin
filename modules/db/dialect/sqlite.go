@@ -4,6 +4,10 @@
 
 package dialect
 
+import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
+)
+
 type sqlite struct {
 	commonDialect
 }
@@ -13,9 +17,9 @@ func (sqlite) GetName() string {
 }
 
 func (sqlite) ShowColumns(table string) string {
-	return "PRAGMA table_info(" + table + ");"
+	return utils.StrConcat("PRAGMA table_info(", table, ")")
 }
 
 func (sqlite) ShowTables() string {
-	return "SELECT name as tablename FROM sqlite_master WHERE type ='table'"
+	return "SELECT name AS tablename FROM sqlite_master WHERE type = 'table'"
 }

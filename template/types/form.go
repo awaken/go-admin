@@ -37,31 +37,28 @@ func (fo FieldOptions) Copy() FieldOptions {
 }
 
 func (fo FieldOptions) SetSelected(val interface{}, labels []template.HTML) FieldOptions {
+	label2, label1 := labels[1], labels[0]
 	if valArr, ok := val.([]string); ok {
 		for i, o := range fo {
 			text := o.Text
-			if text == "" {
-				text = string(o.TextHTML)
-			}
+			if text == "" { text = string(o.TextHTML) }
 			o.Selected = utils.InArray(valArr, o.Value) || utils.InArray(valArr, text)
 			if o.Selected {
-				o.SelectedLabel = labels[0]
+				o.SelectedLabel = label1
 			} else {
-				o.SelectedLabel = labels[1]
+				o.SelectedLabel = label2
 			}
 			fo[i] = o
 		}
 	} else {
 		for i, o := range fo {
-			text := fo[i].Text
-			if text == "" {
-				text = string(o.TextHTML)
-			}
+			text := o.Text
+			if text == "" { text = string(o.TextHTML) }
 			o.Selected = o.Value == val || text == val
 			if o.Selected {
-				o.SelectedLabel = labels[0]
+				o.SelectedLabel = label1
 			} else {
-				o.SelectedLabel = labels[1]
+				o.SelectedLabel = label2
 			}
 			fo[i] = o
 		}
@@ -70,11 +67,12 @@ func (fo FieldOptions) SetSelected(val interface{}, labels []template.HTML) Fiel
 }
 
 func (fo FieldOptions) SetSelectedLabel(labels []template.HTML) FieldOptions {
+	label2, label1 := labels[1], labels[0]
 	for i, o := range fo {
 		if o.Selected {
-			fo[i].SelectedLabel = labels[0]
+			fo[i].SelectedLabel = label1
 		} else {
-			fo[i].SelectedLabel = labels[1]
+			fo[i].SelectedLabel = label2
 		}
 	}
 	return fo
@@ -1058,10 +1056,13 @@ func chooseAjax(field, chooseField, url string, handler Handler, js ...template.
 	actionJS  := template.JS("")
 	passValue := template.JS("")
 
-	if len(js) > 0 {
+	switch len(js) {
+	case 0:
+	case 1:
 		actionJS = template.JS(js[0])
-	}
-	if len(js) > 1 {
+	default:
+		_ = js[1]
+		actionJS  = template.JS(js[0])
 		passValue = template.JS(js[1])
 	}
 
@@ -1433,28 +1434,32 @@ func (f *FormPanel) EnableAjaxData(data AjaxData) *FormPanel {
 
 func (f *FormPanel) EnableAjax(msgs ...string) *FormPanel {
 	var data AjaxData
-	if n := len(msgs); n > 0 {
-		if msgs[0] != "" {
-			data.SuccessTitle = msgs[0]
-		}
-		if n > 1 {
-			if msgs[1] != "" {
-				data.ErrorTitle = msgs[1]
-			}
-			if n > 2 {
-				if msgs[2] != "" {
-					data.SuccessJumpURL = msgs[2]
-				}
-				if n > 3 {
-					if msgs[3] != "" {
-						data.SuccessText = msgs[3]
-					}
-					if n > 4 && msgs[4] != "" {
-						data.ErrorText = msgs[4]
-					}
-				}
-			}
-		}
+	switch len(msgs) {
+	case 0:
+	case 1:
+		if m := msgs[0]; m != "" { data.SuccessTitle = m }
+	case 2:
+		_ = msgs[1]
+		if m := msgs[0]; m != "" { data.SuccessTitle = m }
+		if m := msgs[1]; m != "" { data.ErrorTitle   = m }
+	case 3:
+		_ = msgs[2]
+		if m := msgs[0]; m != "" { data.SuccessTitle   = m }
+		if m := msgs[1]; m != "" { data.ErrorTitle     = m }
+		if m := msgs[2]; m != "" { data.SuccessJumpURL = m }
+	case 4:
+		_ = msgs[3]
+		if m := msgs[0]; m != "" { data.SuccessTitle   = m }
+		if m := msgs[1]; m != "" { data.ErrorTitle     = m }
+		if m := msgs[2]; m != "" { data.SuccessJumpURL = m }
+		if m := msgs[3]; m != "" { data.SuccessText    = m }
+	default:
+		_ = msgs[4]
+		if m := msgs[0]; m != "" { data.SuccessTitle   = m }
+		if m := msgs[1]; m != "" { data.ErrorTitle     = m }
+		if m := msgs[2]; m != "" { data.SuccessJumpURL = m }
+		if m := msgs[3]; m != "" { data.SuccessText    = m }
+		if m := msgs[4]; m != "" { data.ErrorText      = m }
 	}
 	return f.EnableAjaxData(data)
 }

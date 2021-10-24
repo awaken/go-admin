@@ -57,7 +57,8 @@ func MaskContentToLog(input string) string {
 
 func StrIsoDateToDateTime(s string) string {
 	if m := rexIsoDate.FindStringSubmatch(s); len(m) >= 3 {
-		return m[1] + " " + m[2]
+		_ = m[2]
+		return StrConcat(m[1], " ", m[2])
 	}
 	return s
 }
@@ -109,25 +110,35 @@ func CachedRex(rexStr string) (*regexp.Regexp, error) {
 func StrConcat(args ...string) string {
 	var buf []byte
 	switch len(args) {
-	case 0: return ""
-	case 1: return args[0]
-	case 2: return args[0] + args[1]
+	case 0:
+		return ""
+	case 1:
+		return args[0]
+	case 2:
+		_ = args[1]
+		return args[0] + args[1]
 	case 3:
+		_ = args[2]
 		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]))
 		buf = append(append(append(buf, args[0]...), args[1]...), args[2]...)
 	case 4:
+		_ = args[3]
 		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]))
 		buf = append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...)
 	case 5:
+		_ = args[4]
 		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]))
 		buf = append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...)
 	case 6:
+		_ = args[5]
 		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]))
 		buf = append(append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...), args[5]...)
 	case 7:
+		_ = args[6]
 		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]) + len(args[6]))
 		buf = append(append(append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...), args[5]...), args[6]...)
 	case 8:
+		_ = args[7]
 		buf = make([]byte, 0, len(args[0]) + len(args[1]) + len(args[2]) + len(args[3]) + len(args[4]) + len(args[5]) + len(args[6]) + len(args[7]))
 		buf = append(append(append(append(append(append(append(append(buf, args[0]...), args[1]...), args[2]...), args[3]...), args[4]...), args[5]...), args[6]...), args[7]...)
 	default:

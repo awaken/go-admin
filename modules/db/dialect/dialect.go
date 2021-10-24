@@ -106,182 +106,232 @@ type RawUpdate struct {
 
 func (sql *SQLComponent) getLimit() string {
 	if sql.Limit == "" { return "" }
-	return utils.StrConcat(" LIMIT ", sql.Limit, " ")
+	return " LIMIT " + sql.Limit
 }
 
 func (sql *SQLComponent) getOffset() string {
 	if sql.Offset == "" { return "" }
-	return utils.StrConcat(" OFFSET ", sql.Offset, " ")
+	return " OFFSET " + sql.Offset
 }
 
 func (sql *SQLComponent) getOrderBy() string {
 	if sql.Order == "" { return "" }
-	return utils.StrConcat(" ORDER BY ", sql.Order, " ")
+	return " ORDER BY " + sql.Order
 }
 
 func (sql *SQLComponent) getGroupBy() string {
 	if sql.Group == "" { return "" }
-	return utils.StrConcat(" GROUP BY ", sql.Group, " ")
+	return " GROUP BY " + sql.Group
 }
 
 func (sql *SQLComponent) getJoins(delimiter, delimiter2 string) string {
 	if len(sql.Leftjoins) == 0 { return "" }
-	var joins strings.Builder
-	joins.Grow(256)
+
+	var sb strings.Builder
+	sb.Grow(256)
+
 	for _, join := range sql.Leftjoins {
-		joins.WriteString(" LEFT JOIN ")
-		joins.WriteString(delimiter)
-		joins.WriteString(join.Table)
-		joins.WriteString(delimiter2)
-		joins.WriteString(" ON ")
-		joins.WriteString(sql.processLeftJoinField(join.FieldA, delimiter, delimiter2))
-		joins.WriteByte(' ')
-		joins.WriteString(join.Operation)
-		joins.WriteByte(' ')
-		joins.WriteString(sql.processLeftJoinField(join.FieldB, delimiter, delimiter2))
-		joins.WriteByte(' ')
+		sb.WriteString(" LEFT JOIN ")
+		sb.WriteString(delimiter)
+		sb.WriteString(join.Table)
+		sb.WriteString(delimiter2)
+		sb.WriteString(" ON ")
+		sb.WriteString(sql.processLeftJoinField(join.FieldA, delimiter, delimiter2))
+		sb.WriteByte(' ')
+		sb.WriteString(join.Operation)
+		sb.WriteByte(' ')
+		sb.WriteString(sql.processLeftJoinField(join.FieldB, delimiter, delimiter2))
 	}
-	return joins.String()
+
+	return sb.String()
 }
 
 func (sql *SQLComponent) processLeftJoinField(field, delimiter, delimiter2 string) string {
-	if field != "" {
-		s1, s2 := utils.StrSplitByte2(field, '.')
-		if s2 != "" {
-			return utils.StrConcat(delimiter, s1, delimiter2, ".", delimiter, s2, delimiter2)
-		}
-		return utils.StrConcat(delimiter, s1, delimiter2)
+	if field == "" { return "" }
+	name1, name2 := utils.StrSplitByte2(field, '.')
+	if name2 == "" {
+		return utils.StrConcat(delimiter, name1, delimiter2)
 	}
-	return ""
+	return utils.StrConcat(delimiter, name1, delimiter2, ".", delimiter, name2, delimiter2)
 }
 
 func (sql *SQLComponent) getFields(delimiter, delimiter2 string) string {
-	if len(sql.Fields) == 0 {
-		return "*"
-	}
-	fields := ""
+	if len(sql.Fields) == 0 { return "*" }
+
+	var sb strings.Builder
+	sb.Grow(128)
+
 	if len(sql.Leftjoins) == 0 {
 		for k, field := range sql.Fields {
-			if sql.Functions[k] != "" {
-				fields += sql.Functions[k] + "(" + wrap(delimiter, delimiter2, field) + "),"
+			if sb.Len() > 0 { sb.WriteByte(',') }
+			funcName := sql.Functions[k]
+			if funcName != "" {
+				sb.WriteString(funcName)
+				sb.WriteByte('(')
+			}
+			if field == "*" {
+				sb.WriteByte('*')
 			} else {
-				fields += wrap(delimiter, delimiter2, field) + ","
+				sb.WriteString(delimiter)
+				sb.WriteString(field)
+				sb.WriteString(delimiter2)
+			}
+			if funcName != "" {
+				sb.WriteByte(')')
 			}
 		}
 	} else {
 		for _, field := range sql.Fields {
-			arr := strings.Split(field, ".")
-			if len(arr) > 1 {
-				fields += wrap(delimiter, delimiter2, arr[0]) + "." + wrap(delimiter, delimiter2, arr[1]) + ","
+			if sb.Len() > 0 { sb.WriteByte(',') }
+			v1, v2 := utils.StrSplitByte2(field, '.')
+			if v1 == "*" {
+				sb.WriteByte('*')
 			} else {
-				fields += wrap(delimiter, delimiter2, field) + ","
+				sb.WriteString(delimiter)
+				sb.WriteString(v1)
+				sb.WriteString(delimiter2)
+			}
+			if v2 != "" {
+				sb.WriteByte('.')
+				if v2 == "*" {
+					sb.WriteByte('*')
+				} else {
+					sb.WriteString(delimiter)
+					sb.WriteString(v2)
+					sb.WriteString(delimiter2)
+				}
 			}
 		}
 	}
-	return fields[:len(fields)-1]
+
+	return sb.String()
 }
 
-func wrap(delimiter, delimiter2, field string) string {
+/*func wrap(delimiter, delimiter2, field string) string {
 	if field == "*" { return "*" }
 	return utils.StrConcat(delimiter, field, delimiter2)
-}
+}*/
 
 func (sql *SQLComponent) getWheres(delimiter, delimiter2 string) string {
+	const cWhere = " WHERE "
+
 	if len(sql.Wheres) == 0 {
-		if sql.WhereRaws != "" {
-			return " where " + sql.WhereRaws
-		}
-		return ""
+		if sql.WhereRaws == "" { return "" }
+		return cWhere + sql.WhereRaws
 	}
-	wheres := " where "
-	var arr []string
+
+	var sb strings.Builder
+	sb.Grow(512)
+	sb.WriteString(cWhere)
+
 	for _, where := range sql.Wheres {
-		arr = strings.Split(where.Field, ".")
-		if len(arr) > 1 {
-			wheres += arr[0] + "." + wrap(delimiter, delimiter2, arr[1]) + " " + where.Operation + " " + where.Qmark + " and "
+		if sb.Len() > len(cWhere) { sb.WriteString(" AND ") }
+		v1, v2 := utils.StrSplitByte2(where.Field, '.')
+		if v2 != "" {
+			sb.WriteString(v1)
+			sb.WriteByte('.')
+			if v2 == "*" {
+				sb.WriteByte('*')
+			} else {
+				sb.WriteString(delimiter)
+				sb.WriteString(v2)
+				sb.WriteString(delimiter2)
+			}
 		} else {
-			wheres += wrap(delimiter, delimiter2, where.Field) + " " + where.Operation + " " + where.Qmark + " and "
+			if where.Field == "*" {
+				sb.WriteByte('*')
+			} else {
+				sb.WriteString(delimiter)
+				sb.WriteString(where.Field)
+				sb.WriteString(delimiter2)
+			}
 		}
+		sb.WriteByte(' ')
+		sb.WriteString(where.Operation)
+		sb.WriteByte(' ')
+		sb.WriteString(where.Qmark)
 	}
+
 	if sql.WhereRaws != "" {
-		return wheres + sql.WhereRaws
+		sb.WriteString(" AND ")
+		sb.WriteString(sql.WhereRaws)
 	}
-	return wheres[:len(wheres)-5]
+
+	return sb.String()
 }
 
 func (sql *SQLComponent) prepareUpdate(delimiter, delimiter2 string) {
-	fields := ""
-	var args []interface{}
+	var sb strings.Builder
+	sb.Grow(512)
+	sb.WriteString("UPDATE ")
+	sb.WriteString(delimiter)
+	sb.WriteString(sql.TableName)
+	sb.WriteString(delimiter2)
+	sb.WriteString(" SET ")
 
-	if len(sql.Values) != 0 {
-		for key, value := range sql.Values {
-			fields += wrap(delimiter, delimiter2, key) + " = ?, "
-			args = append(args, value)
-		}
-		if len(sql.UpdateRaws) == 0 {
-			fields = fields[:len(fields)-2]
-		} else {
-			for i, u := range sql.UpdateRaws {
-				if i == len(sql.UpdateRaws)-1 {
-					fields += u.Expression + " "
-				} else {
-					fields += u.Expression + ","
-				}
-				args = append(args, u.Args...)
-			}
-		}
-		sql.Args = append(args, sql.Args...)
-	} else {
-		if len(sql.UpdateRaws) == 0 {
-			panic("prepareUpdate: missing parameter")
-		} else {
-			for i, u := range sql.UpdateRaws {
-				if i == len(sql.UpdateRaws)-1 {
-					fields += u.Expression + " "
-				} else {
-					fields += u.Expression + ","
-				}
-				args = append(args, u.Args...)
-			}
-		}
-		sql.Args = append(args, sql.Args...)
-	}
-
-	sql.Statement = "update " + delimiter + sql.TableName + delimiter2 + " set " + fields + sql.getWheres(delimiter, delimiter2)
-}
-
-func (sql *SQLComponent) prepareInsert(delimiter, delimiter2 string) {
-	var sbStmt, sbQuesMark strings.Builder
-	sbStmt.Grow(512)
-	sbQuesMark.Grow(32)
-
-	sbStmt.WriteString("INSERT INTO ")
-	sbStmt.WriteString(delimiter)
-	sbStmt.WriteString(sql.TableName)
-	sbStmt.WriteString(delimiter2)
-
-	sbStmt.WriteString(" (")
-	sbQuesMark.WriteByte('(')
+	args  := make([]interface{}, 0, len(sql.Values) + len(sql.UpdateRaws) * 4 + len(sql.Args))
 	first := true
 
 	for key, value := range sql.Values {
 		if first {
 			first = false
-			sbQuesMark.WriteByte('?')
 		} else {
-			sbStmt.WriteByte(',')
-			sbQuesMark.WriteString(",?")
+			sb.WriteByte(',')
 		}
-		sbStmt.WriteString(delimiter)
-		sbStmt.WriteString(key)
-		sbStmt.WriteString(delimiter2)
+		if key == "*" {
+			sb.WriteByte('*')
+		} else {
+			sb.WriteString(delimiter)
+			sb.WriteString(key)
+			sb.WriteString(delimiter2)
+		}
+		sb.WriteString(" = ?")
+		args = append(args, value)
+	}
+
+	for _, u := range sql.UpdateRaws {
+		if first {
+			first = false
+		} else {
+			sb.WriteByte(',')
+		}
+		sb.WriteString(u.Expression)
+		args = append(args, u.Args...)
+	}
+
+	sql.Args = append(args, sql.Args...)
+
+	sb.WriteString(sql.getWheres(delimiter, delimiter2))
+	sql.Statement = sb.String()
+}
+
+func (sql *SQLComponent) prepareInsert(delimiter, delimiter2 string) {
+	var sb strings.Builder
+	sb.Grow(512)
+	sb.WriteString("INSERT INTO ")
+	sb.WriteString(delimiter)
+	sb.WriteString(sql.TableName)
+	sb.WriteString(delimiter2)
+	sb.WriteString(" (")
+	first := true
+
+	for key, value := range sql.Values {
+		if first {
+			first = false
+		} else {
+			sb.WriteByte(',')
+		}
+		sb.WriteString(delimiter)
+		sb.WriteString(key)
+		sb.WriteString(delimiter2)
 		sql.Args = append(sql.Args, value)
 	}
 
-	sbStmt.WriteByte(')')
-	sbQuesMark.WriteByte(')')
+	sb.WriteString(") VALUES (?")
+	for i := len(sql.Values); i > 1; i-- {
+		sb.WriteString(",?")
+	}
+	sb.WriteByte(')')
 
-	sbStmt.WriteString(" VALUES ")
-	sbStmt.WriteString(sbQuesMark.String())
-	sql.Statement = sbStmt.String()
+	sql.Statement = sb.String()
 }

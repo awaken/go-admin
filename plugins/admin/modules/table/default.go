@@ -589,9 +589,7 @@ func (tb *DefaultTable) getDataFromDatabase(params parameter.Parameters) (PanelI
 		countCmd := fmt.Sprintf(countStmt, tb.Info.Table, joins, wheres, groupBy)
 
 		total, err := conn.QueryWithConnection(tb.connection, countCmd, whereArgs...)
-		if err != nil {
-			return PanelInfo{}, err
-		}
+		if err != nil { return PanelInfo{}, err }
 
 		logger.LogSQL(countCmd, nil)
 
@@ -745,8 +743,10 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 						joins.WriteString(delim)
 						joins.WriteString(join.Table)
 						joins.WriteString(delim2)
-						joins.WriteByte(' ')
-						joins.WriteString(join.TableAlias)
+						if join.TableAlias != "" {
+							joins.WriteByte(' ')
+							joins.WriteString(join.TableAlias)
+						}
 						joins.WriteString(" ON ")
 						joins.WriteString(joinTableName)
 						joins.WriteByte('.')
@@ -803,7 +803,7 @@ func (tb *DefaultTable) GetDataWithId(param parameter.Parameters) (FormInfo, err
 
 		if len(joinTabMap) > 0 {
 			groupBy.Grow(64)
-			groupBy.WriteString("GROUP BY ")
+			groupBy.WriteString(" GROUP BY ")
 			if useGroupFields {
 				groupBy.WriteString(groupFields)
 			} else {

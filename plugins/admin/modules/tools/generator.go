@@ -175,6 +175,7 @@ func NewParamWithFields(cfg Config, fields ...Fields) *Param {
 		detailFields = fields[2]
 	}
 
+	_ = fields[1]
 	return &Param{
 		Connection:               cfg.Connection,
 		Driver:                   cfg.Driver,

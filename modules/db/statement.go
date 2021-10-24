@@ -135,6 +135,7 @@ func (sql *SQL) OrderBy(fields ...string) *SQL {
 			sql.Order = utils.StrConcat(sql.Order, " ", delim, fields[0], delim2)
 		}
 	case 2:
+		_ = fields[1]
 		if sql.Order == "" {
 			sql.Order = utils.StrConcat(delim, fields[0], delim2, " ", fields[1])
 		} else {
@@ -188,6 +189,7 @@ func (sql *SQL) GroupBy(fields ...string) *SQL {
 			sql.Group = utils.StrConcat(sql.Group, " ", delim, fields[0], delim2)
 		}
 	case 2:
+		_ = fields[1]
 		if sql.Group == "" {
 			sql.Group = utils.StrConcat(delim, fields[0], delim2, ",", delim, fields[1], delim2)
 		} else {
@@ -249,14 +251,14 @@ func (sql *SQL) Where(field string, operation string, arg interface{}) *SQL {
 	return sql
 }
 
-// WhereIn add the where operation of "in" and argument values.
+// WhereIn add the where operation of "IN" and argument values.
 func (sql *SQL) WhereIn(field string, arg []interface{}) *SQL {
 	if len(arg) == 0 {
 		panic("missing parameter")
 	}
 	sql.Wheres = append(sql.Wheres, dialect.Where{
 		Field:     field,
-		Operation: "in",
+		Operation: "IN",
 		Qmark:     utils.StrConcat("(", strings.Repeat("?,", len(arg)-1), "?)"),
 	})
 	sql.Args = append(sql.Args, arg...)
@@ -589,7 +591,7 @@ func (sql *SQL) Insert(values dialect.H) (int64, error) {
 				return 0, err
 			}
 
-			res, err := sql.diver.QueryWithConnection(sql.conn, utils.StrConcat(`SELECT max("id") as "id" FROM "`, sql.TableName, `"`))
+			res, err := sql.diver.QueryWithConnection(sql.conn, utils.StrConcat(`SELECT max("id") AS "id" FROM "`, sql.TableName, `"`))
 			if err != nil {
 				return 0, err
 			}

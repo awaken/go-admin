@@ -14,6 +14,7 @@ func init() {
 }
 
 func (image *Image) Get(args ...interface{}) types.FieldFilterFn {
+	_ = args[2]
 	width  := args[0].(string)
 	height := args[1].(string)
 	param  := args[2].([]string)

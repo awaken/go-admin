@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/constant"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules/form"
-	"github.com/GoAdminGroup/go-admin/modules/utils"
 )
 
 type Parameters struct {
@@ -53,14 +53,22 @@ const (
 )
 
 var operators = map[string]string{
-	"like": "like",
-	"gr":   ">",
-	"gq":   ">=",
-	"eq":   "=",
-	"ne":   "!=",
-	"le":   "<",
-	"lq":   "<=",
-	"free": "free",
+	"LIKE": "LIKE",
+	"like": "LIKE",
+	"GR"  : ">"   ,
+	"gr"  : ">"   ,
+	"GQ"  : ">="  ,
+	"gq"  : ">="  ,
+	"EQ"  : "="   ,
+	"eq"  : "="   ,
+	"NE"  : "!="  ,
+	"ne"  : "!="  ,
+	"LE"  : "<"   ,
+	"le"  : "<"   ,
+	"LQ"  : "<="  ,
+	"lq"  : "<="  ,
+	"free": "FREE",
+	"FREE": "FREE",
 }
 
 var globKeyMap = map[string]struct{}{
@@ -74,24 +82,21 @@ func BaseParam() Parameters {
 func GetParam(u *url.URL, defaultPageSize int, p ...string) Parameters {
 	values := u.Query()
 
-	primaryKey := "id"
+	primaryKey      := "id"
 	defaultSortType := "desc"
 
 	if len(p) > 0 {
-		primaryKey = p[0]
+		_ = p[1]
+		primaryKey      = p[0]
 		defaultSortType = p[1]
 	}
 
-	page := getDefault(values, Page, "1")
-	pageSize := getDefault(values, PageSize, strconv.Itoa(defaultPageSize))
-	sortField := getDefault(values, Sort, primaryKey)
-	sortType := getDefault(values, SortType, defaultSortType)
-	columns := getDefault(values, Columns, "")
-
-	animation := true
-	if values.Get(form.NoAnimationKey) == "true" {
-		animation = false
-	}
+	page      := getDefault(values, Page    , "1")
+	pageSize  := getDefault(values, PageSize, strconv.Itoa(defaultPageSize))
+	sortField := getDefault(values, Sort    , primaryKey)
+	sortType  := getDefault(values, SortType, defaultSortType)
+	columns   := getDefault(values, Columns , "")
+	animation := values.Get(form.NoAnimationKey) != "true"
 
 	fields := make(map[string][]string, 8)
 
@@ -235,7 +240,7 @@ func (param Parameters) GetFieldValuesStr(field string) string {
 }
 
 func (param Parameters) GetFieldOperator(field, suffix string) string {
-	op := param.GetFieldValue(field + FilterParamOperatorSuffix + suffix)
+	op := param.GetFieldValue(utils.StrConcat(field, FilterParamOperatorSuffix, suffix))
 	if op == "" { return "eq" }
 	return op
 }
@@ -269,7 +274,7 @@ func (param Parameters) URL(page string) string {
 }
 
 func (param Parameters) URLNoAnimation(page string) string {
-	return param.URLPath + param.SetPage(page).GetRouteParamStr() + "&" + form.NoAnimationKey + "=true"
+	return utils.StrConcat(param.URLPath, param.SetPage(page).GetRouteParamStr(), "&", form.NoAnimationKey, "=true")
 }
 
 func (param Parameters) GetRouteParamStrWithoutPageSize(page string) string {
@@ -389,7 +394,7 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			key = strings.ReplaceAll(key, FilterRangeParamStartSuffix, "")
 			op  = ">="
 		} else if len(value) > 1 {
-			op = "in"
+			op = "IN"
 		} else if !strings.Contains(key, FilterParamOperatorSuffix) {
 			op = operators[param.GetFieldOperator(key, keyIndexSuffix)]
 		} else {
@@ -407,7 +412,9 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			sbWhr.WriteString(op)
 			//keys := strings.Split(key, FilterParamJoinInfix)
 			//wheres += keys[0] + "." + modules.FilterField(keys[1], delimiter, delimiter2) + " " + op
-			if op == "in" {
+			addArgs := true
+			switch op {
+			case "IN":
 				sbWhr.WriteString(" (?")
 				for n := len(value); n > 1; n-- {
 					sbWhr.WriteString(",?")
@@ -416,14 +423,18 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 				//qmark := ""
 				//for range value { qmark += "?," }
 				//wheres += " (" + qmark[:len(qmark)-1] + ") and "
-			} else {
+			case "LIKE":
+				val := filterProcess(key, value[0], keyIndexSuffix)
+				if !strings.ContainsRune(val, '%') {
+					whereArgs = append(whereArgs, utils.StrConcat("%", val, "%"))
+					addArgs   = false
+				}
+				fallthrough
+			default:
 				sbWhr.WriteString(" ?")
 				//wheres += " ? and "
 			}
-			val := filterProcess(key, value[0], keyIndexSuffix)
-			if op == "like" && !strings.ContainsRune(val, '%') {
-				whereArgs = append(whereArgs, utils.StrConcat("%", val, "%"))
-			} else {
+			if addArgs {
 				for _, v := range value {
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
 				}
@@ -438,7 +449,9 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 			sbWhr.WriteByte(' ')
 			sbWhr.WriteString(op)
 			//wheres += table + "." + modules.FilterField(key, delimiter, delimiter2) + " " + op
-			if op == "in" {
+			addArgs := true
+			switch op {
+			case "IN":
 				sbWhr.WriteString(" (?")
 				for n := len(value); n > 1; n-- {
 					sbWhr.WriteString(",?")
@@ -447,13 +460,17 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 				//qmark := ""
 				//for range value { qmark += "?," }
 				//wheres += " (" + qmark[:len(qmark)-1] + ") and "
-			} else {
+			case "LIKE":
+				if !strings.ContainsRune(value[0], '%') {
+					whereArgs = append(whereArgs, utils.StrConcat("%", filterProcess(key, value[0], keyIndexSuffix), "%"))
+					addArgs   = false
+				}
+				fallthrough
+			default:
 				sbWhr.WriteString(" ?")
 				//wheres += " ? and "
 			}
-			if op == "like" && !strings.ContainsRune(value[0], '%') {
-				whereArgs = append(whereArgs, utils.StrConcat("%", filterProcess(key, value[0], keyIndexSuffix), "%"))
-			} else {
+			if addArgs {
 				for _, v := range value {
 					whereArgs = append(whereArgs, filterProcess(key, v, keyIndexSuffix))
 				}
@@ -476,7 +493,7 @@ func (param Parameters) Statement(wheres, table, delimiter, delimiter2 string, w
 	for key, value := range param.OrConditions {
 		op := "="
 		if strings.ContainsRune(value, '%') {
-			op = "like"
+			op = "LIKE"
 		}
 		if sbWhr.Len() > 0 {
 			sbWhr.WriteString(" AND (")

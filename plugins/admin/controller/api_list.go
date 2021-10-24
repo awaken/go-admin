@@ -21,6 +21,7 @@ func (h *Handler) ApiList(ctx *context.Context) {
 		return
 	}
 
+	_ = urls[6]
 	response.OkWithData(ctx, map[string]interface{}{
 		"panel":  panelInfo,
 		"footer": panelInfo.Paginator.GetContent() + panel.GetInfo().FooterHtml,

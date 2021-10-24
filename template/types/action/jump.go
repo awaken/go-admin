@@ -19,29 +19,29 @@ type JumpAction struct {
 func Jump(url string, ext ...template.HTML) *JumpAction {
 	url = utils.JumpTmplReplacer.Replace(url)
 	if len(ext) > 0 {
-		return &JumpAction{Url: url, Ext: ext[0]}
+		return &JumpAction{ Url: url, Ext: ext[0] }
 	}
-	return &JumpAction{Url: url, NewTabTitle: ""}
+	return &JumpAction{ Url: url }
 }
 
 func JumpInNewTab(url, title string, ext ...template.HTML) *JumpAction {
 	url = utils.JumpTmplReplacer.Replace(url)
 	if len(ext) > 0 {
-		return &JumpAction{Url: url, NewTabTitle: title, Ext: ext[0]}
+		return &JumpAction{ Url: url, NewTabTitle: title, Ext: ext[0] }
 	}
-	return &JumpAction{Url: url, NewTabTitle: title}
+	return &JumpAction{ Url: url, NewTabTitle: title }
 }
 
 func JumpWithTarget(url, target string, ext ...template.HTML) *JumpAction {
 	url = utils.JumpTmplReplacer.Replace(url)
 	if len(ext) > 0 {
-		return &JumpAction{Url: url, Target: target, Ext: ext[0]}
+		return &JumpAction{ Url: url, Target: target, Ext: ext[0] }
 	}
-	return &JumpAction{Url: url, Target: target}
+	return &JumpAction{ Url: url, Target: target }
 }
 
 func (jump *JumpAction) GetCallbacks() context.Node {
-	return context.Node{Path: jump.Url, Method: "GET"}
+	return context.Node{ Path: jump.Url, Method: "GET" }
 }
 
 func (jump *JumpAction) BtnAttribute() template.HTML {
@@ -72,10 +72,8 @@ func (jump *JumpAction) BtnAttribute() template.HTML {
 }
 
 func (jump *JumpAction) BtnClass() template.HTML {
-	if jump.NewTabTitle != "" {
-		return "new-tab-link"
-	}
-	return ""
+	if jump.NewTabTitle == "" { return "" }
+	return "new-tab-link"
 }
 
 func (jump *JumpAction) ExtContent() template.HTML {

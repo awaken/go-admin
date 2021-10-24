@@ -57,10 +57,13 @@ func defaultButton(title, direction template.HTML, icon string, action Action, g
 	id := btnUUID()
 	action.SetBtnId("." + id)
 	var color, textColor template.HTML
-	if len(colors) > 0 {
+	switch len(colors) {
+	case 0:
+	case 1:
 		color = colors[0]
-	}
-	if len(colors) > 1 {
+	default:
+		_ = colors[1]
+		color = colors[0]
 		textColor = colors[1]
 	}
 	node := action.GetCallbacks()

@@ -201,7 +201,7 @@ func (s *SystemTable) GetManagerTable(ctx *context.Context) Table {
 		var user models.UserModel
 		id := values.Get("id")
 		if isRootAuth {
-			user = models.UserWithId(id)
+			user = models.UserWithId(id).SetConn(s.conn)
 		} else {
 			user = models.User().SetConn(s.conn).Find(id)
 			if user.IsRootAdmin() {
@@ -1798,13 +1798,18 @@ func addSwitchForTool(formList *types.FormPanel, head, field, def string, row ..
 			{ Text: lgWithScore("show", "tool"), Value: "n" },
 			{ Text: lgWithScore("hide", "tool"), Value: "y" },
 		}).FieldDefault(def)
-	if len(row) > 0 {
+	switch len(row) {
+	case 0:
+	case 1:
 		formList.FieldRowWidth(row[0])
-	}
-	if len(row) > 1 {
+	case 2:
+		_ = row[1]
+		formList.FieldRowWidth(row[0])
 		formList.FieldHeadWidth(row[1])
-	}
-	if len(row) > 2 {
+	default:
+		_ = row[2]
+		formList.FieldRowWidth(row[0])
+		formList.FieldHeadWidth(row[1])
 		formList.FieldInputWidth(row[2])
 	}
 }

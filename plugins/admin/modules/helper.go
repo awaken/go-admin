@@ -1,9 +1,9 @@
 package modules
 
 import (
+	"github.com/GoAdminGroup/go-admin/modules/utils"
 	uuid "github.com/satori/go.uuid"
 	"strconv"
-	"strings"
 )
 
 func InArray(arr []string, str string) bool {
@@ -14,21 +14,11 @@ func InArray(arr []string, str string) bool {
 }
 
 func Delimiter(del, del2, s string) string {
-	var sb strings.Builder
-	sb.Grow(len(del) + len(s) + len(del2))
-	sb.WriteString(del)
-	sb.WriteString(s)
-	sb.WriteString(del2)
-	return sb.String()
+	return utils.StrConcat(del, s, del2)
 }
 
 func FilterField(field, delimiter, delimiter2 string) string {
-	var sb strings.Builder
-	sb.Grow(len(delimiter) + len(field) + len(delimiter2))
-	sb.WriteString(delimiter)
-	sb.WriteString(field)
-	sb.WriteString(delimiter2)
-	return sb.String()
+	return utils.StrConcat(delimiter, field, delimiter2)
 }
 
 func InArrayWithoutEmpty(arr []string, str string) bool {

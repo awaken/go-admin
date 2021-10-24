@@ -119,7 +119,7 @@ type (
 )
 
 // The templateMap contains templates registered.
-var templateMap = make(map[string]Template)
+var templateMap map[string]Template
 
 func ParseFiles(filenames ...string) (*template.Template, error) {
 	return template.ParseFiles(filenames...)
@@ -128,8 +128,8 @@ func ParseFiles(filenames ...string) (*template.Template, error) {
 // Get the template interface by theme name. If the
 // name is not found, it panics.
 func Get(theme string) Template {
-	if temp, ok := templateMap[theme]; ok {
-		return temp
+	if templ, ok := templateMap[theme]; ok {
+		return templ
 	}
 	panic("wrong theme name")
 }
@@ -137,30 +137,25 @@ func Get(theme string) Template {
 // Default get the default template with the theme name set with the global config.
 // If the name is not found, it panics.
 func Default() Template {
-	if temp, ok := templateMap[c.GetTheme()]; ok {
-		return temp
+	if templ, ok := templateMap[c.GetTheme()]; ok {
+		return templ
 	}
 	panic("wrong theme name")
 }
 
-var (
-	templateMu sync.Mutex
-	compMu     sync.Mutex
-)
+var compMu sync.Mutex
 
 // Add makes a template available by the provided theme name.
-// If Add is called twice with the same name or if template is nil,
-// it panics.
-func Add(name string, temp Template) {
-	templateMu.Lock()
-	defer templateMu.Unlock()
-	if temp == nil {
+// If Add is called twice with the same name or if template is nil, it panics.
+func Add(name string, templ Template) {
+	if templ == nil {
 		panic("template is nil")
 	}
 	if _, dup := templateMap[name]; dup {
 		panic("add template twice " + name)
 	}
-	templateMap[name] = temp
+	if templateMap == nil { templateMap = make(map[string]Template) }
+	templateMap[name] = templ
 }
 
 // CheckRequirements check the theme and GoAdmin interdependence limit.

@@ -23,9 +23,10 @@ func (p *ProgressBar) Get(args ...interface{}) types.FieldFilterFn {
 	size  := "sm"
 	max   := 100
 	if len(param) > 0 {
-		if param[0].Style != "" { style = param[0].Style }
-		if param[0].Size  != "" { size  = param[0].Size  }
-		if param[0].Max   != 0  { max   = param[0].Max   }
+		par := param[0]
+		if par.Style != "" { style = par.Style }
+		if par.Size  != "" { size  = par.Size  }
+		if par.Max   != 0  { max   = par.Max   }
 	}
 	fMax := 100 / float64(max)
 	sMax := strconv.Itoa(max)

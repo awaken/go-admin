@@ -20,12 +20,18 @@ func (i *Icon) Get(args ...interface{}) types.FieldFilterFn {
 		defaultIcon = args[1].(string)
 	}
 
+	if defaultIcon != "" {
+		return func(value types.FieldModel) interface{} {
+			if iconClass, ok := icons[value.Value]; ok {
+				return icon.Icon(iconClass)
+			}
+			return icon.Icon(defaultIcon)
+		}
+	}
+
 	return func(value types.FieldModel) interface{} {
 		if iconClass, ok := icons[value.Value]; ok {
 			return icon.Icon(iconClass)
-		}
-		if defaultIcon != "" {
-			return icon.Icon(defaultIcon)
 		}
 		return value.Value
 	}
