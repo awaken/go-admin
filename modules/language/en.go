@@ -405,7 +405,7 @@ var en = LangSet{
 	"system.app_version" : "App Version",
 	"system.app_mode"    : "App Mode",
 	"system.app_env"     : "App Environment",
-	"system.app_roles"   : "App Roles",
+	"system.app_profiles": "App Profiles",
 	"system.mode_debug"  : "Debug",
 	"system.mode_release": "Release",
 	"system.mode_test"   : "Test",
