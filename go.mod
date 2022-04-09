@@ -15,16 +15,16 @@ require (
 	github.com/jawher/mow.cli v1.2.0
 	github.com/json-iterator/go v1.1.12
 	github.com/jteeuwen/go-bindata v3.0.7+incompatible
-	github.com/lib/pq v1.10.4
+	github.com/lib/pq v1.10.5
 	github.com/magiconair/properties v1.8.6
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
 	github.com/schollz/progressbar v1.0.0
-	github.com/tdewolff/minify/v2 v2.10.0
+	github.com/tdewolff/minify/v2 v2.11.1
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
+	golang.org/x/crypto v0.0.0-20220408190544-5352b0902921
 	golang.org/x/text v0.3.7
 	gopkg.in/ini.v1 v1.66.4
 	xorm.io/xorm v1.2.5
@@ -60,11 +60,11 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
-	github.com/tdewolff/parse/v2 v2.5.27 // indirect
+	github.com/tdewolff/parse/v2 v2.5.28 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f // indirect
+	golang.org/x/sys v0.0.0-20220408201424-a24fb2fb8a0f // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
