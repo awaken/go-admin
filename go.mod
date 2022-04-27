@@ -22,9 +22,9 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
 	github.com/schollz/progressbar v1.0.0
-	github.com/tdewolff/minify/v2 v2.11.1
+	github.com/tdewolff/minify/v2 v2.11.2
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
 	golang.org/x/text v0.3.7
 	gopkg.in/ini.v1 v1.66.4
 	xorm.io/xorm v1.3.0
