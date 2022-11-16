@@ -6,12 +6,12 @@ import (
 )
 
 type Cache interface {
-	Get(key any) (value interface{}, ok bool)
-	Add(key, value any)
+	Get(key string) (value any, ok bool)
+	Add(key string, value any)
 }
 
 func NewCache(size int) (Cache, error) {
-	return lru.NewARC[any, any](size)
+	return lru.NewARC[string, any](size)
 }
 
 func MustNewCache(size int) Cache {
