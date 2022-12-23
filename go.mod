@@ -9,7 +9,7 @@ require (
 	github.com/GoAdminGroup/themes v0.0.43
 	github.com/NebulousLabs/fastrand v0.0.0-20181203155948-6fb6489aac4e
 	github.com/denisenkom/go-mssqldb v0.12.3
-	github.com/gin-gonic/gin v1.8.1
+	github.com/gin-gonic/gin v1.8.2
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/jawher/mow.cli v1.2.0
