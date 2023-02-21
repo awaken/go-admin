@@ -83,10 +83,15 @@ func (db *Sqlite) InitDB(cfgList map[string]config.Database) Connection {
 	db.Configs = cfgList
 	db.Once.Do(func() {
 		for conn, cfg := range cfgList {
-			sqlDB, err := sql.Open("sqlite3", cfg.GetDSN())
+			dsn := cfg.GetDSN()
 
+			sqlDB, err := sql.Open("sqlite", dsn)
 			if err != nil {
-				panic(err)
+				var err2 error
+				sqlDB, err2 = sql.Open("sqlite3", dsn)
+				if err2 != nil {
+					panic(err)
+				}
 			}
 
 			sqlDB.SetMaxIdleConns(cfg.MaxIdleCon)
@@ -94,7 +99,7 @@ func (db *Sqlite) InitDB(cfgList map[string]config.Database) Connection {
 
 			db.DbList[conn] = sqlDB
 
-			if err := sqlDB.Ping(); err != nil {
+			if err = sqlDB.Ping(); err != nil {
 				panic(err)
 			}
 		}
