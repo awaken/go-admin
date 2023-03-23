@@ -16,7 +16,12 @@ import (
 	"github.com/GoAdminGroup/go-admin/modules/service"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/models"
 	"github.com/GoAdminGroup/go-admin/plugins/admin/modules"
-	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	EncryptPass      func(algo, pass string) string
+	EncryptPassMatch func(algo, pass, hashedPass string) bool
+	EncryptPassAlgo  string
 )
 
 // Auth get the user model from Context.
@@ -24,25 +29,19 @@ func Auth(ctx *context.Context) models.UserModel {
 	return ctx.User().(models.UserModel)
 }
 
-// Check check username and password and return the user model.
+// Check username and password and return the user model.
 func Check(username, password string, conn db.Connection) (models.UserModel, bool) {
 	user := models.User().SetConn(conn).FindByUserName(username)
-	if user.IsEmpty() || !comparePassword(password, user.Password) {
+	if user.IsEmpty() || !EncryptPassMatch(user.Algo, password, user.Password) {
 		return user, false
 	}
 	//user.UpdatePwd(EncodePassword([]byte(password)))			// uncomment to enforce security: rewrite new hashed password at each successful access
 	return user.WithRoles().WithPermissions().WithMenus(), true
 }
 
-func comparePassword(comPwd, pwdHash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(pwdHash), []byte(comPwd))
-	return err == nil
-}
-
 // EncodePassword encode the password.
-func EncodePassword(pwd []byte) string {
-	hash, _ := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
-	return string(hash)
+func EncodePassword(pwd string) string {
+	return EncryptPass(EncryptPassAlgo, pwd)
 }
 
 // SetCookie set the cookie.

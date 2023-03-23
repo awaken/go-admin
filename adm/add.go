@@ -93,7 +93,7 @@ func addUser(cfgFile string) {
 		Insert(dialect.H{
 			"name":     name,
 			"username": nickname,
-			"password": auth.EncodePassword([]byte(userPassword)),
+			"password": auth.EncodePassword(userPassword),
 		})
 
 	if db.CheckError(err, db.INSERT) {

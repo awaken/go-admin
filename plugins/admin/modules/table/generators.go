@@ -1871,5 +1871,5 @@ func passwordFromValues(values form2.Values) (string, error) {
 	if password == "" {
 		return "", nil
 	}
-	return auth.EncodePassword([]byte(password)), nil
+	return auth.EncryptPass(auth.EncryptPassAlgo, password), nil
 }
