@@ -21,16 +21,14 @@ func GetLoginComponent() *Login {
 }
 
 var DefaultFuncMap = template.FuncMap{
-	"lang":     language.Get,
+	"lang"    : language.Get,
 	"langHtml": language.GetFromHtml,
-	"link": func(cdnUrl, prefixUrl, assetsUrl string) string {
-		if cdnUrl == "" {
-			return prefixUrl + assetsUrl
-		}
+	"link"    : func(cdnUrl, prefixUrl, assetsUrl string) string {
+		if cdnUrl == "" { cdnUrl = prefixUrl }
 		return cdnUrl + assetsUrl
 	},
 	"isLinkUrl": func(s string) bool {
-		return (len(s) > 7 && s[:7] == "http://") || (len(s) > 8 && s[:8] == "https://")
+		return len(s) > 8 && (s[:7] == "http://" || s[:8] == "https://")
 	},
 	"render": func(s, old, repl template.HTML) template.HTML {
 		return template.HTML(strings.ReplaceAll(string(s), string(old), string(repl)))
@@ -44,9 +42,7 @@ var DefaultFuncMap = template.FuncMap{
 }
 
 func (l *Login) GetTemplate() (*template.Template, string) {
-	tmpl, err := template.New("login_theme1").
-		Funcs(DefaultFuncMap).
-		Parse(loginTmpl)
+	tmpl, err := template.New("login_theme1").Funcs(DefaultFuncMap).Parse(loginTmpl)
 
 	if err != nil {
 		logger.Error("Login GetTemplate Error: ", err)
@@ -62,6 +58,7 @@ func (l *Login) GetName() string                      { return "login" }
 
 func (l *Login) GetContent() template.HTML {
 	var sb strings.Builder
+	sb.Grow(1024)
 	tmpl, defineName := l.GetTemplate()
 	err := tmpl.ExecuteTemplate(&sb, defineName, l)
 	if err != nil {

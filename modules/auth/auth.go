@@ -20,7 +20,7 @@ import (
 
 var (
 	EncryptPass      func(algo, pass string) string
-	EncryptPassMatch func(algo, pass, hashedPass string) bool
+	EncryptPassMatch func(pass, hashedPass string) bool
 	EncryptPassAlgo  string
 )
 
@@ -32,7 +32,7 @@ func Auth(ctx *context.Context) models.UserModel {
 // Check username and password and return the user model.
 func Check(username, password string, conn db.Connection) (models.UserModel, bool) {
 	user := models.User().SetConn(conn).FindByUserName(username)
-	if user.IsEmpty() || !EncryptPassMatch(user.Algo, password, user.Password) {
+	if user.IsEmpty() || !EncryptPassMatch(password, user.Password) {
 		return user, false
 	}
 	//user.UpdatePwd(EncodePassword([]byte(password)))			// uncomment to enforce security: rewrite new hashed password at each successful access
@@ -64,9 +64,9 @@ func DefaultCookie() *http.Cookie {
 // DelCookie delete the cookie from Context.
 func DelCookie(ctx *context.Context, conn db.Connection) error {
 	ctx.SetCookie(DefaultCookie())
-	ses, err := InitSession(ctx, conn)
+	sess, err := InitSession(ctx, conn)
 	if err != nil { return err }
-	return ses.Clear()
+	return sess.Clear()
 }
 
 type TokenService struct {

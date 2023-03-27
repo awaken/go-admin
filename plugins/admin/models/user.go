@@ -19,7 +19,6 @@ type UserModel struct {
 	Name         string            `json:"name"`
 	UserName     string            `json:"user_name"`
 	Password     string            `json:"password"`
-	Algo         string            `json:"algo"`
 	Email        string            `json:"email"`
 	Avatar       string            `json:"avatar"`
 	Disabled     string            `json:"disabled"`
@@ -496,7 +495,6 @@ func (t UserModel) MapToModel(m map[string]interface{}) UserModel {
 	t.Name     , _ = m["name"].(string)
 	t.UserName , _ = m["username"].(string)
 	t.Password , _ = m["password"].(string)
-	t.Algo     , _ = m["algo"].(string)
 	t.Email    , _ = m["email"].(string)
 	t.Disabled , _ = m["disabled"].(string)
 	t.Root     , _ = m["root"].(string)
