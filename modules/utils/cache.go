@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	lru "github.com/hashicorp/golang-lru/v2"
+	lru "github.com/hashicorp/golang-lru/arc/v2"
 )
 
 type Cache interface {
